@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candidature soumise avec succès - AcademiPro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .success-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            max-width: 600px;
+            width: 100%;
+            overflow: hidden;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(255,255,255,0.05) 10px,
+                rgba(255,255,255,0.05) 20px
+            );
+            animation: shine 3s linear infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%); }
+            100% { transform: translateX(100%) translateY(100%); }
+        }
+
+        .success-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+            animation: bounce 1s ease-out 0.3s both;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% {
+                transform: translate3d(0,0,0);
+            }
+            40%, 43% {
+                transform: translate3d(0, -20px, 0);
+            }
+            70% {
+                transform: translate3d(0, -10px, 0);
+            }
+            90% {
+                transform: translate3d(0, -4px, 0);
+            }
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .content {
+            padding: 2.5rem;
+        }
+
+        .candidature-info {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-left: 4px solid #10b981;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #374151;
+            flex-shrink: 0;
+            margin-right: 1rem;
+        }
+
+        .info-value {
+            color: #6b7280;
+            font-family: 'Courier New', monospace;
+            background: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .timeline {
+            margin: 2rem 0;
+        }
+
+        .timeline-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .timeline-title::before {
+            content: '📋';
+            margin-right: 0.5rem;
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-left: 1rem;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+        }
+
+        .timeline-item.completed::before {
+            background: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+
+        .timeline-item.pending::before {
+            background: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+        }
+
+        .timeline-item.future::before {
+            background: #e5e7eb;
+        }
+
+        .timeline-content {
+            margin-left: 1rem;
+        }
+
+        .timeline-content h4 {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.25rem;
+        }
+
+        .timeline-content p {
+            color: #6b7280;
+            font-size: 0.875rem;
+            line-height: 1.4;
+        }
+
+        .important-notice {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 1px solid #f59e0b;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            position: relative;
+        }
+
+        .notice-icon {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            font-size: 1.5rem;
+        }
+
+        .notice-content {
+            margin-left: 2.5rem;
+        }
+
+        .notice-title {
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 0.5rem;
+        }
+
+        .notice-text {
+            color: #78350f;
+            line-height: 1.5;
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 140px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #374151;
+            border: 2px solid #e5e7eb;
+        }
+
+        .btn-secondary:hover {
+            background: #f9fafb;
+            border-color: #d1d5db;
+            transform: translateY(-1px);
+        }
+
+        .contact-info {
+            background: #f1f5f9;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .contact-title {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .contact-title::before {
+            content: '📞';
+            margin-right: 0.5rem;
+        }
+
+        .contact-item {
+            margin-bottom: 0.5rem;
+            color: #475569;
+        }
+
+        .contact-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .social-proof {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .social-proof p {
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #10b981;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        @media (max-width: 640px) {
+            .success-container {
+                margin: 10px;
+            }
+
+            .header {
+                padding: 1.5rem;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .content {
+                padding: 1.5rem;
+            }
+
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .info-value {
+                align-self: stretch;
+                text-align: center;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                min-width: auto;
+            }
+
+            .stats {
+                gap: 1rem;
+            }
+        }
+
+        .fade-in {
+            opacity: 0;
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+
+        .fade-in:nth-child(1) { animation-delay: 0.2s; }
+        .fade-in:nth-child(2) { animation-delay: 0.4s; }
+        .fade-in:nth-child(3) { animation-delay: 0.6s; }
+        .fade-in:nth-child(4) { animation-delay: 0.8s; }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="header">
+            <div class="success-icon">✅</div>
+            <h1>Candidature soumise avec succès !</h1>
+            <p>Votre dossier a été transmis aux responsables académiques</p>
+        </div>
+
+        <div class="content">
+            <div class="candidature-info fade-in">
+                <div class="info-row">
+                    <span class="info-label">Numéro de candidature :</span>
+                    <span class="info-value" id="candidature-number">CAND-2024-001234</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Date de soumission :</span>
+                    <span class="info-value" id="submission-date"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Formation demandée :</span>
+                    <span class="info-value" id="formation-info">Informatique - 1ère année</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Établissement :</span>
+                    <span class="info-value" id="etablissement-info">Université de Ouagadougou</span>
+                </div>
+            </div>
+
+            <div class="timeline fade-in">
+                <h3 class="timeline-title">Processus d'examen de votre candidature</h3>
+                
+                <div class="timeline-item completed">
+                    <div class="timeline-content">
+                        <h4>Candidature soumise</h4>
+                        <p>Votre dossier a été reçu et est maintenant dans notre système</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item pending">
+                    <div class="timeline-content">
+                        <h4>Vérification des documents</h4>
+                        <p>Nos équipes vérifient la conformité et l'authenticité de vos documents</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item future">
+                    <div class="timeline-content">
+                        <h4>Évaluation académique</h4>
+                        <p>Le comité académique évalue votre profil et vos qualifications</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item future">
+                    <div class="timeline-content">
+                        <h4>Décision finale</h4>
+                        <p>Notification par email de la décision d'admission</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="important-notice fade-in">
+                <div class="notice-icon">📧</div>
+                <div class="notice-content">
+                    <h4 class="notice-title">Information importante</h4>
+                    <p class="notice-text">
+                        <strong>Le résultat de votre candidature vous sera communiqué par email</strong> 
+                        dans un délai de <strong>5 à 10 jours ouvrables</strong>. 
+                        Vérifiez régulièrement votre boîte mail, y compris le dossier spam/courrier indésirable.
+                    </p>
+                </div>
+            </div>
+
+            <div class="actions fade-in">
+                <a href="#" class="btn btn-primary" onclick="printConfirmation()">
+                    📄 Imprimer confirmation
+                </a>
+                <a href="/enrollment/public/candidature/status/" class="btn btn-secondary">
+                    🔍 Suivre ma candidature
+                </a>
+                <a href="/" class="btn btn-secondary">
+                    🏠 Retour à l'accueil
+                </a>
+            </div>
+
+            <div class="contact-info">
+                <h4 class="contact-title">Besoin d'aide ?</h4>
+                <div class="contact-item">
+                    <strong>Email :</strong> admissions@academipro.bf
+                </div>
+                <div class="contact-item">
+                    <strong>Téléphone :</strong> +226 25 XX XX XX
+                </div>
+                <div class="contact-item">
+                    <strong>Horaires :</strong> Lundi à Vendredi, 8h00 à 17h00
+                </div>
+            </div>
+
+            <div class="social-proof">
+                <p>Rejoignez des milliers d'étudiants qui nous font confiance</p>
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-number">5,247</span>
+                        <span class="stat-label">Étudiants inscrits</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">98%</span>
+                        <span class="stat-label">Taux de satisfaction</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">15+</span>
+                        <span class="stat-label">Années d'expérience</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Définir la date de soumission
+        document.getElementById('submission-date').textContent = 
+            new Date().toLocaleDateString('fr-FR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+        // Fonction d'impression
+        function printConfirmation() {
+            window.print();
+        }
+
+        // Récupérer les paramètres URL pour personnaliser les informations
+        function getUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Mettre à jour le numéro de candidature si fourni
+            const candidatureNumber = urlParams.get('numero') || 
+                                     'CAND-' + new Date().getFullYear() + '-' + 
+                                     Math.random().toString().substr(2, 6);
+            document.getElementById('candidature-number').textContent = candidatureNumber;
+            
+            // Mettre à jour les informations de formation si fournies
+            const formation = urlParams.get('formation');
+            if (formation) {
+                document.getElementById('formation-info').textContent = decodeURIComponent(formation);
+            }
+            
+            const etablissement = urlParams.get('etablissement');
+            if (etablissement) {
+                document.getElementById('etablissement-info').textContent = decodeURIComponent(etablissement);
+            }
+        }
+
+        // Animation des éléments au chargement
+        function animateElements() {
+            const timeline = document.querySelector('.timeline');
+            const timelineItems = timeline.querySelectorAll('.timeline-item');
+            
+            // Animer progressivement chaque étape
+            timelineItems.forEach((item, index) => {
+                setTimeout(() => {
+                    item.style.opacity = '0';
+                    item.style.transform = 'translateX(-30px)';
+                    item.style.transition = 'all 0.5s ease';
+                    
+                    setTimeout(() => {
+                        item.style.opacity = '1';
+                        item.style.transform = 'translateX(0)';
+                    }, 100);
+                }, index * 200);
+            });
+        }
+
+        // Fonction pour simuler le suivi de candidature
+        function simulateTracking() {
+            // Dans une vraie application, ceci ferait un appel API
+            const trackingUrl = '/enrollment/public/candidature/status/?numero=' + 
+                               document.getElementById('candidature-number').textContent;
+            
+            // Mettre à jour le lien de suivi
+            document.querySelector('a[href="/enrollment/public/candidature/status/"]').href = trackingUrl;
+        }
+
+        // Initialisation au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            getUrlParams();
+            animateElements();
+            simulateTracking();
+            
+            // Afficher une notification discrète après 3 secondes
+            setTimeout(() => {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #10b981;
+                    color: white;
+                    padding: 1rem;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    z-index: 1000;
+                    animation: slideIn 0.5s ease;
+                `;
+                notification.innerHTML = `
+                    <div style="font-weight: 600; margin-bottom: 0.5rem;">📧 Rappel</div>
+                    <div style="font-size: 0.875rem;">Vérifiez votre email dans les prochains jours</div>
+                `;
+                
+                document.body.appendChild(notification);
+                
+                // Supprimer après 5 secondes
+                setTimeout(() => {
+                    notification.style.animation = 'slideOut 0.5s ease forwards';
+                    setTimeout(() => notification.remove(), 500);
+                }, 4000);
+            }, 3000);
+        });
+
+        // Styles pour les animations de notification
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

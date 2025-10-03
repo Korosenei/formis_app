@@ -1,0 +1,295 @@
+<!-- components/pagination.html -->
+<div class="pagination-container">
+    <div class="pagination-info">
+        Affichage de {{ page_obj.start_index }} à {{ page_obj.end_index }}
+        sur {{ page_obj.paginator.count }} éléments
+    </div>
+
+    <nav class="pagination-nav">
+        {% if page_obj.has_previous %}
+            <a href="?page=1{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+               class="page-link page-first" title="Première page">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+               class="page-link page-prev" title="Page précédente">
+                <i class="fas fa-angle-left"></i>
+            </a>
+        {% else %}
+            <span class="page-link page-first disabled">
+                <i class="fas fa-angle-double-left"></i>
+            </span>
+            <span class="page-link page-prev disabled">
+                <i class="fas fa-angle-left"></i>
+            </span>
+        {% endif %}
+
+        <!-- Pages numériques -->
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+                <span class="page-link active">{{ num }}</span>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <a href="?page={{ num }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                   class="page-link">{{ num }}</a>
+            {% elif num == 1 or num == page_obj.paginator.num_pages %}
+                <a href="?page={{ num }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                   class="page-link">{{ num }}</a>
+            {% elif num == 2 and page_obj.number > 5 %}
+                <span class="page-link dots">...</span>
+            {% elif num == page_obj.paginator.num_pages|add:'-1' and page_obj.number < page_obj.paginator.num_pages|add:'-4' %}
+                <span class="page-link dots">...</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+               class="page-link page-next" title="Page suivante">
+                <i class="fas fa-angle-right"></i>
+            </a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+               class="page-link page-last" title="Dernière page">
+                <i class="fas fa-angle-double-right"></i>
+            </a>
+        {% else %}
+            <span class="page-link page-next disabled">
+                <i class="fas fa-angle-right"></i>
+            </span>
+            <span class="page-link page-last disabled">
+                <i class="fas fa-angle-double-right"></i>
+            </span>
+        {% endif %}
+    </nav>
+
+    <!-- Sélecteur de taille de page -->
+    <div class="page-size-selector">
+        <label for="pageSize">Par page:</label>
+        <select id="pageSize" onchange="changePageSize(this.value)">
+            <option value="10" {% if request.GET.per_page == '10' or not request.GET.per_page %}selected{% endif %}>10</option>
+            <option value="20" {% if request.GET.per_page == '20' %}selected{% endif %}>20</option>
+            <option value="50" {% if request.GET.per_page == '50' %}selected{% endif %}>50</option>
+            <option value="100" {% if request.GET.per_page == '100' %}selected{% endif %}>100</option>
+        </select>
+    </div>
+</div>
+
+<style>
+.pagination-container {
+    padding: 15px 20px;
+    background: white;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.pagination-info {
+    color: var(--text-light);
+    font-size: 12px;
+    min-width: 200px;
+}
+
+.pagination-nav {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.page-link {
+    padding: 6px 8px;
+    min-width: 28px;
+    height: 28px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-dark);
+    text-decoration: none;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    background: white;
+}
+
+.page-link:hover:not(.disabled):not(.active) {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.page-link.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    font-weight: 600;
+}
+
+.page-link.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--light-gray);
+    color: var(--text-light);
+}
+
+.page-link.dots {
+    border: none;
+    background: none;
+    cursor: default;
+    color: var(--text-light);
+}
+
+.page-link.dots:hover {
+    background: none;
+    transform: none;
+}
+
+.page-first,
+.page-last,
+.page-prev,
+.page-next {
+    font-size: 10px;
+}
+
+.page-size-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.page-size-selector label {
+    font-weight: 500;
+}
+
+.page-size-selector select {
+    padding: 4px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 12px;
+    background: white;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pagination-container {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+
+    .pagination-info {
+        min-width: auto;
+        order: 3;
+    }
+
+    .pagination-nav {
+        order: 1;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .page-size-selector {
+        order: 2;
+        justify-content: center;
+    }
+
+    .page-link {
+        min-width: 32px;
+        height: 32px;
+        padding: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .pagination-nav {
+        gap: 1px;
+    }
+
+    .page-link {
+        min-width: 28px;
+        height: 28px;
+        padding: 6px;
+        font-size: 11px;
+    }
+
+    /* Masquer quelques pages sur très petits écrans */
+    .pagination-nav .page-link:nth-child(n+8):nth-child(-n+12) {
+        display: none;
+    }
+}
+</style>
+
+<script>
+function changePageSize(size) {
+    const url = new URL(window.location);
+    url.searchParams.set('per_page', size);
+    url.searchParams.set('page', '1'); // Retour à la première page
+    window.location.href = url.toString();
+}
+
+// Ajout de raccourcis clavier pour la navigation
+document.addEventListener('keydown', function(e) {
+    // Alt + flèches pour naviguer dans la pagination
+    if (e.altKey) {
+        const currentPage = {{ page_obj.number }};
+        const totalPages = {{ page_obj.paginator.num_pages }};
+
+        switch(e.key) {
+            case 'ArrowLeft':
+                e.preventDefault();
+                if (currentPage > 1) {
+                    const url = new URL(window.location);
+                    url.searchParams.set('page', currentPage - 1);
+                    window.location.href = url.toString();
+                }
+                break;
+
+            case 'ArrowRight':
+                e.preventDefault();
+                if (currentPage < totalPages) {
+                    const url = new URL(window.location);
+                    url.searchParams.set('page', currentPage + 1);
+                    window.location.href = url.toString();
+                }
+                break;
+
+            case 'Home':
+                e.preventDefault();
+                if (currentPage > 1) {
+                    const url = new URL(window.location);
+                    url.searchParams.set('page', '1');
+                    window.location.href = url.toString();
+                }
+                break;
+
+            case 'End':
+                e.preventDefault();
+                if (currentPage < totalPages) {
+                    const url = new URL(window.location);
+                    url.searchParams.set('page', totalPages);
+                    window.location.href = url.toString();
+                }
+                break;
+        }
+    }
+});
+
+// Affichage des raccourcis clavier dans le titre
+document.addEventListener('DOMContentLoaded', function() {
+    const pageLinks = document.querySelectorAll('.page-link');
+    pageLinks.forEach(link => {
+        if (link.classList.contains('page-prev')) {
+            link.title += ' (Alt + ←)';
+        } else if (link.classList.contains('page-next')) {
+            link.title += ' (Alt + →)';
+        } else if (link.classList.contains('page-first')) {
+            link.title += ' (Alt + Home)';
+        } else if (link.classList.contains('page-last')) {
+            link.title += ' (Alt + End)';
+        }
+    });
+});
+</script>

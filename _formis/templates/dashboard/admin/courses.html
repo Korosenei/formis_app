@@ -1,0 +1,867 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Gestion des Cours - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-courses">
+    <!-- Header compact -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Cours</span>
+            </div>
+            <h1>Gestion des Cours</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ total_cours }} total</span>
+                <span class="stat-badge programmes">{{ total_programmes }} programmés</span>
+                <span class="stat-badge en-cours">{{ total_en_cours }} en cours</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportCourses()" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+            <a href="{% url 'courses:cours_create' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Ajouter
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtres compacts -->
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="Rechercher..."
+                       value="{{ current_filters.search }}" class="form-input-sm">
+            </div>
+            <div class="filter-group">
+                <select name="departement" class="form-select-sm">
+                    <option value="">Tous départements</option>
+                    {% for dept in departements %}
+                        <option value="{{ dept.id }}" {% if current_filters.departement == dept.id|stringformat:"s" %}selected{% endif %}>
+                            {{ dept.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="enseignant" class="form-select-sm">
+                    <option value="">Tous enseignants</option>
+                    {% for ens in enseignants %}
+                        <option value="{{ ens.id }}" {% if current_filters.enseignant == ens.id|stringformat:"s" %}selected{% endif %}>
+                            {{ ens.get_full_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="statut" class="form-select-sm">
+                    <option value="">Tous statuts</option>
+                    <option value="PROGRAMME" {% if current_filters.statut == 'PROGRAMME' %}selected{% endif %}>Programmé</option>
+                    <option value="EN_COURS" {% if current_filters.statut == 'EN_COURS' %}selected{% endif %}>En cours</option>
+                    <option value="TERMINE" {% if current_filters.statut == 'TERMINE' %}selected{% endif %}>Terminé</option>
+                    <option value="ANNULE" {% if current_filters.statut == 'ANNULE' %}selected{% endif %}>Annulé</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:admin_courses' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Actions en lot -->
+    <div class="bulk-actions-bar" id="bulkActionsBar" style="display: none;">
+        <div class="bulk-info">
+            <i class="fas fa-check-square"></i>
+            <span id="selectedCount">0</span> sélectionné(s)
+        </div>
+        <div class="bulk-buttons">
+            <button class="btn btn-sm btn-warning" onclick="bulkChangeStatus()">
+                <i class="fas fa-exchange-alt"></i> Changer statut
+            </button>
+            <button class="btn btn-sm btn-danger" onclick="bulkCancel()">
+                <i class="fas fa-ban"></i> Annuler
+            </button>
+            <button class="btn btn-sm btn-info" onclick="bulkExport()">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Tableau optimisé -->
+    <div class="courses-table-container">
+        <div class="table-wrapper">
+            <table class="courses-table">
+                <thead>
+                    <tr>
+                        <th width="30">
+                            <input type="checkbox" class="select-all-header" id="selectAllCourses">
+                        </th>
+                        <th width="250">Cours</th>
+                        <th width="150">Matière</th>
+                        <th width="120">Classe</th>
+                        <th width="150">Enseignant</th>
+                        <th width="120">Date/Heure</th>
+                        <th width="100">Salle</th>
+                        <th width="80">Type</th>
+                        <th width="80">Statut</th>
+                        <th width="80">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cours in courses %}
+                    <tr class="cours-row">
+                        <td>
+                            <input type="checkbox" class="cours-checkbox" value="{{ cours.id }}">
+                        </td>
+                        <td>
+                            <div class="cours-info">
+                                <div class="cours-title">{{ cours.titre|truncatechars:40 }}</div>
+                                {% if cours.description %}
+                                    <small class="cours-desc">{{ cours.description|truncatechars:50 }}</small>
+                                {% endif %}
+                                {% if cours.cours_en_ligne %}
+                                    <span class="online-badge"><i class="fas fa-video"></i> En ligne</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="matiere-info">
+                                <div class="matiere-indicator" style="background: {{ cours.matiere_module.matiere.couleur }}"></div>
+                                <span class="matiere-name">{{ cours.matiere_module.matiere.nom|truncatechars:25 }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="classe-badge">{{ cours.classe.nom }}</div>
+                        </td>
+                        <td>
+                            <div class="enseignant-info">
+                                <div class="user-avatar-sm">
+                                    {% if cours.enseignant.photo_profil %}
+                                        <img src="{{ cours.enseignant.photo_profil.url }}" alt="">
+                                    {% else %}
+                                        <i class="fas fa-chalkboard-teacher"></i>
+                                    {% endif %}
+                                </div>
+                                <span class="enseignant-name">{{ cours.enseignant.get_full_name|truncatechars:20 }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="datetime-info">
+                                <div class="date-badge">
+                                    <i class="fas fa-calendar"></i>
+                                    {{ cours.date_prevue|date:"d/m/Y" }}
+                                </div>
+                                <div class="time-badge">
+                                    <i class="fas fa-clock"></i>
+                                    {{ cours.heure_debut_prevue|time:"H:i" }} - {{ cours.heure_fin_prevue|time:"H:i" }}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% if cours.salle %}
+                                <div class="salle-badge">
+                                    <i class="fas fa-door-open"></i>
+                                    {{ cours.salle.nom }}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">Non défini</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="type-badge type-{{ cours.type_cours|lower }}">
+                                {{ cours.get_type_cours_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="status-badge status-{{ cours.statut|lower }}">
+                                {% if cours.statut == 'PROGRAMME' %}
+                                    <i class="fas fa-clock"></i>
+                                {% elif cours.statut == 'EN_COURS' %}
+                                    <i class="fas fa-play-circle"></i>
+                                {% elif cours.statut == 'TERMINE' %}
+                                    <i class="fas fa-check-circle"></i>
+                                {% elif cours.statut == 'ANNULE' %}
+                                    <i class="fas fa-ban"></i>
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-buttons-sm">
+                                <a href="{% url 'courses:cours_detail' cours.id %}" class="btn-icon-sm btn-primary" title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'courses:cours_update' cours.id %}" class="btn-icon-sm btn-info" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <div class="dropdown-compact">
+                                    <button class="btn-icon-sm btn-outline dropdown-toggle">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="dropdown-menu-compact">
+                                        <a href="{% url 'courses:cours_detail' cours.id %}">
+                                            <i class="fas fa-eye"></i> Détails
+                                        </a>
+                                        <a href="{% url 'courses:cours_update' cours.id %}">
+                                            <i class="fas fa-edit"></i> Modifier
+                                        </a>
+                                        <a href="#" onclick="takeAttendance('{{ cours.id }}')">
+                                            <i class="fas fa-user-check"></i> Présences
+                                        </a>
+                                        <a href="#" onclick="viewCahierTexte('{{ cours.id }}')">
+                                            <i class="fas fa-book"></i> Cahier de texte
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        <a href="#" onclick="changeStatus('{{ cours.id }}')">
+                                            <i class="fas fa-exchange-alt"></i> Changer statut
+                                        </a>
+                                        {% if cours.statut == 'PROGRAMME' %}
+                                            <a href="#" onclick="startCours('{{ cours.id }}')" class="text-success">
+                                                <i class="fas fa-play"></i> Démarrer
+                                            </a>
+                                            <a href="#" onclick="cancelCours('{{ cours.id }}')" class="text-danger">
+                                                <i class="fas fa-ban"></i> Annuler
+                                            </a>
+                                        {% endif %}
+                                        <div class="dropdown-divider"></div>
+                                        <a href="#" onclick="deleteCours('{{ cours.id }}')" class="text-danger">
+                                            <i class="fas fa-trash"></i> Supprimer
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <div class="empty-content">
+                                <i class="fas fa-chalkboard fa-2x text-muted"></i>
+                                <p class="mt-2">Aucun cours trouvé</p>
+                                <a href="{% url 'courses:cours_create' %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus"></i> Ajouter
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% include 'components/pagination.html' with page_obj=courses %}
+    </div>
+</div>
+
+<style>
+.admin-courses {
+    padding: 15px;
+}
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: var(--shadow-sm);
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav .current {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.header-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.stat-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--light-gray);
+    border-radius: 12px;
+    font-size: 11px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.stat-badge.programmes {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.stat-badge.en-cours {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.filters-section {
+    background: var(--white);
+    padding: 12px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.form-input-sm, .form-select-sm {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    height: 32px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.bulk-actions-bar {
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: var(--border-radius);
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--font-size-sm);
+}
+
+.bulk-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #155724;
+    font-weight: 500;
+}
+
+.bulk-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.courses-table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.courses-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1200px;
+}
+
+.courses-table th {
+    background: var(--light-gray);
+    padding: 8px 6px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+}
+
+.courses-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--gray);
+    vertical-align: middle;
+    font-size: var(--font-size-xs);
+}
+
+.cours-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.cours-title {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: var(--font-size-sm);
+}
+
+.cours-desc {
+    color: var(--text-light);
+    font-size: 10px;
+}
+
+.online-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 6px;
+    background: #e3f2fd;
+    color: #1565c0;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 500;
+}
+
+.matiere-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.matiere-indicator {
+    width: 4px;
+    height: 24px;
+    border-radius: 2px;
+}
+
+.matiere-name {
+    font-size: var(--font-size-xs);
+    color: var(--text-dark);
+}
+
+.classe-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.enseignant-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.user-avatar-sm {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--light-gray);
+    color: var(--text-light);
+    font-size: 10px;
+    flex-shrink: 0;
+}
+
+.user-avatar-sm img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.enseignant-name {
+    font-size: var(--font-size-xs);
+    color: var(--text-dark);
+}
+
+.datetime-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.date-badge, .time-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--text-dark);
+}
+
+.date-badge i, .time-badge i {
+    color: var(--text-light);
+    font-size: 9px;
+}
+
+.salle-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--text-dark);
+}
+
+.salle-badge i {
+    color: var(--text-light);
+}
+
+.type-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 9px;
+    font-weight: 600;
+    display: inline-block;
+    text-align: center;
+}
+
+.type-cours { background: #e3f2fd; color: #1565c0; }
+.type-td { background: #f3e5f5; color: #7b1fa2; }
+.type-tp { background: #fff3e0; color: #e65100; }
+.type-evaluation { background: #ffebee; color: #c62828; }
+
+.status-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 9px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.status-programme { background: #fff3e0; color: #e65100; }
+.status-en_cours { background: #e3f2fd; color: #1565c0; }
+.status-termine { background: #d4edda; color: #155724; }
+.status-annule { background: #f8d7da; color: #721c24; }
+
+.action-buttons-sm {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.btn-icon-sm {
+    width: 24px;
+    height: 24px;
+    border-radius: 3px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+
+.btn-icon-sm.btn-primary { background: var(--primary-color); color: white; }
+.btn-icon-sm.btn-info { background: var(--info-color); color: white; }
+.btn-icon-sm.btn-outline {
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+}
+
+.btn-icon-sm:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: var(--light-gray);
+    color: var(--text-dark);
+    transition: all 0.3s;
+}
+
+.btn-icon:hover {
+    background: var(--border-color);
+}
+
+.dropdown-compact {
+    position: relative;
+}
+
+.dropdown-menu-compact {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    min-width: 180px;
+}
+
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 11px;
+    transition: background 0.2s;
+}
+
+.dropdown-menu-compact a:hover {
+    background: var(--light-gray);
+}
+
+.dropdown-menu-compact a i {
+    width: 14px;
+    text-align: center;
+}
+
+.text-success { color: var(--success-color); }
+.text-danger { color: var(--danger-color); }
+.text-warning { color: var(--warning-color); }
+.text-muted { color: var(--text-light); }
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 4px 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-content {
+    color: var(--text-light);
+}
+
+.mt-2 { margin-top: 8px; }
+
+@media (max-width: 768px) {
+    .page-header-compact {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .filters-form {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAllCourses');
+    const checkboxes = document.querySelectorAll('.cours-checkbox');
+    const bulkBar = document.getElementById('bulkActionsBar');
+    const selectedCount = document.getElementById('selectedCount');
+
+    selectAll?.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+        updateBulkActions();
+    });
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    function updateBulkActions() {
+        const selected = document.querySelectorAll('.cours-checkbox:checked').length;
+        selectedCount.textContent = selected;
+        bulkBar.style.display = selected > 0 ? 'flex' : 'none';
+
+        if (selectAll) {
+            selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+            selectAll.checked = selected === checkboxes.length;
+        }
+    }
+
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.style.display = 'none';
+            });
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        });
+    });
+
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    });
+});
+
+function exportCourses() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/courses/cours/export/?${params.toString()}`;
+}
+
+function deleteCours(coursId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce cours ?')) {
+        fetch(`/courses/cours/${coursId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    }
+}
+
+function takeAttendance(coursId) {
+    window.location.href = `/courses/cours/${coursId}/presences/`;
+}
+
+function viewCahierTexte(coursId) {
+    window.location.href = `/courses/cours/${coursId}/cahier-texte/`;
+}
+
+function changeStatus(coursId) {
+    window.location.href = `/courses/cours/${coursId}/change-status/`;
+}
+
+function startCours(coursId) {
+    if (confirm('Démarrer ce cours ?')) {
+        fetch(`/courses/cours/${coursId}/start/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    }
+}
+
+function cancelCours(coursId) {
+    if (confirm('Annuler ce cours ?')) {
+        fetch(`/courses/cours/${coursId}/cancel/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    }
+}
+
+function bulkChangeStatus() {
+    const selected = Array.from(document.querySelectorAll('.cours-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins un cours');
+        return;
+    }
+    window.location.href = `/courses/cours/bulk-change-status/?ids=${selected.join(',')}`;
+}
+
+function bulkCancel() {
+    const selected = Array.from(document.querySelectorAll('.cours-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins un cours');
+        return;
+    }
+    if (confirm(`Annuler ${selected.length} cours ?`)) {
+        fetch(`/courses/cours/bulk-cancel/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ids: selected})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    }
+}
+
+function bulkExport() {
+    const selected = Array.from(document.querySelectorAll('.cours-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins un cours');
+        return;
+    }
+    window.location.href = `/courses/cours/export/?ids=${selected.join(',')}`;
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

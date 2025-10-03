@@ -1,0 +1,195 @@
+{% extends 'base/dashboard_base.html' %} 
+{% load static %}
+
+{% block title %}Prise de présence - {{ cours.titre }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .student-row {
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        background: #f8f9fa;
+    }
+    .student-row:hover {
+        background: #e9ecef;
+    }
+    .presence-controls {
+        gap: 1rem;
+    }
+    .btn-group label {
+        margin-bottom: 0;
+    }
+    .status-present { border-left: 4px solid #28a745; }
+    .status-absent { border-left: 4px solid #dc3545; }
+    .status-late { border-left: 4px solid #ffc107; }
+    .status-excused { border-left: 4px solid #17a2b8; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Prise de présence
+                    </h4>
+                    <div class="mt-2">
+                        <strong>{{ cours.titre }}</strong><br>
+                        <small class="text-muted">
+                            {{ cours.classe.nom }} - {{ cours.date_prevue|date:"d/m/Y" }} 
+                            de {{ cours.heure_debut_prevue|time:"H:i" }} à {{ cours.heure_fin_prevue|time:"H:i" }}
+                        </small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="presenceForm">
+                        {% csrf_token %}
+                        
+                        <!-- Actions en lot -->
+                        <div class="mb-4 p-3 bg-light rounded">
+                            <h6>Actions rapides :</h6>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-success btn-sm" onclick="markAll('PRESENT')">
+                                    <i class="fas fa-check me-1"></i>Tous présents
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="markAll('ABSENT')">
+                                    <i class="fas fa-times me-1"></i>Tous absents
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Liste des étudiants -->
+                        <div class="students-list">
+                            {% for etudiant in etudiants %}
+                            <div class="student-row" data-student-id="{{ etudiant.id }}">
+                                <div class="row align-items-center">
+                                    <div class="col-md-4">
+                                        <div class="d-flex align-items-center">
+                                            <img src="{% if etudiant.photo %}{{ etudiant.photo.url }}{% else %}{% static 'images/default-avatar.png' %}{% endif %}" 
+                                                 class="rounded-circle me-3" width="40" height="40" alt="Photo">
+                                            <div>
+                                                <strong>{{ etudiant.get_full_name }}</strong><br>
+                                                <small class="text-muted">{{ etudiant.matricule }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-3">
+                                        <div class="btn-group w-100" role="group" data-bs-toggle="buttons">
+                                            {% for value, label in form.0.fields.items %}
+                                            {% if 'statut_' in value and etudiant.id|stringformat:"s" in value %}
+                                            <input type="radio" class="btn-check" 
+                                                   name="statut_{{ etudiant.id }}" 
+                                                   value="PRESENT" id="present_{{ etudiant.id }}">
+                                            <label class="btn btn-outline-success btn-sm" for="present_{{ etudiant.id }}">
+                                                <i class="fas fa-check"></i>
+                                            </label>
+                                            
+                                            <input type="radio" class="btn-check" 
+                                                   name="statut_{{ etudiant.id }}" 
+                                                   value="ABSENT" id="absent_{{ etudiant.id }}">
+                                            <label class="btn btn-outline-danger btn-sm" for="absent_{{ etudiant.id }}">
+                                                <i class="fas fa-times"></i>
+                                            </label>
+                                            
+                                            <input type="radio" class="btn-check" 
+                                                   name="statut_{{ etudiant.id }}" 
+                                                   value="LATE" id="late_{{ etudiant.id }}">
+                                            <label class="btn btn-outline-warning btn-sm" for="late_{{ etudiant.id }}">
+                                                <i class="fas fa-clock"></i>
+                                            </label>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-2">
+                                        <input type="time" class="form-control form-control-sm" 
+                                               name="heure_{{ etudiant.id }}" 
+                                               placeholder="Heure d'arrivée"
+                                               style="display: none;">
+                                    </div>
+                                    
+                                    <div class="col-md-3">
+                                        <textarea class="form-control form-control-sm" 
+                                                  name="motif_{{ etudiant.id }}" 
+                                                  placeholder="Motif d'absence" 
+                                                  rows="2"
+                                                  style="display: none;"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Boutons d'action -->
+                        <div class="text-end mt-4">
+                            <a href="{% url 'courses:cours_detail' cours.pk %}" class="btn btn-secondary me-2">
+                                <i class="fas fa-times me-1"></i>Annuler
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Enregistrer les présences
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestion des changements de statut
+    document.querySelectorAll('input[type="radio"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const studentId = this.name.split('_')[1];
+            const status = this.value;
+            const row = document.querySelector(`[data-student-id="${studentId}"]`);
+            const timeInput = document.querySelector(`input[name="heure_${studentId}"]`);
+            const motifInput = document.querySelector(`textarea[name="motif_${studentId}"]`);
+            
+            // Réinitialiser les classes
+            row.classList.remove('status-present', 'status-absent', 'status-late', 'status-excused');
+            
+            // Masquer tous les champs conditionnels
+            timeInput.style.display = 'none';
+            motifInput.style.display = 'none';
+            
+            // Appliquer la classe et afficher les champs appropriés
+            switch(status) {
+                case 'PRESENT':
+                    row.classList.add('status-present');
+                    break;
+                case 'ABSENT':
+                    row.classList.add('status-absent');
+                    motifInput.style.display = 'block';
+                    break;
+                case 'LATE':
+                    row.classList.add('status-late');
+                    timeInput.style.display = 'block';
+                    break;
+                case 'EXCUSED':
+                    row.classList.add('status-excused');
+                    motifInput.style.display = 'block';
+                    break;
+            }
+        });
+    });
+});
+
+function markAll(status) {
+    document.querySelectorAll(`input[value="${status}"]`).forEach(radio => {
+        radio.checked = true;
+        radio.dispatchEvent(new Event('change'));
+    });
+}
+</script>
+{% endblock %}

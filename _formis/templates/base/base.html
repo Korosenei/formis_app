@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FORMIS - Gestion des Établissements de Formation{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{% load static %}{% static 'images/favicon.png' %}">
+
+    <!-- Preconnect to external resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="{% load static %}{% static 'css/main.css' %}">
+    <link rel="stylesheet" href="{% load static %}{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% load static %}{% static 'css/responsive.css' %}">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Block for additional CSS -->
+    {% block extra_css %}{% endblock %}
+
+    <!-- Meta tags for SEO -->
+    <meta name="description" content="{% block description %}FORMIS - Système de gestion moderne des établissements de formation. Gérez vos cours, inscriptions, évaluations et bien plus encore.{% endblock %}">
+    <meta name="keywords" content="{% block keywords %}formation, éducation, gestion scolaire, e-learning, FORMIS{% endblock %}">
+    <meta name="author" content="FORMIS Team">
+
+    <!-- Open Graph tags -->
+    <meta property="og:title" content="{% block og_title %}FORMIS - Gestion des Établissements de Formation{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Système de gestion moderne des établissements de formation{% endblock %}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:image" content="{% load static %}{% static 'images/og-image.jpg' %}">
+
+    <!-- Twitter Card tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}FORMIS - Gestion des Établissements de Formation{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}Système de gestion moderne des établissements de formation{% endblock %}">
+    <meta name="twitter:image" content="{% load static %}{% static 'images/og-image.jpg' %}">
+
+    <!-- Progressive Web App -->
+    <link rel="manifest" href="{% load static %}{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#4FD1C7">
+
+    <!-- iOS Safari -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="FORMIS">
+    <link rel="apple-touch-icon" href="{% load static %}{% static 'images/apple-touch-icon.png' %}">
+</head>
+<body>
+    <!-- Skip to main content for accessibility -->
+    <a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
+    <!-- Messages d'alerte -->
+    {% if messages %}
+        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
+            {% for message in messages %}
+                <div class="toast toast-{{ message.tags|default:'info' }} show" role="alert">
+                    <div class="toast-icon">
+                        <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+                    </div>
+                    <div class="toast-content">
+                        <div class="toast-message">{{ message }}</div>
+                    </div>
+                    <button class="toast-close" aria-label="Fermer">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Navigation -->
+    {% block navigation %}
+        <header class="header">
+            <nav class="nav">
+                <div class="nav-container">
+                    <div class="nav-brand">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span>FORMIS</span>
+                    </div>
+
+                    <ul class="nav-menu">
+                        <li class="nav-item">
+                            <a href="{% url 'core:home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+                                ACCUEIL
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#establishments:list" class="nav-link {% if 'establishments' in request.resolver_match.namespace %}active{% endif %}">
+                                ÉTABLISSEMENTS
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#candidature" class="nav-link">
+                                CANDIDATER
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#contact" class="nav-link">
+                                NOUS CONTACTER
+                            </a>
+                        </li>
+                    </ul>
+
+                    <div class="nav-auth">
+                        <div class="contact-info">
+                            <i class="fas fa-phone"></i>
+                            <span>(+225) 48 73 33 65</span>
+                        </div>
+                        <div class="login-form">
+                            <form method="post" action="{% url 'accounts:login' %}" class="d-flex gap-2">
+                                {% csrf_token %}
+                                <input type="email" name="email" placeholder="Adresse électronique" class="login-input" required>
+                                <input type="password" name="password" placeholder="Mot de passe" class="login-input" required>
+                                <button type="submit" class="btn-login">Connexion</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="nav-toggle" aria-label="Menu de navigation" role="button" tabindex="0">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </nav>
+        </header>
+    {% endblock %}
+
+    <!-- Contenu principal -->
+    <main id="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    {% block footer %}
+        <footer class="footer">
+            <div class="container">
+                <div class="footer-content">
+                    <div class="footer-brand">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span>FORMIS</span>
+                    </div>
+                    <div class="footer-links">
+                        <a href="{% url 'core:home' %}">Accueil</a>
+                        <a href="#establishments:list">Établissements</a>
+                        <a href="#contact">Contact</a>
+                        <a href="#about">À propos</a>
+                        <a href="#privacy">Confidentialité</a>
+                        <a href="#terms">Conditions</a>
+                    </div>
+                    <div class="footer-copy">
+                        <p>Copyright © {% now "Y" %} FORMIS. Tous droits réservés.</p>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    {% endblock %}
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner spinner-lg spinner-primary"></div>
+            <p>Chargement...</p>
+        </div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="{% load static %}{% static 'js/main.js' %}" defer></script>
+    <script src="{% load static %}{% static 'js/animations.js' %}" defer></script>
+
+    <!-- Block for additional JavaScript -->
+    {% block extra_js %}{% endblock %}
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(function(error) {
+                        console.log('ServiceWorker registration failed');
+                    });
+            });
+        }
+    </script>
+
+    <!-- Google Analytics (remplacez GA_TRACKING_ID par votre ID) -->
+    {% if not debug %}
+    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_TRACKING_ID"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'GA_TRACKING_ID');
+    </script>
+    {% endif %}
+
+    <!-- Schema.org structured data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "EducationalOrganization",
+        "name": "FORMIS",
+        "description": "Système de gestion moderne des établissements de formation",
+        "url": "{{ request.build_absolute_uri }}",
+        "logo": "{% load static %}{% static 'images/logo.png' %}",
+        "sameAs": [
+            "https://facebook.com/formis",
+            "https://twitter.com/formis",
+            "https://linkedin.com/company/formis"
+        ]
+    }
+    </script>
+</body>
+</html>

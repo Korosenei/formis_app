@@ -1,0 +1,74 @@
+{% extends 'base/dashboard_base.html' %} 
+{% load static %}
+
+{% block title %}
+{% if cahier_texte %}Modifier le cahier de texte{% else %}Nouveau cahier de texte{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-book me-2"></i>
+                        Cahier de texte - {{ cours.titre }}
+                    </h4>
+                    <small class="text-muted">{{ cours.classe.nom }} - {{ cours.date_prevue|date:"d/m/Y" }}</small>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">{{ form.travail_fait.label }}</label>
+                            {{ form.travail_fait }}
+                            {% if form.travail_fait.errors %}
+                            <div class="text-danger">{{ form.travail_fait.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Décrivez le travail réalisé pendant cette séance</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">{{ form.travail_donne.label }}</label>
+                            {{ form.travail_donne }}
+                            {% if form.travail_donne.errors %}
+                            <div class="text-danger">{{ form.travail_donne.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Travail à faire pour la prochaine séance</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">{{ form.date_travail_pour.label }}</label>
+                            {{ form.date_travail_pour }}
+                            {% if form.date_travail_pour.errors %}
+                            <div class="text-danger">{{ form.date_travail_pour.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Date limite pour le travail donné</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">{{ form.observations.label }}</label>
+                            {{ form.observations }}
+                            {% if form.observations.errors %}
+                            <div class="text-danger">{{ form.observations.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Observations particulières sur la séance</div>
+                        </div>
+
+                        <div class="text-end">
+                            <a href="{% url 'courses:cours_detail' cours.pk %}" class="btn btn-secondary me-2">
+                                <i class="fas fa-times me-1"></i>Annuler
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Enregistrer
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

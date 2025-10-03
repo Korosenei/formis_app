@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candidature soumise avec succès</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .success-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+            overflow: hidden;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .success-header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            padding: 40px 30px;
+            text-align: center;
+            color: white;
+        }
+
+        .success-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .success-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .success-subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .success-content {
+            padding: 40px 30px;
+        }
+
+        .candidature-details {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            border-left: 5px solid #4facfe;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .detail-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 0.95rem;
+        }
+
+        .detail-value {
+            font-weight: 500;
+            color: #2d3748;
+            text-align: right;
+            max-width: 60%;
+            word-wrap: break-word;
+        }
+
+        .numero-candidature {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .next-steps {
+            background: #e6fffa;
+            border: 1px solid #81e6d9;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+
+        .next-steps h3 {
+            color: #234e52;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .next-steps ol {
+            color: #2c7a7b;
+            padding-left: 20px;
+        }
+
+        .next-steps li {
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+
+        .important-note {
+            background: #fff5f5;
+            border: 1px solid #feb2b2;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .important-note h4 {
+            color: #c53030;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .important-note p {
+            color: #742a2a;
+            line-height: 1.6;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f7fafc;
+            color: #4a5568;
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #edf2f7;
+            border-color: #cbd5e0;
+        }
+
+        .footer-note {
+            text-align: center;
+            color: #718096;
+            font-size: 0.9rem;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        @media (max-width: 768px) {
+            .success-container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .success-header {
+                padding: 30px 20px;
+            }
+
+            .success-title {
+                font-size: 2rem;
+            }
+
+            .success-content {
+                padding: 30px 20px;
+            }
+
+            .detail-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+
+            .detail-value {
+                text-align: left;
+                max-width: 100%;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                text-align: center;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="success-header">
+            <div class="success-icon">✅</div>
+            <h1 class="success-title">Succès !</h1>
+            <p class="success-subtitle">Votre candidature a été soumise avec succès</p>
+        </div>
+
+        <div class="success-content">
+            <div class="candidature-details">
+                <div class="detail-row">
+                    <span class="detail-label">Numéro de candidature</span>
+                    <span class="detail-value numero-candidature">{{ candidature.numero_candidature }}</span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">Candidat</span>
+                    <span class="detail-value">{{ candidature.prenom }} {{ candidature.nom }}</span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">Formation</span>
+                    <span class="detail-value">{{ formation }}</span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">Établissement</span>
+                    <span class="detail-value">{{ etablissement }}</span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">Date de soumission</span>
+                    <span class="detail-value">{{ candidature.date_soumission|date:"d/m/Y à H:i" }}</span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">Statut</span>
+                    <span class="detail-value">{{ candidature.get_statut_display }}</span>
+                </div>
+            </div>
+
+            <div class="next-steps">
+                <h3>📋 Prochaines étapes</h3>
+                <ol>
+                    <li><strong>Confirmation par email</strong> : Vous allez recevoir un email de confirmation à l'adresse <strong>{{ candidature.email }}</strong></li>
+                    <li><strong>Examen du dossier</strong> : Votre candidature sera examinée par nos équipes dans un délai de 5 à 10 jours ouvrables</li>
+                    <li><strong>Notification de décision</strong> : Vous recevrez un email avec la décision finale</li>
+                    <li><strong>Si accepté</strong> : Les instructions pour finaliser votre inscription vous seront communiquées</li>
+                </ol>
+            </div>
+
+            <div class="important-note">
+                <h4>📌 Important</h4>
+                <p><strong>Conservez précieusement votre numéro de candidature :</strong> {{ candidature.numero_candidature }}. Vous en aurez besoin pour tout contact avec l'administration. Vérifiez également votre boîte email (y compris les spams) pour les notifications.</p>
+            </div>
+
+            <div class="action-buttons">
+                <!-- CORRECTION ICI : suppression du namespace 'public' -->
+                <a href="{% url 'enrollment:candidature_create' %}" class="btn btn-secondary">
+                    🆕 Nouvelle candidature
+                </a>
+
+                <a href="/" class="btn btn-primary">
+                    🏠 Retour à l'accueil
+                </a>
+            </div>
+
+            <div class="footer-note">
+                <p>Cette page confirme que votre candidature a été soumise avec succès.<br>
+                Un email de confirmation a été envoyé à {{ candidature.email }}</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Animation d'entrée progressive
+        document.addEventListener('DOMContentLoaded', function() {
+            const details = document.querySelectorAll('.detail-row');
+            details.forEach((detail, index) => {
+                setTimeout(() => {
+                    detail.style.opacity = '0';
+                    detail.style.transform = 'translateX(-20px)';
+                    detail.style.transition = 'all 0.5s ease';
+
+                    requestAnimationFrame(() => {
+                        detail.style.opacity = '1';
+                        detail.style.transform = 'translateX(0)';
+                    });
+                }, index * 100);
+            });
+
+            // Copier le numéro de candidature au clic
+            const numeroElement = document.querySelector('.numero-candidature');
+            if (numeroElement) {
+                numeroElement.addEventListener('click', function() {
+                    navigator.clipboard.writeText(this.textContent).then(function() {
+                        const original = numeroElement.textContent;
+                        numeroElement.textContent = 'Copié !';
+                        numeroElement.style.background = '#48bb78';
+
+                        setTimeout(() => {
+                            numeroElement.textContent = original;
+                            numeroElement.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                        }, 2000);
+                    });
+                });
+
+                // Ajouter un titre au survol
+                numeroElement.title = 'Cliquez pour copier le numéro';
+                numeroElement.style.cursor = 'pointer';
+            }
+
+            // Auto-refresh de la page toutes les 30 secondes pour vérifier les mises à jour
+            // Utile si le statut change rapidement
+            setTimeout(() => {
+                if (window.location.search.includes('numero=')) {
+                    // Ne refresh que si on est sur la page de succès avec un numéro
+                    window.location.reload();
+                }
+            }, 30000);
+        });
+
+        // Gestion de l'impression
+        window.addEventListener('beforeprint', function() {
+            document.body.style.background = 'white';
+        });
+
+        window.addEventListener('afterprint', function() {
+            document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        });
+    </script>
+</body>
+</html>

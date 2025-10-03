@@ -1,0 +1,808 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Gestion des Classes - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-classes">
+    <!-- Header compact -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Classes</span>
+            </div>
+            <h1>Gestion des Classes</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ classes.paginator.count }} total</span>
+                <span class="stat-badge actifs">{{ classes|dictsort:"est_active"|dictsort:"True"|length }} actives</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportClasses()" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+            <a href="{% url 'academic:classe_create' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Ajouter
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtres compacts -->
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="Rechercher..."
+                       value="{{ current_filters.search }}" class="form-input-sm">
+            </div>
+            <div class="filter-group">
+                <select name="annee_academique" class="form-select-sm">
+                    <option value="">Toutes années</option>
+                    {% for annee in annees_academiques %}
+                        <option value="{{ annee.id }}" {% if current_filters.annee_academique == annee.id|stringformat:"s" %}selected{% endif %}>
+                            {{ annee.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="departement" class="form-select-sm">
+                    <option value="">Tous départements</option>
+                    {% for dept in departements %}
+                        <option value="{{ dept.id }}" {% if current_filters.departement == dept.id|stringformat:"s" %}selected{% endif %}>
+                            {{ dept.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="filiere" class="form-select-sm">
+                    <option value="">Toutes filières</option>
+                    {% for filiere in filieres %}
+                        <option value="{{ filiere.id }}" {% if current_filters.filiere == filiere.id|stringformat:"s" %}selected{% endif %}>
+                            {{ filiere.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="est_active" class="form-select-sm">
+                    <option value="">Tous statuts</option>
+                    <option value="True" {% if current_filters.est_active == 'True' %}selected{% endif %}>Active</option>
+                    <option value="False" {% if current_filters.est_active == 'False' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:admin_classes' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Actions en lot -->
+    <div class="bulk-actions-bar" id="bulkActionsBar" style="display: none;">
+        <div class="bulk-info">
+            <i class="fas fa-check-square"></i>
+            <span id="selectedCount">0</span> sélectionné(s)
+        </div>
+        <div class="bulk-buttons">
+            <button class="btn btn-sm btn-info" onclick="bulkGenerateSchedule()">
+                <i class="fas fa-calendar"></i> Emploi du temps
+            </button>
+            <button class="btn btn-sm btn-warning" onclick="bulkExport()">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Tableau optimisé -->
+    <div class="classes-table-container">
+        <div class="table-wrapper">
+            <table class="classes-table">
+                <thead>
+                    <tr>
+                        <th width="30">
+                            <input type="checkbox" class="select-all-header" id="selectAllClasses">
+                        </th>
+                        <th width="150">Classe</th>
+                        <th width="100">Code</th>
+                        <th width="180">Filière / Niveau</th>
+                        <th width="120">Année académique</th>
+                        <th width="150">Professeur principal</th>
+                        <th width="100">Capacité</th>
+                        <th width="80">Effectif</th>
+                        <th width="60">Statut</th>
+                        <th width="80">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for classe in classes %}
+                    <tr class="classe-row">
+                        <td>
+                            <input type="checkbox" class="classe-checkbox" value="{{ classe.id }}">
+                        </td>
+                        <td>
+                            <div class="classe-info">
+                                <span class="classe-name">{{ classe.nom }}</span>
+                                {% if classe.salle_principale %}
+                                    <small class="salle-text">
+                                        <i class="fas fa-door-open"></i> {{ classe.salle_principale.nom }}
+                                    </small>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <code class="code-badge">{{ classe.code }}</code>
+                        </td>
+                        <td>
+                            <div class="academic-path">
+                                <div class="filiere-text">{{ classe.niveau.filiere.nom|truncatechars:25 }}</div>
+                                <div class="niveau-text">{{ classe.niveau.nom }}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="annee-badge">
+                                <i class="fas fa-calendar-alt"></i>
+                                {{ classe.annee_academique.nom }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if classe.professeur_principal %}
+                                <div class="prof-info">
+                                    <span class="prof-name">{{ classe.professeur_principal.get_full_name|truncatechars:20 }}</span>
+                                    <small class="prof-email">{{ classe.professeur_principal.email|truncatechars:18 }}</small>
+                                </div>
+                            {% else %}
+                                <span class="text-muted">Non assigné</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if classe.capacite_maximale %}
+                                <div class="capacity-info">
+                                    <span class="capacity-text">{{ classe.capacite_maximale }} places</span>
+                                    {% with places_dispo=classe.get_places_disponibles %}
+                                        {% if places_dispo is not None %}
+                                            <small class="places-dispo">
+                                                {{ places_dispo }} disponibles
+                                            </small>
+                                        {% endif %}
+                                    {% endwith %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">Illimité</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <span class="effectif-badge {% if classe.est_pleine %}full{% endif %}">
+                                {{ classe.nombre_etudiants|default:0 }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if classe.est_active %}
+                                <i class="fas fa-check-circle text-success" title="Active"></i>
+                            {% else %}
+                                <i class="fas fa-times-circle text-danger" title="Inactive"></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons-sm">
+                                <a href="{% url 'academic:classe_detail' classe.id %}" class="btn-icon-sm btn-primary" title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'academic:classe_update' classe.id %}" class="btn-icon-sm btn-info" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <div class="dropdown-compact">
+                                    <button class="btn-icon-sm btn-outline dropdown-toggle">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="dropdown-menu-compact">
+                                        <a href="{% url 'academic:classe_detail' classe.id %}">
+                                            <i class="fas fa-eye"></i> Détails
+                                        </a>
+                                        <a href="{% url 'academic:classe_update' classe.id %}">
+                                            <i class="fas fa-edit"></i> Modifier
+                                        </a>
+                                        <a href="#" onclick="viewStudents('{{ classe.id }}')">
+                                            <i class="fas fa-users"></i> Étudiants
+                                        </a>
+                                        <a href="#" onclick="viewSchedule('{{ classe.id }}')">
+                                            <i class="fas fa-calendar"></i> Emploi du temps
+                                        </a>
+                                        <a href="#" onclick="viewCourses('{{ classe.id }}')">
+                                            <i class="fas fa-book"></i> Cours
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        <a href="#" onclick="duplicateClasse('{{ classe.id }}')">
+                                            <i class="fas fa-copy"></i> Dupliquer
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        <a href="#" onclick="deleteClasse('{{ classe.id }}')" class="text-danger">
+                                            <i class="fas fa-trash"></i> Supprimer
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <div class="empty-content">
+                                <i class="fas fa-users-class fa-2x text-muted"></i>
+                                <p class="mt-2">Aucune classe trouvée</p>
+                                <a href="{% url 'academic:classe_create' %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus"></i> Ajouter
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% include 'components/pagination.html' with page_obj=classes %}
+    </div>
+</div>
+
+<style>
+.admin-classes {
+    padding: 15px;
+}
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: var(--shadow-sm);
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav .current {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.header-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.stat-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--light-gray);
+    border-radius: 12px;
+    font-size: 11px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.stat-badge.actifs {
+    background: #d4edda;
+    color: #155724;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.filters-section {
+    background: var(--white);
+    padding: 12px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr 1fr 0.8fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.form-input-sm, .form-select-sm {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    height: 32px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.bulk-actions-bar {
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: var(--border-radius);
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--font-size-sm);
+}
+
+.bulk-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #155724;
+    font-weight: 500;
+}
+
+.bulk-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.classes-table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.classes-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 100%;
+}
+
+.classes-table th {
+    background: var(--light-gray);
+    padding: 8px 6px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+}
+
+.classes-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--gray);
+    vertical-align: middle;
+    font-size: var(--font-size-xs);
+}
+
+.classe-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.classe-name {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: var(--font-size-sm);
+}
+
+.salle-text {
+    color: var(--text-light);
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.code-badge {
+    background: var(--light-gray);
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 11px;
+    color: var(--text-dark);
+}
+
+.academic-path {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.filiere-text {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: 11px;
+}
+
+.niveau-text {
+    color: var(--text-light);
+    font-size: 10px;
+}
+
+.annee-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    background: var(--light-gray);
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.prof-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.prof-name {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: var(--font-size-xs);
+}
+
+.prof-email {
+    color: var(--text-light);
+    font-size: 10px;
+}
+
+.capacity-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.capacity-text {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: 11px;
+}
+
+.places-dispo {
+    color: var(--success-color);
+    font-size: 10px;
+}
+
+.effectif-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    background: var(--success-color);
+    color: white;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.effectif-badge.full {
+    background: var(--danger-color);
+}
+
+.action-buttons-sm {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.btn-icon-sm {
+    width: 24px;
+    height: 24px;
+    border-radius: 3px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+
+.btn-icon-sm.btn-primary { background: var(--primary-color); color: white; }
+.btn-icon-sm.btn-info { background: var(--info-color); color: white; }
+.btn-icon-sm.btn-outline {
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+}
+
+.btn-icon-sm:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+}
+
+.btn-icon:hover {
+    background: var(--light-gray);
+}
+
+/* Dropdown compact */
+.classes-table-container,
+.table-wrapper,
+.classes-table tr,
+.classes-table td {
+    overflow: visible !important;
+}
+
+.dropdown-compact {
+    position: relative;
+}
+
+.dropdown-menu-compact {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    min-width: 160px;
+}
+
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 11px;
+}
+
+.dropdown-menu-compact a:hover {
+    background: var(--light-gray);
+}
+
+.text-success { color: var(--success-color); }
+.text-danger { color: var(--danger-color); }
+.text-warning { color: var(--warning-color); }
+.text-muted { color: var(--text-light); }
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 3px 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-content {
+    color: var(--text-light);
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mt-2 { margin-top: 8px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-header-compact {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .filters-form {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .classes-table {
+        min-width: 1100px;
+    }
+
+    .header-stats {
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-start;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestion des sélections multiples
+    const selectAll = document.getElementById('selectAllClasses');
+    const checkboxes = document.querySelectorAll('.classe-checkbox');
+    const bulkBar = document.getElementById('bulkActionsBar');
+    const selectedCount = document.getElementById('selectedCount');
+
+    selectAll?.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+        updateBulkActions();
+    });
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    function updateBulkActions() {
+        const selected = document.querySelectorAll('.classe-checkbox:checked').length;
+        selectedCount.textContent = selected;
+        bulkBar.style.display = selected > 0 ? 'flex' : 'none';
+
+        if (selectAll) {
+            selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+            selectAll.checked = selected === checkboxes.length;
+        }
+    }
+
+    // Gestion des dropdowns
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.style.display = 'none';
+            });
+
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        });
+    });
+
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    });
+});
+
+// Fonctions
+function exportClasses() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/academic/classes/export/?${params.toString()}`;
+}
+
+function viewStudents(classeId) {
+    window.location.href = `/dashboard/admin/students/?classe=${classeId}`;
+}
+
+function viewSchedule(classeId) {
+    window.location.href = `/academic/classes/${classeId}/schedule/`;
+}
+
+function viewCourses(classeId) {
+    window.location.href = `/academic/classes/${classeId}/courses/`;
+}
+
+function duplicateClasse(classeId) {
+    if (confirm('Voulez-vous dupliquer cette classe ?')) {
+        fetch(`/academic/classes/${classeId}/duplicate/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Classe dupliquée avec succès');
+                location.reload();
+            } else {
+                alert(data.message || 'Erreur lors de la duplication');
+            }
+        })
+        .catch(error => {
+            alert('Erreur lors de la duplication');
+        });
+    }
+}
+
+function deleteClasse(classeId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette classe ?')) {
+        fetch(`/academic/classes/${classeId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur lors de la suppression');
+        })
+        .catch(error => {
+            alert('Erreur lors de la suppression');
+        });
+    }
+}
+
+function bulkGenerateSchedule() {
+    const selected = Array.from(document.querySelectorAll('.classe-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins une classe');
+        return;
+    }
+    alert(`Génération des emplois du temps pour ${selected.length} classe(s)`);
+}
+
+function bulkExport() {
+    const selected = Array.from(document.querySelectorAll('.classe-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins une classe');
+        return;
+    }
+    const params = new URLSearchParams();
+    params.set('classes', selected.join(','));
+    window.location.href = `/academic/classes/export/?${params.toString()}`;
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

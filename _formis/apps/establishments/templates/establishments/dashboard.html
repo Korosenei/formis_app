@@ -1,0 +1,226 @@
+{% extends 'establishments/base.html' %}
+{% load humanize %}
+
+{% block title %}Dashboard - Gestion des Établissements{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="mt-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active">Dashboard</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container-fluid">
+        <h1 class="h2">
+            <i class="fas fa-tachometer-alt me-3"></i>
+            Dashboard des Établissements
+        </h1>
+        <p class="mb-0">Vue d'ensemble de la gestion des établissements</p>
+    </div>
+</div>
+
+<!-- Statistiques principales -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title text-muted mb-0">Établissements</h5>
+                        <h2 class="text-primary">{{ total_etablissements|default:0 }}</h2>
+                    </div>
+                    <div class="text-primary">
+                        <i class="fas fa-building fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card success">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title text-muted mb-0">Salles</h5>
+                        <h2 class="text-success">{{ total_salles|default:0 }}</h2>
+                    </div>
+                    <div class="text-success">
+                        <i class="fas fa-door-open fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card warning">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title text-muted mb-0">Campus</h5>
+                        <h2 class="text-warning">{{ total_campus|default:0 }}</h2>
+                    </div>
+                    <div class="text-warning">
+                        <i class="fas fa-map-marker-alt fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card danger">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title text-muted mb-0">Salles Disponibles</h5>
+                        <h2 class="text-danger">{{ salles_disponibles|default:0 }}</h2>
+                    </div>
+                    <div class="text-danger">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Établissements récents -->
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-building me-2"></i>
+                    Établissements Récents
+                </h5>
+                <a href="{% url 'establishments:etablissement_list' %}" class="btn btn-outline-primary btn-sm">
+                    Voir tous
+                </a>
+            </div>
+            <div class="card-body">
+                {% if etablissements_recents %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Type</th>
+                                    <th>Localité</th>
+                                    <th>Capacité</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for etablissement in etablissements_recents %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'establishments:etablissement_detail' etablissement.pk %}" class="text-decoration-none">
+                                            <strong>{{ etablissement.nom }}</strong>
+                                            {% if etablissement.sigle %}
+                                                <br><small class="text-muted">{{ etablissement.sigle }}</small>
+                                            {% endif %}
+                                        </a>
+                                    </td>
+                                    <td>{{ etablissement.type_etablissement.nom }}</td>
+                                    <td>{{ etablissement.localite.nom }}</td>
+                                    <td>
+                                        {{ etablissement.capacite_totale|intcomma }}
+                                        {% if etablissement.etudiants_actuels %}
+                                            <br><small class="text-muted">{{ etablissement.etudiants_actuels|intcomma }} étudiants</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if etablissement.actif %}
+                                            <span class="badge bg-success badge-custom">Actif</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary badge-custom">Inactif</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-building fa-3x mb-3"></i>
+                        <p>Aucun établissement enregistré</p>
+                        <a href="{% url 'establishments:etablissement_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Ajouter un établissement
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions rapides -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>
+                    Actions Rapides
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'establishments:etablissement_create' %}" class="btn btn-primary btn-custom">
+                        <i class="fas fa-plus me-2"></i>Nouvel Établissement
+                    </a>
+                    <a href="{% url 'establishments:salle_create' %}" class="btn btn-success btn-custom">
+                        <i class="fas fa-door-open me-2"></i>Nouvelle Salle
+                    </a>
+                    <a href="{% url 'establishments:annee_academique_create' %}" class="btn btn-info btn-custom">
+                        <i class="fas fa-calendar-alt me-2"></i>Nouvelle Année
+                    </a>
+                    <a href="{% url 'establishments:jour_ferie_create' %}" class="btn btn-warning btn-custom">
+                        <i class="fas fa-calendar-times me-2"></i>Jour Férié
+                    </a>
+                </div>
+
+                <hr>
+
+                <div class="d-grid gap-2">
+                    <a href="{% url 'establishments:statistiques' %}" class="btn btn-outline-primary btn-custom">
+                        <i class="fas fa-chart-bar me-2"></i>Voir Statistiques
+                    </a>
+                    <a href="{% url 'establishments:export_etablissements' %}" class="btn btn-outline-success btn-custom">
+                        <i class="fas fa-download me-2"></i>Export CSV
+                    </a>
+                    <a href="{% url 'establishments:mise_a_jour_etudiants' %}" class="btn btn-outline-warning btn-custom">
+                        <i class="fas fa-sync me-2"></i>MAJ Étudiants
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informations système -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Informations
+                </h6>
+            </div>
+            <div class="card-body">
+                <small class="text-muted">
+                    <div class="mb-2">
+                        <strong>Taux d'occupation moyen:</strong><br>
+                        {{ taux_occupation_moyen|floatformat:1 }}%
+                    </div>
+                    <div class="mb-2">
+                        <strong>Dernière mise à jour:</strong><br>
+                        {% now "d/m/Y H:i" %}
+                    </div>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

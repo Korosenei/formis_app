@@ -1,0 +1,665 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Gestion des Candidatures - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-candidatures">
+    <!-- Header compact -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Candidatures</span>
+            </div>
+            <h1>Gestion des Candidatures</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ stats.total }} total</span>
+                <span class="stat-badge soumises">{{ stats.soumises }} soumises</span>
+                <span class="stat-badge approuvees">{{ stats.approuvees }} approuvées</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportCandidatures()" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtres compacts -->
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="Rechercher..."
+                       value="{{ current_filters.search }}" class="form-input-sm">
+            </div>
+            <div class="filter-group">
+                <select name="statut" class="form-select-sm">
+                    <option value="">Tous statuts</option>
+                    {% for statut_key, statut_label in statuts %}
+                        <option value="{{ statut_key }}" {% if current_filters.statut == statut_key %}selected{% endif %}>
+                            {{ statut_label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="filiere" class="form-select-sm">
+                    <option value="">Toutes filières</option>
+                    {% for filiere in filieres %}
+                        <option value="{{ filiere.id }}" {% if current_filters.filiere == filiere.id|stringformat:"s" %}selected{% endif %}>
+                            {{ filiere.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="niveau" class="form-select-sm">
+                    <option value="">Tous niveaux</option>
+                    {% for niveau in niveaux %}
+                        <option value="{{ niveau.id }}" {% if current_filters.niveau == niveau.id|stringformat:"s" %}selected{% endif %}>
+                            {{ niveau.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:admin_candidatures' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tableau optimisé -->
+    <div class="candidatures-table-container">
+        <div class="table-wrapper">
+            <table class="candidatures-table">
+                <thead>
+                    <tr>
+                        <th width="120">N° Candidature</th>
+                        <th width="180">Candidat</th>
+                        <th width="150">Formation</th>
+                        <th width="120">Contacts</th>
+                        <th width="100">Documents</th>
+                        <th width="100">Statut</th>
+                        <th width="100">Date soumission</th>
+                        <th width="80">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for candidature in candidatures %}
+                    <tr class="candidature-row">
+                        <td>
+                            <code class="numero-candidature">{{ candidature.numero_candidature }}</code>
+                        </td>
+                        <td>
+                            <div class="candidat-info">
+                                <div class="candidat-name">{{ candidature.nom_complet|truncatechars:25 }}</div>
+                                <small class="birth-info">
+                                    {% if candidature.genre == 'M' %}
+                                        <i class="fas fa-mars text-info"></i>
+                                    {% else %}
+                                        <i class="fas fa-venus text-pink"></i>
+                                    {% endif %}
+                                    {{ candidature.date_naissance|date:"d/m/Y" }}
+                                </small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="formation-info">
+                                <div class="filiere-name">{{ candidature.filiere.nom|truncatechars:20 }}</div>
+                                <div class="niveau-name">{{ candidature.niveau.nom }}</div>
+                                <small class="annee-info">{{ candidature.annee_academique.nom }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="contact-info">
+                                <div class="email-text" title="{{ candidature.email }}">
+                                    <i class="fas fa-envelope"></i>
+                                    {{ candidature.email|truncatechars:16 }}
+                                </div>
+                                <div class="phone-text">
+                                    <i class="fas fa-phone"></i>
+                                    {{ candidature.telephone }}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="documents-status">
+                                <span class="badge-docs">
+                                    <i class="fas fa-file-alt"></i> {{ candidature.nombre_documents }}
+                                </span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="statut-badge statut-{{ candidature.statut|lower }}">
+                                {{ candidature.get_statut_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="date-info">
+                                {% if candidature.date_soumission %}
+                                    {{ candidature.date_soumission|date:"d/m/Y H:i" }}
+                                {% else %}
+                                    <span class="text-muted">Non soumise</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons-sm">
+                                <button class="btn-icon-sm btn-primary" onclick="viewCandidature('{{ candidature.id }}')" title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <div class="dropdown-compact">
+                                    <button class="btn-icon-sm btn-outline dropdown-toggle">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="dropdown-menu-compact">
+                                        <a href="#" onclick="viewCandidature('{{ candidature.id }}')">
+                                            <i class="fas fa-eye"></i> Détails
+                                        </a>
+                                        {% if candidature.statut == 'SOUMISE' %}
+                                            <a href="#" onclick="examinerCandidature('{{ candidature.id }}')" class="text-info">
+                                                <i class="fas fa-search"></i> Examiner
+                                            </a>
+                                        {% endif %}
+                                        {% if candidature.statut == 'EN_COURS_EXAMEN' %}
+                                            <a href="#" onclick="approuverCandidature('{{ candidature.id }}')" class="text-success">
+                                                <i class="fas fa-check"></i> Approuver
+                                            </a>
+                                            <a href="#" onclick="rejeterCandidature('{{ candidature.id }}')" class="text-danger">
+                                                <i class="fas fa-times"></i> Rejeter
+                                            </a>
+                                        {% endif %}
+                                        <a href="#" onclick="viewDocuments('{{ candidature.id }}')">
+                                            <i class="fas fa-file-alt"></i> Documents
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        <a href="#" onclick="sendEmailCandidat('{{ candidature.id }}')">
+                                            <i class="fas fa-envelope"></i> Envoyer email
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <div class="empty-content">
+                                <i class="fas fa-folder-open fa-2x text-muted"></i>
+                                <p class="mt-2">Aucune candidature trouvée</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% include 'components/pagination.html' with page_obj=candidatures %}
+    </div>
+</div>
+
+<style>
+.admin-candidatures {
+    padding: 15px;
+}
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: var(--shadow-sm);
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav .current {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.header-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.stat-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--light-gray);
+    border-radius: 12px;
+    font-size: 11px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.stat-badge.soumises {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.stat-badge.approuvees {
+    background: #d4edda;
+    color: #155724;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.filters-section {
+    background: var(--white);
+    padding: 12px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.form-input-sm, .form-select-sm {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    height: 32px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.candidatures-table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.candidatures-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 100%;
+}
+
+.candidatures-table th {
+    background: var(--light-gray);
+    padding: 8px 6px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+}
+
+.candidatures-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--gray);
+    vertical-align: middle;
+    font-size: var(--font-size-xs);
+}
+
+.numero-candidature {
+    background: var(--primary-color);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.candidat-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.candidat-name {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: var(--font-size-sm);
+}
+
+.birth-info {
+    color: var(--text-light);
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.formation-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.filiere-name {
+    font-weight: 600;
+    color: var(--text-dark);
+    font-size: 11px;
+}
+
+.niveau-name {
+    color: var(--primary-color);
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.annee-info {
+    color: var(--text-light);
+    font-size: 9px;
+}
+
+.contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.email-text, .phone-text {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-light);
+    font-size: var(--font-size-xs);
+}
+
+.email-text i, .phone-text i {
+    width: 12px;
+    font-size: 10px;
+}
+
+.badge-docs {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: var(--light-gray);
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.statut-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.statut-brouillon { background: #e9ecef; color: #495057; }
+.statut-soumise { background: #fff3cd; color: #856404; }
+.statut-en_cours_examen { background: #cce5ff; color: #004085; }
+.statut-approuvee { background: #d4edda; color: #155724; }
+.statut-rejetee { background: #f8d7da; color: #721c24; }
+.statut-annulee { background: #e2e3e5; color: #383d41; }
+
+.date-info {
+    font-size: 10px;
+    color: var(--text-light);
+}
+
+.action-buttons-sm {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.btn-icon-sm {
+    width: 24px;
+    height: 24px;
+    border-radius: 3px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.3s;
+}
+
+.btn-icon-sm.btn-primary { background: var(--primary-color); color: white; }
+.btn-icon-sm.btn-outline {
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.dropdown-compact {
+    position: relative;
+}
+
+.dropdown-menu-compact {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    min-width: 180px;
+}
+
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.dropdown-menu-compact a:hover {
+    background: var(--light-gray);
+}
+
+.text-success { color: var(--success-color); }
+.text-danger { color: var(--danger-color); }
+.text-warning { color: var(--warning-color); }
+.text-muted { color: var(--text-light); }
+.text-info { color: var(--info-color); }
+.text-pink { color: #e91e63; }
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 3px 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-content {
+    color: var(--text-light);
+}
+
+.mt-2 { margin-top: 8px; }
+
+@media (max-width: 768px) {
+    .page-header-compact {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .filters-form {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .candidatures-table {
+        min-width: 900px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestion des dropdowns
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.style.display = 'none';
+            });
+
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        });
+    });
+
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    });
+});
+
+function exportCandidatures() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/dashboard/admin/candidatures/export/?${params.toString()}`;
+}
+
+function viewCandidature(candidatureId) {
+    window.location.href = `/dashboard/admin/candidatures/${candidatureId}/`;
+}
+
+function examinerCandidature(candidatureId) {
+    if (confirm('Commencer l\'examen de cette candidature ?')) {
+        fetch(`/dashboard/admin/candidatures/${candidatureId}/examiner/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erreur: ' + (data.message || 'Erreur inconnue'));
+            }
+        });
+    }
+}
+
+function approuverCandidature(candidatureId) {
+    if (confirm('Approuver cette candidature ?')) {
+        window.location.href = `/dashboard/admin/candidatures/${candidatureId}/approuver/`;
+    }
+}
+
+function rejeterCandidature(candidatureId) {
+    const motif = prompt('Motif du rejet:');
+    if (motif) {
+        fetch(`/dashboard/admin/candidatures/${candidatureId}/rejeter/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({motif: motif})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erreur');
+            }
+        });
+    }
+}
+
+function viewDocuments(candidatureId) {
+    window.location.href = `/dashboard/admin/candidatures/${candidatureId}/documents/`;
+}
+
+function sendEmailCandidat(candidatureId) {
+    window.location.href = `/dashboard/admin/candidatures/${candidatureId}/send-email/`;
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

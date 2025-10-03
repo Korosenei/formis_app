@@ -1,0 +1,372 @@
+
+<!-- Modal d'inscription obligatoire -->
+<div class="modal fade" id="inscriptionModal" tabindex="-1" aria-labelledby="inscriptionModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-gradient-primary text-white border-0">
+                <h5 class="modal-title" id="inscriptionModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Inscription requise
+                </h5>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center">
+                    <div class="mb-4">
+                        <i class="bi bi-person-x text-warning" style="font-size: 4rem;"></i>
+                    </div>
+
+                    <h4 class="mb-3 text-dark">Finalisation d'inscription nécessaire</h4>
+
+                    <div id="modal-content">
+                        <!-- Le contenu sera mis à jour dynamiquement -->
+                        <p class="text-muted mb-4">
+                            Pour accéder à votre tableau de bord étudiant, vous devez finaliser votre inscription en effectuant le paiement de vos frais de scolarité.
+                        </p>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Options disponibles :</strong>
+                            <ul class="list-unstyled mt-2 mb-0">
+                                <li><i class="bi bi-check text-success me-1"></i> Paiement en une seule fois (avec remise)</li>
+                                <li><i class="bi bi-check text-success me-1"></i> Paiement en plusieurs tranches</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-success btn-lg px-4" id="btn-inscription">
+                    <i class="bi bi-credit-card me-2"></i>
+                    Effectuer une inscription
+                </button>
+                <button type="button" class="btn btn-outline-secondary ms-3" id="btn-candidater" style="display: none;">
+                    <i class="bi bi-file-earmark-text me-2"></i>
+                    Soumettre une candidature
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loader pour vérification -->
+<div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-body text-center p-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+                <p class="mb-0">Vérification de votre statut...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * Script de vérification du statut d'inscription
+ * À inclure dans les pages du dashboard étudiant
+ */
+class InscriptionChecker {
+    constructor() {
+        this.checkUrl = '{% url "payments:verifier_statut_inscription" %}';
+        this.inscriptionUrl = '{% url "payments:initier_inscription" %}';
+        this.candidatureUrl = '{% url "enrollment:candidature_create" %}';
+
+        this.inscriptionModal = null;
+        this.loadingModal = null;
+
+        this.init();
+    }
+
+    init() {
+        // Attendre que le DOM soit chargé
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.checkInscriptionStatus());
+        } else {
+            this.checkInscriptionStatus();
+        }
+    }
+
+    async checkInscriptionStatus() {
+        try {
+            // Afficher le loader
+            this.showLoadingModal();
+
+            const response = await fetch(this.checkUrl, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Masquer le loader
+            this.hideLoadingModal();
+
+            if (data.peut_acceder) {
+                // L'utilisateur peut accéder, ne rien faire
+                console.log('Accès autorisé:', data.message);
+            } else {
+                // L'utilisateur doit effectuer une action
+                this.showInscriptionModal(data);
+            }
+
+        } catch (error) {
+            console.error('Erreur vérification inscription:', error);
+            this.hideLoadingModal();
+
+            // En cas d'erreur, permettre l'accès mais afficher un message
+            this.showErrorMessage();
+        }
+    }
+
+    showLoadingModal() {
+        if (!this.loadingModal) {
+            this.loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+        }
+        this.loadingModal.show();
+    }
+
+    hideLoadingModal() {
+        if (this.loadingModal) {
+            this.loadingModal.hide();
+        }
+    }
+
+    showInscriptionModal(data) {
+        // Mettre à jour le contenu du modal selon la situation
+        this.updateModalContent(data);
+
+        if (!this.inscriptionModal) {
+            this.inscriptionModal = new bootstrap.Modal(document.getElementById('inscriptionModal'));
+        }
+
+        this.inscriptionModal.show();
+
+        // Configurer les boutons
+        this.setupModalButtons(data);
+    }
+
+    updateModalContent(data) {
+        const modalContent = document.getElementById('modal-content');
+        const btnInscription = document.getElementById('btn-inscription');
+        const btnCandidater = document.getElementById('btn-candidater');
+
+        switch (data.action_requise) {
+            case 'candidater':
+                modalContent.innerHTML = `
+                    <p class="text-muted mb-4">
+                        Vous devez d'abord soumettre une candidature pour une formation avant de pouvoir vous inscrire.
+                    </p>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Aucune candidature approuvée trouvée dans notre système.
+                    </div>
+                `;
+                btnInscription.style.display = 'none';
+                btnCandidater.style.display = 'inline-block';
+                break;
+
+            case 'attendre':
+                modalContent.innerHTML = `
+                    <p class="text-muted mb-4">
+                        Un paiement est actuellement en cours de traitement.
+                    </p>
+                    <div class="alert alert-info">
+                        <i class="bi bi-hourglass-split me-2"></i>
+                        <strong>Paiements en cours :</strong> ${data.paiements_en_cours || 1}
+                        <br><small>Veuillez patienter quelques minutes puis actualiser la page.</small>
+                    </div>
+                `;
+                btnInscription.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i>Actualiser la page';
+                btnCandidater.style.display = 'none';
+                break;
+
+            case 'inscrire':
+            default:
+                modalContent.innerHTML = `
+                    <p class="text-muted mb-4">
+                        Pour accéder à votre tableau de bord étudiant, vous devez finaliser votre inscription en effectuant le paiement de vos frais de scolarité.
+                    </p>
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle me-2"></i>
+                        <strong>Candidature approuvée :</strong> ${data.candidatures_approuvees || 1}
+                        <br><small>Vous pouvez maintenant procéder au paiement.</small>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Options disponibles :</strong>
+                        <ul class="list-unstyled mt-2 mb-0">
+                            <li><i class="bi bi-check text-success me-1"></i> Paiement en une seule fois (avec remise)</li>
+                            <li><i class="bi bi-check text-success me-1"></i> Paiement en plusieurs tranches</li>
+                        </ul>
+                    </div>
+                `;
+                btnInscription.style.display = 'inline-block';
+                btnCandidater.style.display = 'none';
+                break;
+        }
+    }
+
+    setupModalButtons(data) {
+        const btnInscription = document.getElementById('btn-inscription');
+        const btnCandidater = document.getElementById('btn-candidater');
+
+        // Supprimer les anciens listeners
+        btnInscription.replaceWith(btnInscription.cloneNode(true));
+        btnCandidater.replaceWith(btnCandidater.cloneNode(true));
+
+        // Récupérer les nouveaux éléments
+        const newBtnInscription = document.getElementById('btn-inscription');
+        const newBtnCandidater = document.getElementById('btn-candidater');
+
+        // Configurer les actions selon le contexte
+        switch (data.action_requise) {
+            case 'candidater':
+                newBtnCandidater.addEventListener('click', () => {
+                    window.location.href = this.candidatureUrl;
+                });
+                break;
+
+            case 'attendre':
+                newBtnInscription.addEventListener('click', () => {
+                    window.location.reload();
+                });
+                break;
+
+            case 'inscrire':
+            default:
+                newBtnInscription.addEventListener('click', () => {
+                    window.location.href = this.inscriptionUrl;
+                });
+                break;
+        }
+    }
+
+    showErrorMessage() {
+        // Afficher un message d'erreur discret dans la console
+        console.warn('Impossible de vérifier le statut d\'inscription. Accès autorisé par défaut.');
+
+        // Optionnel: afficher une notification toast
+        if (typeof bootstrap !== 'undefined' && document.querySelector('.toast-container')) {
+            this.showToast('Erreur de vérification du statut d\'inscription', 'warning');
+        }
+    }
+
+    showToast(message, type = 'info') {
+        // Créer un toast pour les notifications
+        const toastContainer = document.querySelector('.toast-container') || this.createToastContainer();
+
+        const toastHtml = `
+            <div class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        `;
+
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+
+        const toastElement = toastContainer.lastElementChild;
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+
+        // Supprimer le toast après fermeture
+        toastElement.addEventListener('hidden.bs.toast', () => {
+            toastElement.remove();
+        });
+    }
+
+    createToastContainer() {
+        const container = document.createElement('div');
+        container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        document.body.appendChild(container);
+        return container;
+    }
+}
+
+// Auto-initialisation si on est sur une page de dashboard étudiant
+document.addEventListener('DOMContentLoaded', function() {
+    // Vérifier si on est sur le dashboard étudiant
+    const isStudentDashboard = window.location.pathname.includes('/dashboard/student') ||
+                              document.body.classList.contains('student-dashboard');
+
+    if (isStudentDashboard) {
+        new InscriptionChecker();
+    }
+});
+
+// Export pour utilisation manuelle si nécessaire
+window.InscriptionChecker = InscriptionChecker;
+</script>
+
+<style>
+/* Styles pour le modal et les composants */
+.modal-content {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(45deg, #667eea, #764ba2) !important;
+}
+
+.modal-body .text-warning {
+    color: #f39c12 !important;
+}
+
+.alert {
+    border-radius: 10px;
+}
+
+.btn {
+    border-radius: 25px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Animation pour les toasts */
+.toast {
+    border-radius: 10px;
+}
+
+.toast-container {
+    z-index: 1055;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .modal-lg {
+        max-width: 95%;
+    }
+
+    .modal-body {
+        padding: 1.5rem !important;
+    }
+
+    .btn-lg {
+        font-size: 1rem;
+        padding: 0.75rem 1.5rem;
+    }
+}
+</style>

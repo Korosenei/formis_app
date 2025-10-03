@@ -1,0 +1,334 @@
+{% extends 'base/dashboard_base.html' %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .evaluation-form {
+        background: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+    }
+    .candidature-info {
+        background: white;
+        border-left: 4px solid #007cba;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 4px;
+    }
+    .candidature-info h3 {
+        margin-top: 0;
+        color: #007cba;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 4px;
+        color: white;
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 12px;
+    }
+    .status-soumise { background-color: #17a2b8; }
+    .status-en-cours-examen { background-color: #fd7e14; }
+    .decision-buttons {
+        text-align: center;
+        margin: 20px 0;
+    }
+    .btn {
+        display: inline-block;
+        padding: 10px 20px;
+        margin: 0 10px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        transition: background-color 0.3s;
+    }
+    .btn-success {
+        background-color: #28a745;
+        color: white;
+    }
+    .btn-success:hover {
+        background-color: #218838;
+    }
+    .btn-danger {
+        background-color: #dc3545;
+        color: white;
+    }
+    .btn-danger:hover {
+        background-color: #c82333;
+    }
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background-color: #5a6268;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    .form-group textarea {
+        width: 100%;
+        min-height: 100px;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-family: inherit;
+    }
+    .hidden {
+        display: none;
+    }
+    .documents-section {
+        margin: 20px 0;
+    }
+    .document-item {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 10px;
+        margin: 5px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .document-valid {
+        border-left: 4px solid #28a745;
+    }
+    .document-invalid {
+        border-left: 4px solid #dc3545;
+    }
+    .validation-badge {
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: bold;
+    }
+    .badge-valid {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .badge-invalid {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="candidature-info">
+    <h3>Informations sur la candidature</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+            <p><strong>Numéro :</strong> {{ candidature.numero_candidature }}</p>
+            <p><strong>Candidat :</strong> {{ candidature.nom_complet }}</p>
+            <p><strong>Email :</strong> {{ candidature.email }}</p>
+            <p><strong>Téléphone :</strong> {{ candidature.telephone }}</p>
+            <p><strong>Date de naissance :</strong> {{ candidature.date_naissance|date:"d/m/Y" }}</p>
+        </div>
+        <div>
+            <p><strong>Formation :</strong> {{ candidature.filiere.nom }} - {{ candidature.niveau.nom }}</p>
+            <p><strong>Établissement :</strong> {{ candidature.etablissement.nom }}</p>
+            <p><strong>Statut actuel :</strong>
+                <span class="status-badge status-{{ candidature.statut|lower }}">
+                    {{ candidature.get_statut_display }}
+                </span>
+            </p>
+            <p><strong>Date de soumission :</strong>
+                {% if candidature.date_soumission %}
+                    {{ candidature.date_soumission|date:"d/m/Y à H:i" }}
+                {% else %}
+                    Non soumise
+                {% endif %}
+
+<div style="margin: 30px 0; text-align: center;">
+    <a href="{% url 'admin:enrollment_candidature_changelist' %}" class="btn btn-secondary">
+        ← Retour à la liste des candidatures
+    </a>
+</div>
+
+{% endblock %}
+            </p>
+        </div>
+    </div>
+</div>
+
+{% if candidature.documents.exists %}
+<div class="documents-section">
+    <h3>Documents fournis ({{ candidature.documents.count }})</h3>
+    {% for document in candidature.documents.all %}
+    <div class="document-item {% if document.est_valide %}document-valid{% else %}document-invalid{% endif %}">
+        <div>
+            <strong>{{ document.get_type_document_display }}</strong> - {{ document.nom }}
+            {% if document.description %}
+                <small style="color: #666;">{{ document.description }}</small>
+            {% endif %}
+        </div>
+        <div>
+            {% if document.est_valide %}
+                <span class="validation-badge badge-valid">✓ Validé</span>
+            {% else %}
+                <span class="validation-badge badge-invalid">✗ Non validé</span>
+            {% endif %}
+            {% if document.fichier %}
+                <a href="{{ document.fichier.url }}" target="_blank" style="margin-left: 10px;">Voir</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if candidature.statut == 'SOUMISE' or candidature.statut == 'EN_COURS_EXAMEN' %}
+<div class="evaluation-form">
+    <h3>Évaluation de la candidature</h3>
+
+    <form method="post" id="evaluation-form">
+        {% csrf_token %}
+
+        <div class="decision-buttons">
+            <button type="button" class="btn btn-success" onclick="selectDecision('APPROUVEE')">
+                ✓ Approuver la candidature
+            </button>
+            <button type="button" class="btn btn-danger" onclick="selectDecision('REJETEE')">
+                ✗ Rejeter la candidature
+            </button>
+        </div>
+
+        <input type="hidden" name="decision" id="decision" value="">
+
+        <div id="motif-rejet" class="form-group hidden">
+            <label for="motif_rejet">Motif du rejet * :</label>
+            <textarea name="motif_rejet" id="motif_rejet" placeholder="Veuillez expliquer les raisons du rejet..."></textarea>
+        </div>
+
+        <div id="notes-approbation" class="form-group hidden">
+            <label for="notes_approbation">Notes d'approbation (optionnel) :</label>
+            <textarea name="notes_approbation" id="notes_approbation" placeholder="Message de félicitations ou instructions particulières..."></textarea>
+        </div>
+
+        <div class="decision-buttons" id="confirm-buttons" style="display: none;">
+            <button type="submit" class="btn btn-success" id="confirm-btn">
+                Confirmer la décision
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="cancelDecision()">
+                Annuler
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function selectDecision(decision) {
+    document.getElementById('decision').value = decision;
+
+    // Masquer tous les champs
+    document.getElementById('motif-rejet').classList.add('hidden');
+    document.getElementById('notes-approbation').classList.add('hidden');
+
+    // Afficher le champ approprié
+    if (decision === 'REJETEE') {
+        document.getElementById('motif-rejet').classList.remove('hidden');
+        document.getElementById('motif_rejet').required = true;
+        document.getElementById('notes_approbation').required = false;
+        document.getElementById('confirm-btn').innerHTML = '✗ Confirmer le rejet';
+        document.getElementById('confirm-btn').className = 'btn btn-danger';
+    } else if (decision === 'APPROUVEE') {
+        document.getElementById('notes-approbation').classList.remove('hidden');
+        document.getElementById('notes_approbation').required = false;
+        document.getElementById('motif_rejet').required = false;
+        document.getElementById('confirm-btn').innerHTML = '✓ Confirmer l\'approbation';
+        document.getElementById('confirm-btn').className = 'btn btn-success';
+    }
+
+    // Afficher les boutons de confirmation
+    document.getElementById('confirm-buttons').style.display = 'block';
+
+    // Faire défiler vers le bas
+    document.getElementById('confirm-buttons').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelDecision() {
+    document.getElementById('decision').value = '';
+    document.getElementById('motif-rejet').classList.add('hidden');
+    document.getElementById('notes-approbation').classList.add('hidden');
+    document.getElementById('confirm-buttons').style.display = 'none';
+    document.getElementById('motif_rejet').value = '';
+    document.getElementById('notes_approbation').value = '';
+    document.getElementById('motif_rejet').required = false;
+    document.getElementById('notes_approbation').required = false;
+}
+
+// Validation du formulaire
+document.getElementById('evaluation-form').addEventListener('submit', function(e) {
+    const decision = document.getElementById('decision').value;
+
+    if (!decision) {
+        alert('Veuillez sélectionner une décision.');
+        e.preventDefault();
+        return;
+    }
+
+    if (decision === 'REJETEE') {
+        const motif = document.getElementById('motif_rejet').value.trim();
+        if (!motif) {
+            alert('Le motif du rejet est obligatoire.');
+            document.getElementById('motif_rejet').focus();
+            e.preventDefault();
+            return;
+        }
+    }
+
+    // Confirmation finale
+    const confirmation = decision === 'APPROUVEE' ?
+        'Êtes-vous sûr de vouloir approuver cette candidature ? Un compte utilisateur sera automatiquement créé.' :
+        'Êtes-vous sûr de vouloir rejeter cette candidature ?';
+
+    if (!confirm(confirmation)) {
+        e.preventDefault();
+        return;
+    }
+});
+</script>
+
+{% else %}
+<div class="candidature-info" style="border-left-color: #6c757d;">
+    <h3>Candidature déjà évaluée</h3>
+    <p><strong>Statut :</strong>
+        <span class="status-badge status-{{ candidature.statut|lower }}">
+            {{ candidature.get_statut_display }}
+        </span>
+    </p>
+    {% if candidature.date_decision %}
+        <p><strong>Date de décision :</strong> {{ candidature.date_decision|date:"d/m/Y à H:i" }}</p>
+    {% endif %}
+    {% if candidature.examine_par %}
+        <p><strong>Évaluée par :</strong> {{ candidature.examine_par.get_full_name|default:candidature.examine_par.username }}</p>
+    {% endif %}
+    {% if candidature.motif_rejet %}
+        <p><strong>Motif du rejet :</strong></p>
+        <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin: 5px 0;">
+            {{ candidature.motif_rejet|linebreaks }}
+        </div>
+    {% endif %}
+    {% if candidature.notes_approbation %}
+        <p><strong>Notes d'approbation :</strong></p>
+        <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin: 5px 0;">
+            {{ candidature.notes_approbation|linebreaks }}
+        </div>
+    {% endif %}
+</div>
+{% endif %}

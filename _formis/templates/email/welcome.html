@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenue</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background: #f9f9f9; }
+        .credentials { background: #e9ecef; padding: 15px; border-left: 4px solid #007bff; margin: 15px 0; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Bienvenue dans le Système de Gestion Scolaire</h2>
+        </div>
+
+        <div class="content">
+            <p>Bonjour {{ user.get_full_name }},</p>
+
+            <p>Votre compte a été créé avec succès dans notre système de gestion scolaire.</p>
+
+            <div class="credentials">
+                <h4>Vos informations de connexion :</h4>
+                <p><strong>Matricule :</strong> {{ user.matricule }}</p>
+                <p><strong>Email :</strong> {{ user.email }}</p>
+                {% if password %}
+                <p><strong>Mot de passe :</strong> {{ password }}</p>
+                <p><em>Veuillez changer ce mot de passe lors de votre première connexion.</em></p>
+                {% endif %}
+            </div>
+
+            <p>Vous pouvez vous connecter en cliquant sur le lien ci-dessous :</p>
+            <p><a href="{{ login_url }}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Se connecter</a></p>
+
+            <p>Si vous avez des questions, n'hésitez pas à contacter l'administration.</p>
+
+            <p>Cordialement,<br>L'équipe du Système de Gestion Scolaire</p>
+        </div>
+
+        <div class="footer">
+            <p>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,255 @@
+{% extends 'establishments/base.html' %}
+
+{% block title %}
+    {% if form.instance.pk %}Modifier l'établissement{% else %}Nouvel établissement{% endif %}
+{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="mt-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'establishments:dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'establishments:etablissement_list' %}">Établissements</a></li>
+        <li class="breadcrumb-item active">
+            {% if form.instance.pk %}Modifier{% else %}Nouveau{% endif %}
+        </li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container-fluid">
+        <h1 class="h2">
+            <i class="fas fa-building me-3"></i>
+            {% if form.instance.pk %}Modifier l'établissement{% else %}Nouvel établissement{% endif %}
+        </h1>
+    </div>
+</div>
+
+<div class="card">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#general" role="tab">
+                        <i class="fas fa-info-circle me-2"></i>Informations Générales
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#contact" role="tab">
+                        <i class="fas fa-address-card me-2"></i>Contact
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#direction" role="tab">
+                        <i class="fas fa-user-tie me-2"></i>Direction
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#images" role="tab">
+                        <i class="fas fa-images me-2"></i>Images
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#description" role="tab">
+                        <i class="fas fa-align-left me-2"></i>Description
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body">
+            <div class="tab-content">
+                <!-- Onglet Informations Générales -->
+                <div class="tab-pane fade show active" id="general" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.type_etablissement.id_for_label }}" class="form-label">{{ form.type_etablissement.label }} *</label>
+                            {{ form.type_etablissement }}
+                            {% if form.type_etablissement.errors %}
+                                <div class="text-danger small">{{ form.type_etablissement.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.localite.id_for_label }}" class="form-label">{{ form.localite.label }} *</label>
+                            {{ form.localite }}
+                            {% if form.localite.errors %}
+                                <div class="text-danger small">{{ form.localite.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.capacite_totale.id_for_label }}" class="form-label">{{ form.capacite_totale.label }}</label>
+                            {{ form.capacite_totale }}
+                            {% if form.capacite_totale.errors %}
+                                <div class="text-danger small">{{ form.capacite_totale.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="form-check">
+                                        {{ form.actif }}
+                                        <label class="form-check-label" for="{{ form.actif.id_for_label }}">
+                                            {{ form.actif.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-check">
+                                        {{ form.public }}
+                                        <label class="form-check-label" for="{{ form.public.id_for_label }}">
+                                            {{ form.public.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Onglet Contact -->
+                <div class="tab-pane fade" id="contact" role="tabpanel">
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label for="{{ form.adresse.id_for_label }}" class="form-label">{{ form.adresse.label }} *</label>
+                            {{ form.adresse }}
+                            {% if form.adresse.errors %}
+                                <div class="text-danger small">{{ form.adresse.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.telephone.id_for_label }}" class="form-label">{{ form.telephone.label }}</label>
+                            {{ form.telephone }}
+                            {% if form.telephone.errors %}
+                                <div class="text-danger small">{{ form.telephone.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.email.id_for_label }}" class="form-label">{{ form.email.label }}</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="text-danger small">{{ form.email.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.site_web.id_for_label }}" class="form-label">{{ form.site_web.label }}</label>
+                            {{ form.site_web }}
+                            {% if form.site_web.errors %}
+                                <div class="text-danger small">{{ form.site_web.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Onglet Direction -->
+                <div class="tab-pane fade" id="direction" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.nom_directeur.id_for_label }}" class="form-label">{{ form.nom_directeur.label }}</label>
+                            {{ form.nom_directeur }}
+                            {% if form.nom_directeur.errors %}
+                                <div class="text-danger small">{{ form.nom_directeur.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.numero_enregistrement.id_for_label }}" class="form-label">{{ form.numero_enregistrement.label }}</label>
+                            {{ form.numero_enregistrement }}
+                            {% if form.numero_enregistrement.errors %}
+                                <div class="text-danger small">{{ form.numero_enregistrement.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.date_creation.id_for_label }}" class="form-label">{{ form.date_creation.label }}</label>
+                            {{ form.date_creation }}
+                            {% if form.date_creation.errors %}
+                                <div class="text-danger small">{{ form.date_creation.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Onglet Images -->
+                <div class="tab-pane fade" id="images" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.logo.id_for_label }}" class="form-label">{{ form.logo.label }}</label>
+                            {{ form.logo }}
+                            {% if form.instance.logo %}
+                                <div class="mt-2">
+                                    <img src="{{ form.instance.logo.url }}" alt="Logo actuel" class="img-thumbnail" style="max-height: 100px;">
+                                    <div class="form-text">Logo actuel</div>
+                                </div>
+                            {% endif %}
+                            {% if form.logo.errors %}
+                                <div class="text-danger small">{{ form.logo.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.image_couverture.id_for_label }}" class="form-label">{{ form.image_couverture.label }}</label>
+                            {{ form.image_couverture }}
+                            {% if form.instance.image_couverture %}
+                                <div class="mt-2">
+                                    <img src="{{ form.instance.image_couverture.url }}" alt="Image de couverture actuelle" class="img-thumbnail" style="max-height: 100px;">
+                                    <div class="form-text">Image de couverture actuelle</div>
+                                </div>
+                            {% endif %}
+                            {% if form.image_couverture.errors %}
+                                <div class="text-danger small">{{ form.image_couverture.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Onglet Description -->
+                <div class="tab-pane fade" id="description" role="tabpanel">
+                    <div class="mb-3">
+                        <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                            <div class="text-danger small">{{ form.description.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.mission.id_for_label }}" class="form-label">{{ form.mission.label }}</label>
+                            {{ form.mission }}
+                            {% if form.mission.errors %}
+                                <div class="text-danger small">{{ form.mission.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.vision.id_for_label }}" class="form-label">{{ form.vision.label }}</label>
+                            {{ form.vision }}
+                            {% if form.vision.errors %}
+                                <div class="text-danger small">{{ form.vision.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>
+                {% if form.instance.pk %}Modifier{% else %}Créer{% endif %}
+            </button>
+            <a href="{% url 'establishments:etablissement_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Retour
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

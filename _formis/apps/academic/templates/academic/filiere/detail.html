@@ -1,0 +1,568 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{{ filiere.nom }} - Détails{% endblock %}
+
+{% block content %}
+<div class="filiere-detail">
+    <!-- Header -->
+    <div class="detail-header">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <a href="{% url 'dashboard:admin' %}">Dashboard</a>
+                <i class="fas fa-chevron-right"></i>
+                <a href="{{ cancel_url }}">Filières</a>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">{{ filiere.nom }}</span>
+            </div>
+            <div class="header-title">
+                <h1>{{ filiere.nom }}</h1>
+                <div class="header-badges">
+                    <code class="code-badge">{{ filiere.code }}</code>
+                    <span class="type-badge type-{{ filiere.type_filiere|lower }}">
+                        {{ filiere.get_type_filiere_display }}
+                    </span>
+                    {% if filiere.est_active %}
+                        <span class="status-badge active">Active</span>
+                    {% else %}
+                        <span class="status-badge inactive">Inactive</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'academic:filiere_update' filiere.id %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-edit"></i> Modifier
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e3f2fd;">
+                <i class="fas fa-layer-group" style="color: #1976d2;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ filiere.nombre_niveaux }}</div>
+                <div class="stat-label">Niveaux</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e8f5e9;">
+                <i class="fas fa-users" style="color: #2e7d32;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ filiere.nombre_etudiants }}</div>
+                <div class="stat-label">Étudiants</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #fff3e0;">
+                <i class="fas fa-clock" style="color: #e65100;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ filiere.duree_annees }} an{% if filiere.duree_annees > 1 %}s{% endif %}</div>
+                <div class="stat-label">Durée</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #f3e5f5;">
+                <i class="fas fa-certificate" style="color: #7b1fa2;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ filiere.nom_diplome|truncatechars:15 }}</div>
+                <div class="stat-label">Diplôme</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="detail-grid">
+        <!-- Informations générales -->
+        <div class="detail-section">
+            <div class="section-header">
+                <h3><i class="fas fa-info-circle"></i> Informations générales</h3>
+            </div>
+            <div class="section-content">
+                {% if filiere.description %}
+                    <div class="info-row">
+                        <span class="info-label">Description</span>
+                        <span class="info-value">{{ filiere.description }}</span>
+                    </div>
+                {% endif %}
+                <div class="info-row">
+                    <span class="info-label">Code</span>
+                    <span class="info-value"><code>{{ filiere.code }}</code></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Type</span>
+                    <span class="info-value">{{ filiere.get_type_filiere_display }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Établissement</span>
+                    <span class="info-value">{{ filiere.etablissement.nom }}</span>
+                </div>
+                {% if filiere.departement %}
+                    <div class="info-row">
+                        <span class="info-label">Département</span>
+                        <span class="info-value">
+                            <a href="{% url 'academic:departement_detail' filiere.departement.id %}">
+                                {{ filiere.departement.nom }}
+                            </a>
+                        </span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Informations académiques -->
+        <div class="detail-section">
+            <div class="section-header">
+                <h3><i class="fas fa-graduation-cap"></i> Informations académiques</h3>
+            </div>
+            <div class="section-content">
+                <div class="info-row">
+                    <span class="info-label">Durée</span>
+                    <span class="info-value">{{ filiere.duree_annees }} an{% if filiere.duree_annees > 1 %}s{% endif %}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Diplôme</span>
+                    <span class="info-value">{{ filiere.nom_diplome }}</span>
+                </div>
+                {% if filiere.frais_scolarite %}
+                    <div class="info-row">
+                        <span class="info-label">Frais de scolarité</span>
+                        <span class="info-value">{{ filiere.frais_scolarite }} FCFA</span>
+                    </div>
+                {% endif %}
+                {% if filiere.capacite_maximale %}
+                    <div class="info-row">
+                        <span class="info-label">Capacité maximale</span>
+                        <span class="info-value">{{ filiere.capacite_maximale }} places</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Prérequis -->
+        {% if filiere.prerequis %}
+        <div class="detail-section full-width">
+            <div class="section-header">
+                <h3><i class="fas fa-check-square"></i> Prérequis</h3>
+            </div>
+            <div class="section-content">
+                <p class="prerequis-text">{{ filiere.prerequis }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Niveaux -->
+    {% if niveaux %}
+    <div class="detail-section">
+        <div class="section-header">
+            <h3><i class="fas fa-layer-group"></i> Niveaux ({{ filiere.nombre_niveaux }})</h3>
+            <a href="{% url 'academic:niveau_create' %}?filiere={{ filiere.id }}" class="btn-link">
+                <i class="fas fa-plus"></i> Ajouter un niveau
+            </a>
+        </div>
+        <div class="niveaux-grid">
+            {% for niveau in niveaux %}
+                <div class="niveau-card">
+                    <div class="niveau-header">
+                        <div class="niveau-order">{{ niveau.ordre }}</div>
+                        <div class="niveau-info">
+                            <h4>{{ niveau.nom }}</h4>
+                            <code>{{ niveau.code }}</code>
+                        </div>
+                    </div>
+                    {% if niveau.description %}
+                        <p class="niveau-desc">{{ niveau.description }}</p>
+                    {% endif %}
+                    {% if niveau.frais_scolarite %}
+                        <div class="niveau-fee">
+                            <i class="fas fa-money-bill-wave"></i>
+                            {{ niveau.frais_scolarite }} FCFA
+                        </div>
+                    {% endif %}
+                    <div class="niveau-actions">
+                        <a href="{% url 'academic:niveau_update' niveau.id %}" class="btn-icon-sm">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="detail-section">
+        <div class="section-header">
+            <h3><i class="fas fa-layer-group"></i> Niveaux</h3>
+        </div>
+        <div class="empty-state-sm">
+            <i class="fas fa-layer-group fa-2x"></i>
+            <p>Aucun niveau configuré</p>
+            <a href="{% url 'academic:niveau_create' %}?filiere={{ filiere.id }}" class="btn btn-sm btn-primary">
+                <i class="fas fa-plus"></i> Ajouter un niveau
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.filiere-detail {
+    padding: 15px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.breadcrumb-nav {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav a {
+    color: #6b7280;
+    text-decoration: none;
+}
+
+.breadcrumb-nav a:hover {
+    color: #2563eb;
+}
+
+.breadcrumb-nav .current {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.header-title {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.header-title h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.header-badges {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.code-badge {
+    background: #f3f4f6;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.type-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.type-general { background: #e3f2fd; color: #1976d2; }
+.type-technique { background: #fff3e0; color: #e65100; }
+.type-professionnel { background: #f3e5f5; color: #7b1fa2; }
+.type-universitaire { background: #e8f5e9; color: #2e7d32; }
+.type-continue { background: #fce4ec; color: #c2185b; }
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.status-badge.active {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.detail-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.detail-section.full-width {
+    grid-column: 1 / -1;
+}
+
+.section-header {
+    padding: 15px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-link {
+    font-size: 13px;
+    color: #2563eb;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+.section-content {
+    padding: 15px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 13px;
+    color: #1f2937;
+    text-align: right;
+}
+
+.info-value a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.info-value a:hover {
+    text-decoration: underline;
+}
+
+.prerequis-text {
+    font-size: 14px;
+    color: #1f2937;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.niveaux-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+    padding: 15px;
+}
+
+.niveau-card {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 15px;
+    position: relative;
+}
+
+.niveau-header {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.niveau-order {
+    width: 36px;
+    height: 36px;
+    background: #2563eb;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.niveau-info h4 {
+    margin: 0 0 5px 0;
+    font-size: 15px;
+    color: #1f2937;
+}
+
+.niveau-info code {
+    font-size: 11px;
+    background: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.niveau-desc {
+    font-size: 12px;
+    color: #6b7280;
+    margin: 10px 0;
+}
+
+.niveau-fee {
+    font-size: 13px;
+    color: #059669;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.niveau-actions {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.btn-icon-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    color: #6b7280;
+    text-decoration: none;
+}
+
+.btn-icon-sm:hover {
+    background: #f3f4f6;
+    color: #2563eb;
+}
+
+.empty-state-sm {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6b7280;
+}
+
+.empty-state-sm i {
+    color: #d1d5db;
+    margin-bottom: 10px;
+}
+
+.empty-state-sm p {
+    margin: 10px 0;
+}
+
+@media (max-width: 768px) {
+    .detail-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .niveaux-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

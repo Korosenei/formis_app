@@ -1,0 +1,900 @@
+
+{% load static %}
+
+<header class="navbar">
+  <div class="navbar-left">
+    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+      <i class="fas fa-bars"></i>
+    </button>
+    <div class="breadcrumb">
+      <span class="breadcrumb-item"
+        >{% block breadcrumb %}Tableau de bord{% endblock %}</span
+      >
+    </div>
+  </div>
+
+  <div class="navbar-center">
+    <div class="search-container">
+      <input type="text" placeholder="Rechercher..." class="search-input" />
+      <button class="search-btn">
+        <i class="fas fa-search"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="navbar-right">
+    <!-- Notifications -->
+    <div class="navbar-item dropdown" id="notificationsDropdown">
+      <button class="navbar-btn">
+        <i class="fas fa-bell"></i>
+        {% if user.notifications.unread.count > 0 %}
+        <span class="notification-badge"
+          >{{ user.notifications.unread.count }}</span
+        >
+        {% endif %}
+      </button>
+      <div class="dropdown-menu notifications-menu">
+        <div class="dropdown-header">
+          <h4>Notifications</h4>
+          {% if user.notifications.unread.count > 0 %}
+          <span
+            class="mark-all-read"
+            data-url="{% url 'mark_all_notifications_read' %}"
+            >Tout marquer comme lu</span
+          >
+          {% endif %}
+        </div>
+        <div class="dropdown-body">
+          {% for notification in user.notifications.unread|slice:":5" %}
+          <div class="notification-item unread">
+            <div class="notification-icon">
+              <i class="fas {{ notification.icon }} text-primary"></i>
+            </div>
+            <div class="notification-content">
+              <p class="notification-title">{{ notification.title }}</p>
+              <p class="notification-text">{{ notification.message }}</p>
+              <p class="notification-time">
+                {{ notification.created_at|timesince }}
+              </p>
+            </div>
+          </div>
+          {% empty %}
+          <div class="notification-item">
+            <div class="notification-content">
+              <p class="notification-text">Aucune notification</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="dropdown-footer">
+          <a href="#notifications_list" class="view-all"
+            >Voir toutes les notifications</a
+          >
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="navbar-item dropdown" id="messagesDropdown">
+      <button class="navbar-btn">
+        <i class="fas fa-envelope"></i>
+        {% if user.unread_messages.count > 0 %}
+        <span class="notification-badge">{{ user.unread_messages.count }}</span>
+        {% endif %}
+      </button>
+      <div class="dropdown-menu messages-menu">
+        <div class="dropdown-header">
+          <h4>Messages</h4>
+        </div>
+        <div class="dropdown-body">
+          {% for message in user.received_messages.unread|slice:":5" %}
+          <div class="message-item unread">
+            <div class="message-avatar">
+              {% if message.sender.photo_profil %}
+              <img
+                src="{{ message.sender.photo_profil.url }}"
+                alt="{{ message.sender.get_full_name }}"
+              />
+              {% else %}
+              <img
+                src="{% static 'images/default-avatar.jpg' %}"
+                alt="{{ message.sender.get_full_name }}"
+              />
+              {% endif %}
+            </div>
+            <div class="message-content">
+              <p class="message-sender">{{ message.sender.get_full_name }}</p>
+              <p class="message-text">{{ message.subject }}</p>
+              <p class="message-time">{{ message.sent_at|timesince }}</p>
+            </div>
+          </div>
+          {% empty %}
+          <div class="message-item">
+            <div class="message-content">
+              <p class="message-text">Aucun message</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="dropdown-footer">
+          <a href="#messages_list" class="view-all">Voir tous les messages</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile --><!-- Profile -->
+    <div class="navbar-item dropdown" id="profileDropdown">
+      <button class="navbar-btn profile-btn">
+        <div class="profile-avatar">
+          {% if user.photo_profil %}
+          <img src="{{ user.photo_profil.url }}" alt="Profil" />
+          {% else %}
+          <img src="{% static 'images/default-avatar.jpg' %}" alt="Profil" />
+          {% endif %}
+        </div>
+        <span class="profile-name">{{ user.username }}</span>
+        <i class="fas fa-chevron-down"></i>
+      </button>
+      <div class="dropdown-menu profile-menu">
+        <div class="profile-header">
+          <div class="profile-info">
+            {% if user.photo_profil %}
+            <img
+              src="{{ user.photo_profil.url }}"
+              alt="Profil"
+              class="profile-img"
+            />
+            {% else %}
+            <img
+              src="{% static 'images/default-avatar.jpg' %}"
+              alt="Profil"
+              class="profile-img"
+            />
+            {% endif %}
+            <div class="profile-details">
+              <h4>{{ user.get_full_name }}</h4>
+              <p>{{ user.get_role_display }}</p>
+            </div>
+          </div>
+        </div>
+        <div class="profile-menu-items">
+          <a href="{% url 'dashboard:profile' %}" class="profile-menu-item">
+            <i class="fas fa-user"></i>
+            <span>Mon Profil</span>
+          </a>
+          <a href="#settings" class="profile-menu-item">
+            <i class="fas fa-cog"></i>
+            <span>Paramètres</span>
+          </a>
+          <a href="#help" class="profile-menu-item">
+            <i class="fas fa-question-circle"></i>
+            <span>Aide</span>
+          </a>
+          <div class="profile-menu-divider"></div>
+          <a
+            href="{% url 'accounts:logout' %}"
+            class="profile-menu-item logout"
+          >
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Déconnexion</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<style>
+  .navbar {
+    position: fixed;
+    top: 0;
+    left: var(--sidebar-width);
+    right: 0;
+    height: var(--navbar-height);
+    background-color: var(--white);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    z-index: 999;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+    font-size: var(--font-size-sm);
+}
+
+.navbar.sidebar-collapsed {
+    left: var(--sidebar-collapsed-width);
+}
+
+/* Navbar left section */
+.navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 0 0 auto;
+}
+
+.mobile-menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: var(--font-size-md);
+    color: var(--text-dark);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: var(--border-radius);
+    transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle:hover {
+    background-color: var(--light-gray);
+    color: var(--primary-color);
+}
+
+.breadcrumb {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.breadcrumb-item {
+    display: inline-block;
+}
+
+/* Navbar center - Search */
+.navbar-center {
+    flex: 1;
+    max-width: 320px;
+    margin: 0 12px;
+    min-width: 0;
+}
+
+.search-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.search-input {
+    width: 100%;
+    padding: 6px 30px 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    font-size: var(--font-size-xs);
+    outline: none;
+    transition: all 0.3s ease;
+    background-color: var(--light-gray);
+    height: 32px;
+}
+
+.search-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.1);
+    background-color: var(--white);
+}
+
+.search-input::placeholder {
+    color: var(--text-light);
+    font-size: var(--font-size-xs);
+}
+
+.search-btn {
+    position: absolute;
+    right: 3px;
+    background: none;
+    border: none;
+    color: var(--text-light);
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    font-size: var(--font-size-xs);
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-btn:hover {
+    color: var(--primary-color);
+    background-color: rgba(78, 205, 196, 0.1);
+}
+
+/* Navbar right section */
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+.navbar-item {
+    position: relative;
+}
+
+.navbar-btn {
+    background: none;
+    border: none;
+    color: var(--text-dark);
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: var(--border-radius);
+    transition: all 0.3s ease;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--font-size-sm);
+    min-width: 32px;
+    height: 32px;
+    justify-content: center;
+}
+
+.navbar-btn:hover {
+    background-color: var(--light-gray);
+    color: var(--primary-color);
+}
+
+.navbar-btn i {
+    font-size: var(--font-size-sm);
+}
+
+/* Notification badge compact */
+.notification-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background-color: var(--danger-color);
+    color: var(--white);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    padding: 1px 4px;
+    border-radius: 8px;
+    min-width: 14px;
+    height: 14px;
+    text-align: center;
+    line-height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Profile button compact */
+.profile-btn {
+    padding: 4px 8px;
+    background-color: var(--light-gray);
+    border-radius: 16px;
+    gap: 6px;
+    height: 32px;
+}
+
+.profile-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-avatar img {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.profile-name {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.profile-btn i {
+    font-size: var(--font-size-xs);
+    color: var(--text-light);
+}
+
+/* Dropdowns optimisés */
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    min-width: 260px;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    font-size: var(--font-size-sm);
+    margin-top: 4px;
+}
+
+.dropdown.active .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Dropdown header compact */
+.dropdown-header {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--light-gray);
+}
+
+.dropdown-header h4 {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-dark);
+    margin: 0;
+}
+
+.mark-all-read {
+    font-size: var(--font-size-xs);
+    color: var(--primary-color);
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.mark-all-read:hover {
+    text-decoration: underline;
+}
+
+/* Dropdown body */
+.dropdown-body {
+    max-height: 280px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.1) transparent;
+}
+
+.dropdown-body::-webkit-scrollbar {
+    width: 4px;
+}
+
+.dropdown-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.dropdown-body::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.1);
+    border-radius: 2px;
+}
+
+/* Notification items compacts */
+.notification-item,
+.message-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.3s ease;
+    font-size: var(--font-size-xs);
+}
+
+.notification-item:hover,
+.message-item:hover {
+    background-color: var(--light-gray);
+}
+
+.notification-item:last-child,
+.message-item:last-child {
+    border-bottom: none;
+}
+
+.notification-item.unread,
+.message-item.unread {
+    background-color: rgba(78, 205, 196, 0.05);
+    border-left: 2px solid var(--primary-color);
+}
+
+.notification-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--light-gray);
+    flex-shrink: 0;
+    font-size: var(--font-size-xs);
+}
+
+.message-avatar {
+    flex-shrink: 0;
+}
+
+.message-avatar img {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Content des notifications/messages */
+.notification-content,
+.message-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-title,
+.message-sender {
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 2px;
+    font-size: var(--font-size-xs);
+    line-height: 1.3;
+}
+
+.notification-text,
+.message-text {
+    font-size: var(--font-size-xs);
+    color: var(--text-light);
+    margin-bottom: 2px;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.notification-time,
+.message-time {
+    font-size: var(--font-size-xs);
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+/* Dropdown footer */
+.dropdown-footer {
+    padding: 8px 12px;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+    background-color: var(--light-gray);
+}
+
+.view-all {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: var(--font-size-xs);
+}
+
+.view-all:hover {
+    text-decoration: underline;
+}
+
+/* Profile Menu optimisé */
+.profile-menu {
+    min-width: 220px;
+}
+
+.profile-header {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: var(--white);
+}
+
+.profile-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.profile-img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--white);
+}
+
+.profile-details h4 {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    margin-bottom: 2px;
+    line-height: 1.2;
+}
+
+.profile-details p {
+    font-size: var(--font-size-xs);
+    opacity: 0.9;
+    line-height: 1.2;
+}
+
+.profile-menu-items {
+    padding: 6px 0;
+}
+
+.profile-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    color: var(--text-dark);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-size: var(--font-size-xs);
+}
+
+.profile-menu-item:hover {
+    background-color: var(--light-gray);
+    color: var(--primary-color);
+}
+
+.profile-menu-item i {
+    width: 16px;
+    text-align: center;
+    font-size: var(--font-size-sm);
+}
+
+.profile-menu-item.logout {
+    color: var(--danger-color);
+}
+
+.profile-menu-item.logout:hover {
+    background-color: rgba(232, 67, 147, 0.1);
+}
+
+.profile-menu-divider {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 4px 0;
+}
+
+/* États vides */
+.empty-notification,
+.empty-message {
+    padding: 20px 12px;
+    text-align: center;
+    color: var(--text-light);
+    font-size: var(--font-size-xs);
+}
+
+/* Responsive Design pour Navbar */
+@media (max-width: 1200px) {
+    .navbar-center {
+        max-width: 240px;
+        margin: 0 8px;
+    }
+
+    .breadcrumb {
+        max-width: 150px;
+    }
+}
+
+@media (max-width: 992px) {
+    .navbar-center {
+        display: none;
+    }
+
+    .navbar-right {
+        gap: 4px;
+    }
+
+    .profile-name {
+        display: none;
+    }
+
+    .profile-btn {
+        padding: 4px;
+        background: transparent;
+    }
+
+    .dropdown-menu {
+        min-width: 240px;
+        right: -10px;
+    }
+}
+
+@media (max-width: 768px) {
+    .navbar {
+        left: 0;
+        padding: 0 8px;
+        height: 50px;
+    }
+
+    .mobile-menu-toggle {
+        display: block;
+    }
+
+    .breadcrumb {
+        font-size: var(--font-size-xs);
+        max-width: 120px;
+    }
+
+    .navbar-btn {
+        padding: 4px 6px;
+        min-width: 28px;
+        height: 28px;
+    }
+
+    .navbar-btn i {
+        font-size: var(--font-size-xs);
+    }
+
+    .profile-btn {
+        padding: 4px;
+    }
+
+    .profile-avatar img {
+        width: 20px;
+        height: 20px;
+    }
+
+    .dropdown-menu {
+        min-width: 220px;
+        right: -8px;
+    }
+
+    .notification-badge {
+        top: -1px;
+        right: -1px;
+        min-width: 12px;
+        height: 12px;
+        font-size: 9px;
+        line-height: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .navbar {
+        padding: 0 6px;
+    }
+
+    .navbar-left {
+        gap: 8px;
+    }
+
+    .breadcrumb {
+        max-width: 100px;
+    }
+
+    .navbar-right {
+        gap: 2px;
+    }
+
+    .navbar-btn {
+        padding: 3px 4px;
+        min-width: 24px;
+        height: 24px;
+    }
+
+    .navbar-btn i {
+        font-size: 11px;
+    }
+
+    .profile-avatar img {
+        width: 18px;
+        height: 18px;
+    }
+
+    .dropdown-menu {
+        min-width: 200px;
+        right: -6px;
+    }
+
+    .profile-menu {
+        min-width: 180px;
+    }
+
+    .notification-item,
+    .message-item {
+        padding: 6px 10px;
+        gap: 6px;
+    }
+
+    .notification-icon,
+    .message-avatar img {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* Animations et transitions fluides */
+.navbar-btn,
+.dropdown-menu,
+.notification-item,
+.message-item,
+.profile-menu-item {
+    transition: all 0.2s ease;
+}
+
+/* Animation du dropdown */
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dropdown.active .dropdown-menu {
+    animation: fadeInDown 0.3s ease;
+}
+
+/* Animation de la navbar au scroll */
+.navbar.hidden {
+    transform: translateY(-100%);
+}
+
+.navbar.visible {
+    transform: translateY(0);
+}
+
+/* Utilitaires pour les couleurs des icônes */
+.text-primary { color: var(--primary-color) !important; }
+.text-success { color: var(--success-color) !important; }
+.text-warning { color: var(--warning-color) !important; }
+.text-danger { color: var(--danger-color) !important; }
+.text-info { color: var(--info-color) !important; }
+
+/* Animation du badge de notification */
+.notification-badge {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Focus states pour l'accessibilité */
+.navbar-btn:focus,
+.search-input:focus,
+.profile-menu-item:focus,
+.view-all:focus,
+.mark-all-read:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
+}
+
+/* Amélioration pour les très petits écrans */
+@media (max-width: 320px) {
+    .breadcrumb {
+        max-width: 80px;
+    }
+
+    .navbar-left {
+        min-width: 100px;
+    }
+
+    .dropdown-menu {
+        min-width: 280px;
+        left: 0;
+        right: auto;
+    }
+}
+</style>

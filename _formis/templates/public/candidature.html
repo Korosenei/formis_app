@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candidature - FORMIS</title>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/candidature.css">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-light bg-white shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'home' %}">
+                <i class="fas fa-graduation-cap me-2"></i>
+                FORMIS
+            </a>
+            <div class="d-flex gap-2">
+                <a href="{% url 'accounts:login' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-sign-in-alt me-1"></i>
+                    Se connecter
+                </a>
+                <a href="{% url 'home' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>
+                    Accueil
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="py-5">
+        <div class="container">
+            <!-- En-tête -->
+            <div class="text-center mb-5">
+                <h1 class="fw-bold text-primary mb-3">
+                    <i class="fas fa-user-plus me-2"></i>
+                    Formulaire de Candidature
+                </h1>
+                <p class="lead text-muted">Complétez votre dossier de candidature en suivant les étapes</p>
+            </div>
+
+            <!-- Indicateur d'étapes -->
+            <div class="card mb-4" x-data="{ currentStep: {{ current_step|default:1 }} }">
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+                            <div class="step-indicator" :class="{ 'active': currentStep >= 1, 'completed': currentStep > 1 }">
+                                <div class="step-circle">
+                                    <i class="fas fa-user"></i>
+                                    <span class="step-number">1</span>
+                                </div>
+                                <h6 class="mt-2">Informations Personnelles</h6>
+                                <small class="text-muted">Identité et contact</small>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+                            <div class="step-indicator" :class="{ 'active': currentStep >= 2, 'completed': currentStep > 2 }">
+                                <div class="step-circle">
+                                    <i class="fas fa-graduation-cap"></i>
+                                    <span class="step-number">2</span>
+                                </div>
+                                <h6 class="mt-2">Formation Souhaitée</h6>
+                                <small class="text-muted">Établissement et filière</small>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+                            <div class="step-indicator" :class="{ 'active': currentStep >= 3, 'completed': currentStep > 3 }">
+                                <div class="step-circle">
+                                    <i class="fas fa-file-upload"></i>
+                                    <span class="step-number">3</span>
+                                </div>
+                                <h6 class="mt-2">Documents</h6>
+                                <small class="text-muted">Pièces justificatives</small>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+                            <div class="step-indicator" :class="{ 'active': currentStep >= 4, 'completed': currentStep > 4 }">
+                                <div class="step-circle">
+                                    <i class="fas fa-check"></i>
+                                    <span class="step-number">4</span>
+                                </div>
+                                <h6 class="mt-2">Confirmation</h6>
+                                <small class="text-muted">Vérification et soumission</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulaire principal -->
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <form method="post" enctype="multipart/form-data" x-data="candidatureForm()" @submit="handleSubmit">
+                        {% csrf_token %}
+
+                        <!-- Étape 1: Informations Personnelles -->
+                        <div class="card mb-4" x-show="currentStep === 1" x-transition>
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-user me-2"></i>
+                                    Étape 1: Informations Personnelles
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="last_name" class="form-label fw-medium">Nom de famille *</label>
+                                        <input type="text" class="form-control" id="last_name" name="last_name" required>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="first_name" class="form-label fw-medium">Prénom(s) *</label>
+                                        <input type="text" class="form-control" id="first_name" name="first_name" required>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="date_of_birth" class="form-label fw-medium">Date de naissance *</label>
+                                        <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" required>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="gender" class="form-label fw-medium">Sexe *</label>
+                                        <select class="form-select" id="gender" name="gender" required>
+                                            <option value="">Sélectionnez</option>
+                                            <option value="M">Masculin</option>
+                                            <option value="F">Féminin</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="phone_number" class="form-label fw-medium">Téléphone *</label>
+                                        <input type="tel" class="form-control" id="phone_number" name="phone_number" required>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="email" class="form-label fw-medium">Email *</label>
+                                        <input type="email" class="form-control" id="email" name="email" required>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label for="address" class="form-label fw-medium">Adresse complète *</label>
+                                        <textarea class="form-control" id="address" name="address" rows="3" required></textarea>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="nationality" class="form-label fw-medium">Nationalité *</label>
+                                        <input type="text" class="form-control" id="nationality" name="nationality" required>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="id_number" class="form-label fw-medium">Numéro CNI/Passeport</label>
+                                        <input type="text" class="form-control" id="id_number" name="id_number">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Étape 2: Formation Souhaitée -->
+                        <div class="card mb-4" x-show="currentStep === 2" x-transition>
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-graduation-cap me-2"></i>
+                                    Étape 2: Formation Souhaitée
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="establishment" class="form-label fw-medium">Établissement *</label>
+                                        <select class="form-select" id="establishment" name="establishment" required @change="loadDepartments">
+                                            <option value="">Choisir un établissement</option>
+                                            {% for establishment in establishments %}
+                                                <option value="{{ establishment.id }}">{{ establishment.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="department" class="form-label fw-medium">Département *</label>
+                                        <select class="form-select" id="department" name="department" required @change="loadPrograms">
+                                            <option value="">Sélectionnez d'abord un établissement</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="program" class="form-label fw-medium">Filière *</label>
+                                        <select class="form-select" id="program" name="program" required @change="loadLevels">
+                                            <option value="">Sélectionnez d'abord un département</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="level" class="form-label fw-medium">Niveau *</label>
+                                        <select class="form-select" id="level" name="level" required>
+                                            <option value="">Sélectionnez d'abord une filière</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label for="motivation" class="form-label fw-medium">Lettre de motivation</label>
+                                        <textarea class="form-control" id="motivation" name="motivation" rows="4"
+                                                placeholder="Expliquez brièvement pourquoi vous souhaitez intégrer cette formation..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Étape 3: Documents -->
+                        <div class="card mb-4" x-show="currentStep === 3" x-transition>
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-file-upload me-2"></i>
+                                    Étape 3: Documents Requis
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Important:</strong> Tous les documents doivent être au format PDF, JPG ou PNG et ne pas dépasser 5MB.
+                                </div>
+
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="photo" class="form-label fw-medium">Photo d'identité *</label>
+                                        <input type="file" class="form-control" id="photo" name="photo" accept=".jpg,.jpeg,.png" required>
+                                        <small class="form-text text-muted">Format: JPG, PNG (max 2MB)</small>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="id_document" class="form-label fw-medium">Pièce d'identité *</label>
+                                        <input type="file" class="form-control" id="id_document" name="id_document" accept=".pdf,.jpg,.jpeg,.png" required>
+                                        <small class="form-text text-muted">CNI, Passeport ou Acte de naissance</small>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="diploma" class="form-label fw-medium">Dernier diplôme *</label>
+                                        <input type="file" class="form-control" id="diploma" name="diploma" accept=".pdf,.jpg,.jpeg,.png" required>
+                                        <small class="form-text text-muted">Diplôme ou relevé de notes</small>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="transcript" class="form-label fw-medium">Relevé de notes</label>
+                                        <input type="file" class="form-control" id="transcript" name="transcript" accept=".pdf,.jpg,.jpeg,.png">
+                                        <small class="form-text text-muted">Si différent du diplôme</small>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="medical_certificate" class="form-label fw-medium">Certificat médical</label>
+                                        <input type="file" class="form-control" id="medical_certificate" name="medical_certificate" accept=".pdf,.jpg,.jpeg,.png">
+                                        <small class="form-text text-muted">Selon les exigences de la formation</small>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="other_documents" class="form-label fw-medium">Autres documents</label>
+                                        <input type="file" class="form-control" id="other_documents" name="other_documents" accept=".pdf,.jpg,.jpeg,.png" multiple>
+                                        <small class="form-text text-muted">Documents complémentaires</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Étape 4: Confirmation -->
+                        <div class="card mb-4" x-show="currentStep === 4" x-transition>
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-check me-2"></i>
+                                    Étape 4: Vérification et Soumission
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>Attention:</strong> Veuillez vérifier toutes vos informations avant de soumettre votre candidature.
+                                    Une fois soumise, vous ne pourrez plus modifier votre dossier.
+                                </div>
+
+                                <!-- Résumé de la candidature -->
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <h6 class="fw-bold text-primary">Informations Personnelles</h6>
+                                        <div class="bg-light p-3 rounded">
+                                            <p class="mb-1"><strong>Nom:</strong> <span x-text="personalInfo.last_name + ' ' + personalInfo.first_name"></span></p>
+                                            <p class="mb-1"><strong>Email:</strong> <span x-text="personalInfo.email"></span></p>
+                                            <p class="mb-0"><strong>Téléphone:</strong> <span x-text="personalInfo.phone_number"></span></p>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <h6 class="fw-bold text-primary">Formation Choisie</h6>
+                                        <div class="bg-light p-3 rounded">
+                                            <p class="mb-1"><strong>Établissement:</strong> <span x-text="academicInfo.establishment_name"></span></p>
+                                            <p class="mb-1"><strong>Département:</strong> <span x-text="academicInfo.department_name"></span></p>
+                                            <p class="mb-1"><strong>Filière:</strong> <span x-text="academicInfo.program_name"></span></p>
+                                            <p class="mb-0"><strong>Niveau:</strong> <span x-text="academicInfo.level_name"></span></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" id="terms_accepted" name="terms_accepted" required>
+                                    <label class="form-check-label" for="terms_accepted">
+                                        Je certifie que toutes les informations fournies sont exactes et j'accepte les
+                                        <a href="#" class="text-primary">conditions générales</a> de candidature.
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Boutons de navigation -->
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary" x-show="currentStep > 1" @click="previousStep">
+                                <i class="fas fa-arrow-left me-2"></i>
+                                Précédent
+                            </button>
+
+                            <div class="ms-auto">
+                                <button type="button" class="btn btn-primary" x-show="currentStep < 4" @click="nextStep">
+                                    Suivant
+                                    <i class="fas fa-arrow-right ms-2"></i>
+                                </button>
+
+                                <button type="submit" class="btn btn-success" x-show="currentStep === 4" :disabled="submitting">
+                                    <template x-if="submitting">
+                                        <span>
+                                            <span class="loading me-2"></span>
+                                            Soumission...
+                                        </span>
+                                    </template>
+                                    <template x-if="!submitting">
+                                        <span>
+                                            <i class="fas fa-paper-plane me-2"></i>
+                                            Soumettre la candidature
+                                        </span>
+                                    </template>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom JS -->
+    <script src="/static/js/candidature.js"></script>
+</body>
+</html>

@@ -1,0 +1,258 @@
+# Structure du projet FORMIS - Gestion des établissements de formation
+
+formis/
+├── _formis/                          # Configuration principale
+│   ├── __init__.py
+│   ├── settings.py                # Paramètres de test
+│   ├── urls.py
+│   ├── wsgi.py
+│   └── asgi.py
+│
+├── apps/                             # Applications Django
+│   ├── __init__.py
+│   ├── accounts/                     # Gestion des utilisateurs et authentification
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   ├── permissions.py
+│   │   ├── utils.py
+│   │   ├── managers.py
+│   │   ├── migrations/
+│   │   └── tests/
+│   │
+│   ├── core/                         # Fonctionnalités communes
+│   │   ├── __init__.py
+│   │   ├── models.py                 # Modèles abstraits de base
+│   │   ├── mixins.py
+│   │   ├── permissions.py
+│   │   ├── pagination.py
+│   │   ├── utils.py
+│   │   ├── validators.py
+│   │   ├── exceptions.py
+│   │   └── constants.py
+│   │
+│   ├── establishments/               # Gestion des établissements
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   ├── filters.py
+│   │   ├── utils.py
+│   │   ├── migrations/
+│   │   └── tests/
+│   │
+│   ├── academic/                     # Structure académique
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py                 # Départements, filières, niveaux
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   ├── filters.py
+│   │   ├── migrations/
+│   │   └── tests/
+│   │
+│   ├── courses/                      # Gestion des cours
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py                 # Matières, modules, cours
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   ├── filters.py
+│   │   ├── migrations/
+│   │   └── tests/
+│   │
+│   ├── enrollment/                   # Candidatures et inscriptions
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   ├── filters.py
+│   │   ├── utils.py
+│   │   ├── signals.py
+│   │   ├── migrations/
+│   │   └── tests/
+│   │
+│   ├── payments/                     # Gestion des paiements
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   ├── utils.py
+│   │   ├── migrations/
+│   │   └── tests/
+│   │
+│   ├── pedagogy/                     # Pédagogie (cahier de texte, présences)
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   ├── filters.py
+│   │   ├── migrations/
+│   │   └── tests/
+│   │
+│   ├── evaluation/                   # Évaluations et notes
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   ├── filters.py
+│   │   ├── utils.py                  # Calculs de moyennes
+│   │   ├── migrations/
+│   │   └── tests/
+│   │
+│   ├── resources/                    # Ressources pédagogiques
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   ├── utils.py
+│   │   ├── migrations/
+│   │   └── tests/
+│   │
+│   ├── documents/                    # Génération de documents
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── models.py
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   ├── generators.py             # Générateurs PDF
+│   │   ├── templates/
+│   │   │   ├── receipts/
+│   │   │   ├── cards/
+│   │   │   └── certificates/
+│   │   ├── migrations/
+│   │   └── tests/
+│   │
+│   └── notifications/                # Système de notifications
+│       ├── __init__.py
+│       ├── admin.py
+│       ├── apps.py
+│       ├── models.py
+│       ├── serializers.py
+│       ├── views.py
+│       ├── urls.py
+│       ├── utils.py
+│       ├── tasks.py                  # Tâches asynchrones
+│       ├── migrations/
+│       └── tests/
+│
+├── api/                              # API REST
+│   ├── __init__.py
+│   ├── v1/
+│   │   ├── __init__.py
+│   │   ├── urls.py
+│   │   ├── views.py
+│   │   └── serializers.py
+│   └── v2/                           # Évolutivité
+│       ├── __init__.py
+│       └── urls.py
+│
+├── static/                           # Fichiers statiques
+│   ├── css/
+│   │   ├── dashboard.css
+│   │   ├── auth.css
+│   │   └── components.css
+│   ├── js/
+│   │   ├── dashboard.js
+│   │   ├── components.js
+│   │   └── utils.js
+│   ├── images/
+│   └── fonts/
+│
+├── templates/                        # Templates HTML
+│   ├── base/
+│   │   ├── base.html
+│   │   ├── dashboard_base.html
+│   │   └── auth_base.html
+│   ├── components/
+│   │   ├── sidebar.html
+│   │   ├── navbar.html
+│   │   └── pagination.html
+│   ├── auth/
+│   │   ├── login.html
+│   │   ├── register.html
+│   │   └── password_reset.html
+│   ├── dashboard/
+│   │   ├── index.html
+│   │   ├── superadmin/
+│   │   ├── admin/
+│   │   ├── department_head/
+│   │   ├── teacher/
+│   │   └── student/
+│   ├── public/
+│   │   ├── home.html
+│   │   ├── establishments.html
+│   │   └── application.html
+│   └── email/
+│       ├── account_created.html
+│       ├── application_approved.html
+│       └── payment_reminder.html
+│
+├── media/                            # Fichiers uploadés
+│   ├── documents/
+│   ├── resources/
+│   ├── photos/
+│   └── generated/
+│
+├── locale/                           # Internationalisation
+│   ├── fr/
+│   └── en/
+│
+├── tests/                            # Tests globaux
+│   ├── __init__.py
+│   ├── test_settings.py
+│   ├── fixtures/
+│   └── utils.py
+│
+├── scripts/                          # Scripts utilitaires
+│   ├── __init__.py
+│   ├── setup_dev.py
+│   ├── backup_db.py
+│   └── migrate_data.py
+│
+├── docs/                             # Documentation
+│   ├── API.md
+│   ├── DEPLOYMENT.md
+│   ├── DEVELOPMENT.md
+│   └── USER_GUIDE.md
+│
+├── requirements/                     # Dépendances
+│   ├── base.txt
+│   ├── development.txt
+│   ├── production.txt
+│   └── testing.txt
+│
+├── .env.example                      # Variables d'environnement exemple
+├── .gitignore
+├── manage.py
+├── README.md
+├── docker-compose.yml                # Pour le développement
+└── Dockerfile

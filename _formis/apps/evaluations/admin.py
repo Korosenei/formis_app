@@ -1,0 +1,238 @@
+from django.contrib import admin
+from django.utils.html import format_html
+from django.urls import reverse
+from django.utils import timezone
+from .models import Evaluation, Composition, FichierComposition, Note, MoyenneModule
+
+
+@admin.register(Evaluation)
+class EvaluationAdmin(admin.ModelAdmin):
+    list_display = [
+        'titre', 'enseignant', 'matiere_module', 'type_evaluation',
+        'coefficient', 'date_debut', 'date_fin', 'statut', 'nb_compositions'
+    ]
+    list_filter = [
+        'type_evaluation', 'statut', 'date_debut', 'matiere_module__matiere',
+        'enseignant'
+    ]
+    search_fields = ['titre', 'description', 'enseignant__username']
+    readonly_fields = ['created_at', 'updated_at']
+    filter_horizontal = ['classes']
+
+    fieldsets = (
+        ('Informations de base', {
+            'fields': ('enseignant', 'matiere_module', 'titre', 'description', 'type_evaluation')
+        }),
+        ('Notation', {
+            'fields': ('coefficient', 'note_maximale')
+        }),
+        ('Planning', {
+            'fields': ('date_debut', 'date_fin', 'duree_minutes')
+        }),
+        ('Fichiers', {
+            'fields': ('fichier_evaluation', 'fichier_correction')
+        }),
+        ('Paramètres de correction', {
+            'fields': ('correction_visible_immediatement', 'date_publication_correction')
+        }),
+        ('Paramètres de retard', {
+            'fields': ('autorise_retard', 'penalite_retard')
+        }),
+        ('Configuration', {
+            'fields': ('statut', 'classes')
+        }),
+        ('Métadonnées', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
+
+    def est_active(self, obj):
+        if obj.est_active:
+            return format_html('<span style="color: green;">✓ Active</span>')
+        return format_html('<span style="color: red;">✗ Inactive</span>')
+    est_active.short_description = 'Active'
+
+    def nb_compositions(self, obj):
+        return obj.compositions.count()
+
+    nb_compositions.short_description = 'Nb compositions'
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.role == 'ENSEIGNANT':
+            return qs.filter(enseignant=request.user)
+        return qs
+
+
+@admin.register(Composition)
+class CompositionAdmin(admin.ModelAdmin):
+    list_display = [
+        'apprenant', 'evaluation', 'statut', 'date_debut',
+        'date_soumission', 'note_obtenue', 'est_en_retard_display'
+    ]
+    list_filter = [
+        'statut', 'evaluation__type_evaluation', 'date_soumission',
+        'evaluation__matiere_module'
+    ]
+    search_fields = [
+        'apprenant__username', 'apprenant__first_name',
+        'apprenant__last_name', 'evaluation__titre'
+    ]
+    readonly_fields = [
+        'created_at', 'updated_at', 'date_debut',
+        'est_en_retard_display'
+    ]
+
+    fieldsets = (
+        ('Informations de base', {
+            'fields': ('evaluation', 'apprenant', 'statut')
+        }),
+        ('Timing', {
+            'fields': ('date_debut', 'date_soumission', 'est_en_retard_display')
+        }),
+        ('Correction', {
+            'fields': ('note_obtenue', 'commentaire_correction',
+                      'fichier_correction_personnalise', 'corrigee_par', 'date_correction')
+        }),
+        ('Métadonnées', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
+
+    def est_en_retard_display(self, obj):
+        if obj.est_en_retard:
+            return format_html('<span style="color: red;">Oui</span>')
+        return format_html('<span style="color: green;">Non</span>')
+    est_en_retard_display.short_description = 'En retard'
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.role == 'ENSEIGNANT':
+            return qs.filter(evaluation__enseignant=request.user)
+        elif request.user.role == 'APPRENANT':
+            return qs.filter(apprenant=request.user)
+        return qs
+
+
+@admin.register(FichierComposition)
+class FichierCompositionAdmin(admin.ModelAdmin):
+    list_display = [
+        'nom_original', 'uploade_par', 'taille_formatee',
+        'type_mime', 'created_at'
+    ]
+    list_filter = ['type_mime', 'created_at']
+    search_fields = ['nom_original', 'uploade_par__username']
+    readonly_fields = ['created_at', 'updated_at', 'taille', 'type_mime']
+
+    def taille_formatee(self, obj):
+        if obj.taille < 1024:
+            return f"{obj.taille} bytes"
+        elif obj.taille < 1024 * 1024:
+            return f"{obj.taille / 1024:.1f} KB"
+        else:
+            return f"{obj.taille / (1024 * 1024):.1f} MB"
+    taille_formatee.short_description = 'Taille'
+
+
+@admin.register(Note)
+class NoteAdmin(admin.ModelAdmin):
+    list_display = [
+        'apprenant', 'evaluation', 'valeur', 'note_sur',
+        'note_sur_20_display', 'coefficient_pondere', 'attribuee_par'
+    ]
+    list_filter = [
+        'evaluation__type_evaluation', 'evaluation__matiere_module',
+        'date_attribution', 'attribuee_par'
+    ]
+    search_fields = [
+        'apprenant__username', 'apprenant__first_name',
+        'apprenant__last_name', 'evaluation__titre'
+    ]
+    readonly_fields = ['date_attribution', 'note_sur_20_display']
+
+    fieldsets = (
+        ('Informations de base', {
+            'fields': ('apprenant', 'matiere_module', 'evaluation', 'composition')
+        }),
+        ('Note', {
+            'fields': ('valeur', 'note_sur', 'note_sur_20_display')
+        }),
+        ('Métadonnées', {
+            'fields': ('attribuee_par', 'date_attribution', 'commentaire')
+        })
+    )
+
+    def note_sur_20_display(self, obj):
+        # CORRECTION : Gérer le cas où note_sur_20 est None
+        if obj.note_sur_20 is None:
+            return "N/A"
+        return f"{obj.note_sur_20:.2f}/20"
+    note_sur_20_display.short_description = 'Note sur 20'
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.role == 'ENSEIGNANT':
+            return qs.filter(evaluation__enseignant=request.user)
+        elif request.user.role == 'APPRENANT':
+            return qs.filter(apprenant=request.user)
+        return qs
+
+@admin.register(MoyenneModule)
+class MoyenneModuleAdmin(admin.ModelAdmin):
+    list_display = [
+        'apprenant', 'module', 'annee_academique',
+        'moyenne_generale_display', 'total_credits', 'validee'
+    ]
+    list_filter = [
+        'validee', 'annee_academique', 'module',
+        'date_validation'
+    ]
+    search_fields = [
+        'apprenant__username', 'apprenant__first_name',
+        'apprenant__last_name', 'module__nom'
+    ]
+    readonly_fields = ['created_at', 'updated_at']
+
+    fieldsets = (
+        ('Informations de base', {
+            'fields': ('apprenant', 'module', 'annee_academique')
+        }),
+        ('Résultats', {
+            'fields': ('moyenne_generale', 'total_credits')
+        }),
+        ('Validation', {
+            'fields': ('validee', 'date_validation')
+        }),
+        ('Métadonnées', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
+
+    def moyenne_generale_display(self, obj):
+        if obj.moyenne_generale:
+            if obj.moyenne_generale >= 10:
+                return format_html(
+                    '<span style="color: green; font-weight: bold;">{:.2f}/20</span>',
+                    obj.moyenne_generale
+                )
+            else:
+                return format_html(
+                    '<span style="color: red; font-weight: bold;">{:.2f}/20</span>',
+                    obj.moyenne_generale
+                )
+        return "N/A"
+    moyenne_generale_display.short_description = 'Moyenne'
+
+    actions = ['calculer_moyennes']
+
+    def calculer_moyennes(self, request, queryset):
+        for moyenne in queryset:
+            moyenne.calculer_moyenne()
+        self.message_user(
+            request,
+            f"{queryset.count()} moyennes ont été recalculées."
+        )
+    calculer_moyennes.short_description = "Recalculer les moyennes sélectionnées"

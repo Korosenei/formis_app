@@ -1,0 +1,277 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link href="{% static 'evaluations/css/evaluations.css' %}" rel="stylesheet">
+<style>
+  .evaluation-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border-left: 4px solid transparent;
+  }
+
+  .evaluation-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  }
+
+  .evaluation-card.active {
+    border-left-color: #28a745;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  }
+
+  .evaluation-card.terminee {
+    border-left-color: #6c757d;
+  }
+
+  .evaluation-card.en-retard {
+    border-left-color: #dc3545;
+  }
+
+  .status-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+  }
+
+  .status-active {
+    background-color: #d4edda;
+    color: #155724;
+  }
+
+  .status-terminee {
+    background-color: #d1ecf1;
+    color: #0c5460;
+  }
+
+  .status-programmee {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+
+  .status-brouillon {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+
+  .countdown-timer {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    color: #dc3545;
+  }
+
+  .file-upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 0.375rem;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s;
+  }
+
+  .file-upload-area:hover,
+  .file-upload-area.dragover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+  }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    background-color: #f8f9fa;
+  }
+
+  .file-item .file-icon {
+    margin-right: 0.75rem;
+    font-size: 1.25rem;
+  }
+
+  .modal-viewer {
+    max-width: 90vw;
+    max-height: 90vh;
+  }
+
+  .notes-summary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+  }
+
+  .stats-card {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+  }
+
+  .stats-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .progress-ring {
+    transform: rotate(-90deg);
+  }
+
+  .progress-ring-circle {
+    stroke-dasharray: 251.2; /* 2 * PI * 40 */
+    stroke-dashoffset: 251.2;
+    transition: stroke-dashoffset 0.5s;
+  }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'evaluations/js/evaluations.js' %}"></script>
+<script>
+// Fonction pour mettre à jour les compteurs de temps
+function updateCountdowns() {
+    document.querySelectorAll('[data-end-time]').forEach(element => {
+        const endTime = new Date(element.dataset.endTime);
+        const now = new Date();
+        const diff = endTime - now;
+
+        if (diff > 0) {
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            element.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+            if (diff < 300000) { // Moins de 5 minutes
+                element.classList.add('text-danger', 'fw-bold');
+            }
+        } else {
+            element.textContent = 'Terminé';
+            element.classList.add('text-muted');
+        }
+    });
+}
+
+// Initialiser les compteurs
+document.addEventListener('DOMContentLoaded', function() {
+    updateCountdowns();
+    setInterval(updateCountdowns, 1000);
+});
+
+// Fonction pour formater la taille des fichiers
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Fonction pour gérer les notifications toast
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.remove();
+    }, 5000);
+}
+
+// Configuration CSRF pour AJAX
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Configuration globale AJAX
+$.ajaxSetup({
+    beforeSend: function(xhr, settings) {
+        if (!this.crossDomain) {
+            xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
+        }
+    }
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    {% include 'evaluations/partials/breadcrumb.html' %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% block page_content %}
+    {% endblock %}
+</div>
+
+<!-- Modal pour visualiser les fichiers -->
+<div class="modal fade" id="fileViewerModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Visualisation du fichier</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="fileViewerContent" style="height: 70vh;">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Chargement...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <a href="#" class="btn btn-primary" id="downloadFileBtn" download>
+                    <i class="fas fa-download"></i> Télécharger
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="confirmBtn">Confirmer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

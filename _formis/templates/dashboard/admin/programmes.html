@@ -1,0 +1,803 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Gestion des Programmes - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-programmes">
+    <!-- Header compact -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Programmes</span>
+            </div>
+            <h1>Gestion des Programmes</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ total_programmes }} total</span>
+                <span class="stat-badge actifs">{{ total_actifs }} actifs</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportProgrammes()" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+            <a href="{% url 'academic:programme_create' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Ajouter
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtres compacts -->
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="Rechercher..."
+                       value="{{ current_filters.search }}" class="form-input-sm">
+            </div>
+            <div class="filter-group">
+                <select name="departement" class="form-select-sm">
+                    <option value="">Tous départements</option>
+                    {% for dept in departements %}
+                        <option value="{{ dept.id }}" {% if current_filters.departement == dept.id|stringformat:"s" %}selected{% endif %}>
+                            {{ dept.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="filiere" class="form-select-sm">
+                    <option value="">Toutes filières</option>
+                    {% for filiere in filieres %}
+                        <option value="{{ filiere.id }}" {% if current_filters.filiere == filiere.id|stringformat:"s" %}selected{% endif %}>
+                            {{ filiere.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="est_actif" class="form-select-sm">
+                    <option value="">Tous statuts</option>
+                    <option value="True" {% if current_filters.est_actif == 'True' %}selected{% endif %}>Actifs</option>
+                    <option value="False" {% if current_filters.est_actif == 'False' %}selected{% endif %}>Inactifs</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:admin_programmes' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Actions en lot -->
+    <div class="bulk-actions-bar" id="bulkActionsBar" style="display: none;">
+        <div class="bulk-info">
+            <i class="fas fa-check-square"></i>
+            <span id="selectedCount">0</span> sélectionné(s)
+        </div>
+        <div class="bulk-buttons">
+            <button class="btn btn-sm btn-success" onclick="bulkApprove()">
+                <i class="fas fa-check"></i> Approuver
+            </button>
+            <button class="btn btn-sm btn-warning" onclick="bulkExport()">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Tableau optimisé -->
+    <div class="programmes-table-container">
+        <div class="table-wrapper">
+            <table class="programmes-table">
+                <thead>
+                    <tr>
+                        <th width="30">
+                            <input type="checkbox" class="select-all-header" id="selectAllProgrammes">
+                        </th>
+                        <th width="250">Programme</th>
+                        <th width="180">Filière</th>
+                        <th width="120">Département</th>
+                        <th width="100">Année début</th>
+                        <th width="100">Année fin</th>
+                        <th width="150">Approuvé par</th>
+                        <th width="100">Date approbation</th>
+                        <th width="60">Statut</th>
+                        <th width="80">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for programme in programmes %}
+                    <tr class="programme-row">
+                        <td>
+                            <input type="checkbox" class="programme-checkbox" value="{{ programme.id }}">
+                        </td>
+                        <td>
+                            <div class="programme-info">
+                                <div class="programme-name">{{ programme.nom|truncatechars:40 }}</div>
+                                {% if programme.description %}
+                                    <small class="programme-desc">{{ programme.description|truncatechars:50 }}</small>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="filiere-info">
+                                <span class="filiere-badge">{{ programme.filiere.nom }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="department-name">{{ programme.filiere.departement.nom }}</div>
+                        </td>
+                        <td class="text-center">
+                            <span class="year-badge">{{ programme.annee_debut }}</span>
+                        </td>
+                        <td class="text-center">
+                            {% if programme.annee_fin %}
+                                <span class="year-badge">{{ programme.annee_fin }}</span>
+                            {% else %}
+                                <span class="text-muted">En cours</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if programme.approuve_par %}
+                                <div class="approver-info">
+                                    <div class="user-avatar-sm">
+                                        {% if programme.approuve_par.photo_profil %}
+                                            <img src="{{ programme.approuve_par.photo_profil.url }}" alt="">
+                                        {% else %}
+                                            <i class="fas fa-user-check"></i>
+                                        {% endif %}
+                                    </div>
+                                    <span class="approver-name">{{ programme.approuve_par.get_full_name|truncatechars:20 }}</span>
+                                </div>
+                            {% else %}
+                                <span class="pending-badge">
+                                    <i class="fas fa-clock"></i> En attente
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if programme.date_approbation %}
+                                <small class="date-text">{{ programme.date_approbation|date:"d/m/Y" }}</small>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="status-info">
+                                {% if programme.est_actif %}
+                                    <i class="fas fa-check-circle text-success" title="Actif"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-danger" title="Inactif"></i>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons-sm">
+                                <a href="{% url 'courses:emploi_du_temps_detail' programme.id %}" class="btn-icon-sm btn-primary" title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'courses:emploi_du_temps_edit' programme.id %}" class="btn-icon-sm btn-info" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <div class="dropdown-compact">
+                                    <button class="btn-icon-sm btn-outline dropdown-toggle">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="dropdown-menu-compact">
+                                        <a href="{% url 'courses:emploi_du_temps_detail' programme.id %}">
+                                            <i class="fas fa-eye"></i> Détails
+                                        </a>
+                                        <a href="{% url 'courses:emploi_du_temps_edit' programme.id %}">
+                                            <i class="fas fa-edit"></i> Modifier
+                                        </a>
+                                        <a href="#" onclick="viewModules('{{ programme.id }}')">
+                                            <i class="fas fa-cubes"></i> Modules
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        {% if not programme.approuve_par %}
+                                            <a href="#" onclick="approveProgramme('{{ programme.id }}')" class="text-success">
+                                                <i class="fas fa-check"></i> Approuver
+                                            </a>
+                                        {% endif %}
+                                        <a href="#" onclick="duplicateProgramme('{{ programme.id }}')">
+                                            <i class="fas fa-copy"></i> Dupliquer
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        {% if programme.est_actif %}
+                                            <a href="#" onclick="toggleProgrammeStatus('{{ programme.id }}', false)" class="text-warning">
+                                                <i class="fas fa-pause"></i> Désactiver
+                                            </a>
+                                        {% else %}
+                                            <a href="#" onclick="toggleProgrammeStatus('{{ programme.id }}', true)" class="text-success">
+                                                <i class="fas fa-play"></i> Activer
+                                            </a>
+                                        {% endif %}
+                                        <div class="dropdown-divider"></div>
+                                        <a href="#" onclick="deleteProgramme('{{ programme.id }}')" class="text-danger">
+                                            <i class="fas fa-trash"></i> Supprimer
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <div class="empty-content">
+                                <i class="fas fa-graduation-cap fa-2x text-muted"></i>
+                                <p class="mt-2">Aucun programme trouvé</p>
+                                <a href="{% url 'academic:programme_create' %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus"></i> Ajouter
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% include 'components/pagination.html' with page_obj=programmes %}
+    </div>
+</div>
+
+<style>
+.admin-programmes {
+    padding: 15px;
+}
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: var(--shadow-sm);
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav .current {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.header-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.stat-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--light-gray);
+    border-radius: 12px;
+    font-size: 11px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.stat-badge.actifs {
+    background: #d4edda;
+    color: #155724;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.filters-section {
+    background: var(--white);
+    padding: 12px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.form-input-sm, .form-select-sm {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    height: 32px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.bulk-actions-bar {
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: var(--border-radius);
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--font-size-sm);
+}
+
+.bulk-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #155724;
+    font-weight: 500;
+}
+
+.bulk-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.programmes-table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.programmes-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1200px;
+}
+
+.programmes-table th {
+    background: var(--light-gray);
+    padding: 8px 6px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+}
+
+.programmes-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--gray);
+    vertical-align: middle;
+    font-size: var(--font-size-xs);
+}
+
+.programme-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.programme-name {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: var(--font-size-sm);
+}
+
+.programme-desc {
+    color: var(--text-light);
+    font-size: 10px;
+}
+
+.filiere-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.department-name {
+    font-weight: 600;
+    color: var(--text-dark);
+    font-size: 11px;
+}
+
+.year-badge {
+    background: var(--info-color);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.approver-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.user-avatar-sm {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--light-gray);
+    color: var(--text-light);
+    font-size: 10px;
+    flex-shrink: 0;
+}
+
+.user-avatar-sm img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.approver-name {
+    font-size: var(--font-size-xs);
+    color: var(--text-dark);
+}
+
+.pending-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: #fff3e0;
+    color: #e65100;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.date-text {
+    color: var(--text-light);
+    font-size: 10px;
+}
+
+.status-info {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.action-buttons-sm {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.btn-icon-sm {
+    width: 24px;
+    height: 24px;
+    border-radius: 3px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+
+.btn-icon-sm.btn-primary { background: var(--primary-color); color: white; }
+.btn-icon-sm.btn-info { background: var(--info-color); color: white; }
+.btn-icon-sm.btn-outline {
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+}
+
+.btn-icon-sm:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: var(--light-gray);
+    color: var(--text-dark);
+    transition: all 0.3s;
+}
+
+.btn-icon:hover {
+    background: var(--border-color);
+}
+
+.dropdown-compact {
+    position: relative;
+}
+
+.dropdown-menu-compact {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    min-width: 180px;
+}
+
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 11px;
+    transition: background 0.2s;
+}
+
+.dropdown-menu-compact a:hover {
+    background: var(--light-gray);
+}
+
+.dropdown-menu-compact a i {
+    width: 14px;
+    text-align: center;
+}
+
+.text-success { color: var(--success-color); }
+.text-danger { color: var(--danger-color); }
+.text-warning { color: var(--warning-color); }
+.text-muted { color: var(--text-light); }
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 4px 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-content {
+    color: var(--text-light);
+}
+
+.mt-2 { margin-top: 8px; }
+
+@media (max-width: 768px) {
+    .page-header-compact {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .filters-form {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAllProgrammes');
+    const checkboxes = document.querySelectorAll('.programme-checkbox');
+    const bulkBar = document.getElementById('bulkActionsBar');
+    const selectedCount = document.getElementById('selectedCount');
+
+    selectAll?.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+        updateBulkActions();
+    });
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    function updateBulkActions() {
+        const selected = document.querySelectorAll('.programme-checkbox:checked').length;
+        selectedCount.textContent = selected;
+        bulkBar.style.display = selected > 0 ? 'flex' : 'none';
+
+        if (selectAll) {
+            selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+            selectAll.checked = selected === checkboxes.length;
+        }
+    }
+
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.style.display = 'none';
+            });
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        });
+    });
+
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    });
+});
+
+function exportProgrammes() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/courses/programmes/export/?${params.toString()}`;
+}
+
+function deleteProgramme(programmeId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce programme ? Cette action est irréversible.')) {
+        fetch(`/courses/programme/${programmeId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    }
+}
+
+function toggleProgrammeStatus(programmeId, activate) {
+    if (confirm(`${activate ? 'Activer' : 'Désactiver'} ce programme ?`)) {
+        fetch(`/courses/programme/${programmeId}/toggle-status/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({active: activate})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    }
+}
+
+function approveProgramme(programmeId) {
+    if (confirm('Approuver ce programme ?')) {
+        fetch(`/courses/programme/${programmeId}/approve/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    }
+}
+
+function duplicateProgramme(programmeId) {
+    if (confirm('Dupliquer ce programme ?')) {
+        fetch(`/courses/programme/${programmeId}/duplicate/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Programme dupliqué avec succès');
+                location.reload();
+            } else {
+                alert(data.message || 'Erreur');
+            }
+        });
+    }
+}
+
+function viewModules(programmeId) {
+    window.location.href = `/courses/programme/${programmeId}/modules/`;
+}
+
+function bulkApprove() {
+    const selected = Array.from(document.querySelectorAll('.programme-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins un programme');
+        return;
+    }
+    if (confirm(`Approuver ${selected.length} programme(s) ?`)) {
+        fetch(`/courses/programmes/bulk-approve/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ids: selected})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    }
+}
+
+function bulkExport() {
+    const selected = Array.from(document.querySelectorAll('.programme-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins un programme');
+        return;
+    }
+    window.location.href = `/courses/programmes/export/?ids=${selected.join(',')}`;
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

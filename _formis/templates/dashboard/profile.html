@@ -1,0 +1,811 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Mon Profil{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <!-- En-tête du profil -->
+    <div class="profile-header">
+        <div class="profile-cover"></div>
+        <div class="profile-info-section">
+            <div class="profile-avatar-container">
+                <div class="profile-avatar-large">
+                    {% if user.photo_profil %}
+                        <img src="{{ user.photo_profil.url }}" alt="{{ user.get_full_name }}">
+                    {% else %}
+                        <i class="fas fa-user"></i>
+                    {% endif %}
+                    <button class="avatar-edit-btn" onclick="$('#photoProfilModal').modal('show')">
+                        <i class="fas fa-camera"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="profile-main-info">
+                <h1 class="profile-name">{{ user.get_full_name }}</h1>
+                <p class="profile-role">
+                    <i class="fas fa-id-badge"></i>
+                    {{ user.get_role_display }}
+                </p>
+                <p class="profile-matricule">
+                    <code>{{ user.matricule }}</code>
+                </p>
+            </div>
+            <div class="profile-actions">
+                <a href="{% url 'dashboard:edit_profile' %}" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Modifier
+                </a>
+                <a href="{% url 'dashboard:change_password' %}" class="btn btn-outline">
+                    <i class="fas fa-lock"></i> Mot de passe
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenu principal -->
+    <div class="profile-content">
+        <!-- Colonne gauche : Informations -->
+        <div class="profile-left">
+            <!-- Informations personnelles -->
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <h3><i class="fas fa-user-circle"></i> Informations personnelles</h3>
+                </div>
+                <div class="profile-card-body">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label><i class="fas fa-envelope"></i> Email</label>
+                            <span>{{ user.email }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label><i class="fas fa-phone"></i> Téléphone</label>
+                            <span>{{ user.telephone|default:"Non renseigné" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label><i class="fas fa-birthday-cake"></i> Date de naissance</label>
+                            <span>{{ user.date_naissance|date:"d/m/Y"|default:"Non renseignée" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label><i class="fas fa-map-marker-alt"></i> Lieu de naissance</label>
+                            <span>{{ user.lieu_naissance|default:"Non renseigné" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <label><i class="fas fa-venus-mars"></i> Genre</label>
+                            <span>
+                                {% if user.genre == 'M' %}
+                                    <i class="fas fa-mars text-info"></i> Masculin
+                                {% elif user.genre == 'F' %}
+                                    <i class="fas fa-venus text-pink"></i> Féminin
+                                {% else %}
+                                    Non renseigné
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <label><i class="fas fa-home"></i> Adresse</label>
+                            <span>{{ user.adresse|default:"Non renseignée" }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informations académiques/professionnelles -->
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <h3>
+                        {% if user.role == 'APPRENANT' %}
+                            <i class="fas fa-graduation-cap"></i> Informations académiques
+                        {% elif user.role == 'ENSEIGNANT' %}
+                            <i class="fas fa-chalkboard-teacher"></i> Informations professionnelles
+                        {% else %}
+                            <i class="fas fa-building"></i> Informations institutionnelles
+                        {% endif %}
+                    </h3>
+                </div>
+                <div class="profile-card-body">
+                    <div class="info-grid">
+                        {% if user.role == 'APPRENANT' and profil_apprenant %}
+                            {% if inscription %}
+                                <div class="info-item">
+                                    <label><i class="fas fa-building"></i> Département</label>
+                                    <span>{{ inscription.candidature.filiere.departement.nom }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <label><i class="fas fa-stream"></i> Filière</label>
+                                    <span>{{ inscription.candidature.filiere.nom }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <label><i class="fas fa-layer-group"></i> Niveau</label>
+                                    <span>{{ inscription.candidature.niveau.nom }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <label><i class="fas fa-users"></i> Classe</label>
+                                    <span>{{ inscription.classe_assignee.nom|default:"Non assignée" }}</span>
+                                </div>
+                            {% endif %}
+                            <div class="info-item">
+                                <label><i class="fas fa-calendar-alt"></i> Date d'inscription</label>
+                                <span>{{ user.date_creation|date:"d/m/Y" }}</span>
+                            </div>
+                            <div class="info-item">
+                                <label><i class="fas fa-credit-card"></i> Statut paiement</label>
+                                <span class="payment-badge payment-{{ profil_apprenant.statut_paiement|lower }}">
+                                    {{ profil_apprenant.get_statut_paiement_display }}
+                                </span>
+                            </div>
+
+                        {% elif user.role == 'ENSEIGNANT' and profil_enseignant %}
+                            <div class="info-item">
+                                <label><i class="fas fa-building"></i> Département</label>
+                                <span>{{ user.departement.nom|default:"Non assigné" }}</span>
+                            </div>
+                            <div class="info-item">
+                                <label><i class="fas fa-id-card"></i> ID Employé</label>
+                                <span>{{ profil_enseignant.id_employe|default:"Non renseigné" }}</span>
+                            </div>
+                            <div class="info-item">
+                                <label><i class="fas fa-calendar-check"></i> Date d'embauche</label>
+                                <span>{{ profil_enseignant.date_embauche|date:"d/m/Y"|default:"Non renseignée" }}</span>
+                            </div>
+                            <div class="info-item">
+                                <label><i class="fas fa-bookmark"></i> Spécialisation</label>
+                                <span>{{ profil_enseignant.specialisation|default:"Non renseignée" }}</span>
+                            </div>
+                            <div class="info-item">
+                                <label><i class="fas fa-certificate"></i> Statut</label>
+                                <span>
+                                    {% if profil_enseignant.est_permanent %}
+                                        <span class="badge badge-success">Permanent</span>
+                                    {% else %}
+                                        <span class="badge badge-info">Vacataire</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+
+                        {% else %}
+                            <div class="info-item">
+                                <label><i class="fas fa-building"></i> Établissement</label>
+                                <span>{{ user.etablissement.nom|default:"Non assigné" }}</span>
+                            </div>
+                            {% if user.departement %}
+                                <div class="info-item">
+                                    <label><i class="fas fa-sitemap"></i> Département</label>
+                                    <span>{{ user.departement.nom }}</span>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if user.role == 'APPRENANT' and profil_apprenant %}
+                <!-- Informations familiales -->
+                <div class="profile-card">
+                    <div class="profile-card-header">
+                        <h3><i class="fas fa-users"></i> Contacts familiaux</h3>
+                    </div>
+                    <div class="profile-card-body">
+                        <div class="info-grid">
+                            {% if profil_apprenant.nom_pere %}
+                                <div class="info-item full-width">
+                                    <label><i class="fas fa-male"></i> Père</label>
+                                    <span>{{ profil_apprenant.nom_pere }}</span>
+                                    {% if profil_apprenant.telephone_pere %}
+                                        <small class="text-muted d-block">{{ profil_apprenant.telephone_pere }}</small>
+                                    {% endif %}
+                                    {% if profil_apprenant.profession_pere %}
+                                        <small class="text-muted d-block">{{ profil_apprenant.profession_pere }}</small>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+
+                            {% if profil_apprenant.nom_mere %}
+                                <div class="info-item full-width">
+                                    <label><i class="fas fa-female"></i> Mère</label>
+                                    <span>{{ profil_apprenant.nom_mere }}</span>
+                                    {% if profil_apprenant.telephone_mere %}
+                                        <small class="text-muted d-block">{{ profil_apprenant.telephone_mere }}</small>
+                                    {% endif %}
+                                    {% if profil_apprenant.profession_mere %}
+                                        <small class="text-muted d-block">{{ profil_apprenant.profession_mere }}</small>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+
+                            {% if profil_apprenant.nom_tuteur %}
+                                <div class="info-item full-width">
+                                    <label><i class="fas fa-user-shield"></i> Tuteur</label>
+                                    <span>{{ profil_apprenant.nom_tuteur }}</span>
+                                    {% if profil_apprenant.telephone_tuteur %}
+                                        <small class="text-muted d-block">{{ profil_apprenant.telephone_tuteur }}</small>
+                                    {% endif %}
+                                    {% if profil_apprenant.relation_tuteur %}
+                                        <small class="text-muted d-block">{{ profil_apprenant.relation_tuteur }}</small>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Colonne droite : Statistiques et activité -->
+        <div class="profile-right">
+            <!-- Statistiques -->
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <h3><i class="fas fa-chart-line"></i> Statistiques</h3>
+                </div>
+                <div class="profile-card-body">
+                    {% if user.role == 'APPRENANT' %}
+                        <div class="stat-item">
+                            <div class="stat-icon bg-primary">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value">{{ total_cours|default:0 }}</span>
+                                <span class="stat-label">Cours</span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon bg-success">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value">{{ taux_presence|default:0 }}%</span>
+                                <span class="stat-label">Présence</span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon bg-info">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value">{{ moyenne_generale|default:0 }}/20</span>
+                                <span class="stat-label">Moyenne</span>
+                            </div>
+                        </div>
+
+                    {% elif user.role == 'ENSEIGNANT' %}
+                        <div class="stat-item">
+                            <div class="stat-icon bg-primary">
+                                <i class="fas fa-chalkboard"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value">{{ mes_cours|default:0 }}</span>
+                                <span class="stat-label">Cours</span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon bg-success">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value">{{ mes_classes|default:0 }}</span>
+                                <span class="stat-label">Classes</span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon bg-info">
+                                <i class="fas fa-user-graduate"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value">{{ total_etudiants|default:0 }}</span>
+                                <span class="stat-label">Étudiants</span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon bg-warning">
+                                <i class="fas fa-clipboard-check"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value">{{ evaluations_creees|default:0 }}</span>
+                                <span class="stat-label">Évaluations</span>
+                            </div>
+                        </div>
+
+                    {% else %}
+                        <div class="stat-item">
+                            <div class="stat-icon bg-primary">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value">{{ total_users|default:total_enseignants|default:0 }}</span>
+                                <span class="stat-label">
+                                    {% if user.role == 'ADMIN' %}Utilisateurs{% else %}Enseignants{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon bg-success">
+                                <i class="fas fa-building"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value">{{ total_departements|default:total_apprenants|default:0 }}</span>
+                                <span class="stat-label">
+                                    {% if user.role == 'ADMIN' %}Départements{% else %}Apprenants{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Informations de compte -->
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <h3><i class="fas fa-info-circle"></i> Informations du compte</h3>
+                </div>
+                <div class="profile-card-body">
+                    <div class="account-info">
+                        <div class="account-item">
+                            <i class="fas fa-calendar-plus text-primary"></i>
+                            <div>
+                                <label>Membre depuis</label>
+                                <span>{{ user.date_creation|date:"d M Y" }}</span>
+                            </div>
+                        </div>
+                        <div class="account-item">
+                            <i class="fas fa-clock text-info"></i>
+                            <div>
+                                <label>Dernière activité</label>
+                                <span>{{ derniere_activite|date:"d M Y H:i" }}</span>
+                            </div>
+                        </div>
+                        <div class="account-item">
+                            <i class="fas fa-toggle-on text-success"></i>
+                            <div>
+                                <label>Statut</label>
+                                <span>
+                                    {% if user.est_actif %}
+                                        <span class="badge badge-success">Actif</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">Inactif</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions rapides -->
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <h3><i class="fas fa-bolt"></i> Actions rapides</h3>
+                </div>
+                <div class="profile-card-body">
+                    <div class="quick-actions">
+                        {% if user.role == 'APPRENANT' %}
+                            <a href="{% url 'dashboard:student_courses' %}" class="quick-action-btn">
+                                <i class="fas fa-book"></i> Mes cours
+                            </a>
+                            <a href="{% url 'dashboard:student_schedule' %}" class="quick-action-btn">
+                                <i class="fas fa-calendar"></i> Emploi du temps
+                            </a>
+                            <a href="{% url 'dashboard:student_resultats' %}" class="quick-action-btn">
+                                <i class="fas fa-chart-bar"></i> Mes résultats
+                            </a>
+                            <a href="{% url 'dashboard:student_paiements' %}" class="quick-action-btn">
+                                <i class="fas fa-credit-card"></i> Paiements
+                            </a>
+
+                        {% elif user.role == 'ENSEIGNANT' %}
+                            <a href="{% url 'dashboard:teacher_courses' %}" class="quick-action-btn">
+                                <i class="fas fa-chalkboard"></i> Mes cours
+                            </a>
+                            <a href="{% url 'dashboard:teacher_evaluations' %}" class="quick-action-btn">
+                                <i class="fas fa-clipboard-check"></i> Évaluations
+                            </a>
+                            <a href="{% url 'dashboard:teacher_students' %}" class="quick-action-btn">
+                                <i class="fas fa-users"></i> Étudiants
+                            </a>
+                            <a href="{% url 'dashboard:teacher_schedule' %}" class="quick-action-btn">
+                                <i class="fas fa-calendar"></i> Emploi du temps
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+{% include 'dashboard/edit_profile.html' %}
+{% include 'dashboard/change_password.html' %}
+
+<style>
+:root {
+    --profile-primary: #667eea;
+    --profile-success: #48bb78;
+    --profile-info: #4299e1;
+    --profile-warning: #ed8936;
+    --profile-danger: #f56565;
+}
+
+.profile-container {
+    padding: 0;
+    max-width: 100%;
+}
+
+/* En-tête du profil */
+.profile-header {
+    position: relative;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.profile-cover {
+    height: 150px;
+    background: linear-gradient(135deg, var(--profile-primary) 0%, var(--profile-info) 100%);
+}
+
+.profile-info-section {
+    padding: 0 30px 30px;
+    display: flex;
+    align-items: flex-end;
+    gap: 30px;
+}
+
+.profile-avatar-container {
+    margin-top: -60px;
+    position: relative;
+}
+
+.profile-avatar-large {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 5px solid white;
+    overflow: hidden;
+    background: var(--light-gray);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.profile-avatar-large img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-avatar-large i {
+    font-size: 60px;
+    color: var(--text-light);
+}
+
+.avatar-edit-btn {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: var(--profile-primary);
+    color: white;
+    border: 2px solid white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.avatar-edit-btn:hover {
+    transform: scale(1.1);
+}
+
+.profile-main-info {
+    flex: 1;
+}
+
+.profile-name {
+    margin: 0 0 5px 0;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.profile-role {
+    margin: 0 0 5px 0;
+    color: var(--text-light);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.profile-matricule code {
+    background: var(--light-gray);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-family: monospace;
+    font-size: 13px;
+}
+
+.profile-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Contenu principal */
+.profile-content {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 20px;
+}
+
+.profile-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.profile-card-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.profile-card-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.profile-card-body {
+    padding: 20px;
+}
+
+/* Grille d'informations */
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.info-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.info-item label {
+    font-size: 12px;
+    color: var(--text-light);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.info-item label i {
+    width: 16px;
+    font-size: 12px;
+}
+
+.info-item span {
+    font-size: 14px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+/* Badges de paiement */
+.payment-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.payment-en_attente { background: #fff3cd; color: #856404; }
+.payment-partiel { background: #cfe2ff; color: #084298; }
+.payment-complet { background: #d1e7dd; color: #0f5132; }
+
+/* Statistiques */
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.stat-item:last-child {
+    border-bottom: none;
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+}
+
+.stat-icon.bg-primary { background: var(--profile-primary); }
+.stat-icon.bg-success { background: var(--profile-success); }
+.stat-icon.bg-info { background: var(--profile-info); }
+.stat-icon.bg-warning { background: var(--profile-warning); }
+
+.stat-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-dark);
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 3px;
+}
+
+/* Informations de compte */
+.account-info {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.account-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.account-item i {
+    font-size: 20px;
+    width: 24px;
+    margin-top: 3px;
+}
+
+.account-item > div {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.account-item label {
+    font-size: 12px;
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+.account-item span {
+    font-size: 14px;
+    color: var(--text-dark);
+}
+
+/* Actions rapides */
+.quick-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.quick-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-dark);
+    transition: all 0.3s;
+    font-size: 12px;
+    text-align: center;
+}
+
+.quick-action-btn:hover {
+    border-color: var(--profile-primary);
+    background: rgba(102, 126, 234, 0.05);
+    transform: translateY(-2px);
+}
+
+.quick-action-btn i {
+    font-size: 20px;
+    color: var(--profile-primary);
+}
+
+/* Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.badge-info {
+    background: #cfe2ff;
+    color: #084298;
+}
+
+.badge-danger {
+    background: #f8d7da;
+    color: #842029;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .profile-content {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-right {
+        order: -1;
+    }
+}
+
+@media (max-width: 768px) {
+    .profile-info-section {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 20px;
+    }
+
+    .profile-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .profile-actions .btn {
+        width: 100%;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+function openEditProfile() {
+    $('#editProfileModal').modal('show');
+}
+
+function openChangePassword() {
+    $('#changePasswordModal').modal('show');
+}
+</script>
+{% endblock %}

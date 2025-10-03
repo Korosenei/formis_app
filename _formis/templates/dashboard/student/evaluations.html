@@ -1,0 +1,640 @@
+{% extends 'evaluations/templates/evaluations/base.html' %}
+{% load static %}
+
+{% block title %}{{ evaluation.titre }}{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="fas fa-file-alt me-2"></i>{{ evaluation.titre }}</h1>
+        <p class="text-muted mb-0">{{ evaluation.matiere_module.matiere.nom }} - {{ evaluation.matiere_module.module.nom }}</p>
+    </div>
+    <div class="text-end">
+        <span class="badge badge-{{ evaluation.statut|lower }} fs-6">
+            {{ evaluation.get_statut_display }}
+        </span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Informations sur l'évaluation -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle me-2"></i>Informations de l'évaluation</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Type:</strong> {{ evaluation.get_type_evaluation_display }}</p>
+                        <p><strong>Coefficient:</strong> {{ evaluation.coefficient }}</p>
+                        <p><strong>Note maximale:</strong> {{ evaluation.note_maximale }}/{{ evaluation.note_maximale }}</p>
+                        <p><strong>Enseignant:</strong> {{ evaluation.enseignant.get_full_name }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Début:</strong> {{ evaluation.date_debut|date:"d/m/Y à H:i" }}</p>
+                        <p><strong>Fin:</strong> {{ evaluation.date_fin|date:"d/m/Y à H:i" }}</p>
+                        {% if evaluation.duree_minutes %}
+                        <p><strong>Durée:</strong> {{ evaluation.duree_minutes }} minutes</p>
+                        {% endif %}
+                        <p><strong>Retard autorisé:</strong>
+                            {% if evaluation.autorise_retard %}
+                                <span class="text-success">Oui</span>
+                                {% if evaluation.penalite_retard > 0 %}
+                                    (pénalité: {{ evaluation.penalite_retard }}%)
+                                {% endif %}
+                            {% else %}
+                                <span class="text-danger">Non</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+
+                {% if evaluation.description %}
+                <div class="mt-3">
+                    <strong>Description:</strong>
+                    <p class="mt-2">{{ evaluation.description|linebreaks }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Compte à rebours -->
+        {% if not temps_restant.evaluation_terminee %}
+        <div class="card text-center">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="fas fa-clock me-2"></i>Temps restant</h6>
+            </div>
+            <div class="card-body">
+                <div class="countdown fs-2" id="countdown" data-end-time="{{ evaluation.date_fin|date:'c' }}">
+                    {{ temps_restant.temps_restant_str }}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="card text-center">
+            <div class="card-header bg-danger text-white">
+                <h6 class="mb-0"><i class="fas fa-clock me-2"></i>Évaluation terminée</h6>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Statut de la composition -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Ma composition</h6>
+            </div>
+            <div class="card-body">
+                <div class="composition-status {{ composition.statut|lower }}" id="composition-status">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Statut:</strong> {{ composition.get_statut_display }}
+                        </div>
+                        {% if composition.statut == 'EN_COURS' %}
+                        <i class="fas fa-pencil-alt"></i>
+                        {% elif composition.statut == 'SOUMISE' %}
+                        <i class="fas fa-check-circle"></i>
+                        {% elif composition.statut == 'EN_RETARD' %}
+                        <i class="fas fa-exclamation-triangle"></i>
+                        {% elif composition.statut == 'CORRIGEE' %}
+                        <i class="fas fa-star"></i>
+                        {% endif %}
+                    </div>
+
+                    {% if composition.date_soumission %}
+                    <small class="text-muted d-block mt-1">
+                        Soumise le {{ composition.date_soumission|date:"d/m/Y à H:i" }}
+                    </small>
+                    {% endif %}
+
+                    {% if composition.note_obtenue %}
+                    <div class="mt-2">
+                        {# Calculer la note avec pénalité #}
+                        {% with note_finale=composition.note_avec_penalite %}
+                        {{ note_finale|floatformat:2|add:0|default:composition.note_obtenue|floatformat:2 }}/{{ evaluation.note_maximale }}
+                        {% endwith %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sujet de l'évaluation -->
+{% if disponibilite.disponible %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5><i class="fas fa-file-pdf me-2"></i>Sujet de l'évaluation</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <p class="mb-0">Cliquez pour ouvrir le sujet de l'évaluation</p>
+            <div>
+                <button type="button" class="btn btn-primary me-2"
+                        onclick="openFileViewer('{% url 'evaluations:voir_fichier' 'evaluation' evaluation.pk %}', '{{ evaluation.titre }} - Sujet')">
+                    <i class="fas fa-eye me-2"></i>Ouvrir
+                </button>
+                <a href="{% url 'evaluations:telecharger_fichier' 'evaluation' evaluation.pk %}"
+                   class="btn btn-outline-primary">
+                    <i class="fas fa-download me-2"></i>Télécharger
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    {{ disponibilite.raison }}
+</div>
+{% endif %}
+
+<!-- Zone de composition -->
+{% if disponibilite.peut_composer and composition.peut_soumettre %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5><i class="fas fa-upload me-2"></i>Ma composition</h5>
+    </div>
+    <div class="card-body">
+        <!-- Zone d'upload -->
+        <div class="file-upload-zone mb-4" id="upload-zone">
+            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+            <h6>Glissez vos fichiers ici ou cliquez pour sélectionner</h6>
+            <p class="text-muted">Formats acceptés: PDF, DOC, DOCX, TXT, JPG, PNG</p>
+            <p class="text-muted small">Taille maximale: 10MB par fichier</p>
+        </div>
+
+        <form id="upload-form" style="display: none;">
+            {% csrf_token %}
+            <input type="file" id="file-input" name="fichiers" multiple
+                   accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png">
+        </form>
+
+        <!-- Liste des fichiers -->
+        <div id="files-list">
+            {% for fichier in fichiers_composition %}
+            <div class="file-item" data-file-id="{{ fichier.id }}">
+                <div class="file-info">
+                    <i class="fas fa-file me-2"></i>
+                    <span>{{ fichier.nom_original }}</span>
+                    <small class="text-muted ms-2">({{ fichier.taille|filesizeformat }})</small>
+                </div>
+                <div class="file-actions">
+                    <button type="button" class="btn btn-sm btn-outline-primary"
+                            onclick="openFileViewer('{% url 'evaluations:voir_fichier' 'composition' fichier.pk %}', '{{ fichier.nom_original }}')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <a href="{% url 'evaluations:telecharger_fichier' 'composition' fichier.pk %}"
+                       class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-download"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            onclick="deleteFile({{ fichier.id }})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center text-muted" id="no-files">
+                <i class="fas fa-folder-open fa-2x"></i>
+                <p class="mt-2">Aucun fichier uploadé</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Bouton de soumission -->
+        {% if fichiers_composition %}
+        <div class="text-center mt-4">
+            <button type="button" class="btn btn-success btn-lg" id="submit-btn" onclick="submitComposition()">
+                <i class="fas fa-paper-plane me-2"></i>Soumettre ma composition
+            </button>
+            <p class="text-muted mt-2 small">
+                <i class="fas fa-exclamation-circle"></i>
+                Attention: une fois soumise, vous ne pourrez plus modifier votre composition
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% elif composition.statut != 'EN_COURS' %}
+<!-- Affichage des fichiers soumis (lecture seule) -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5><i class="fas fa-clipboard-check me-2"></i>Fichiers soumis</h5>
+    </div>
+    <div class="card-body">
+        {% for fichier in fichiers_composition %}
+        <div class="file-item">
+            <div class="file-info">
+                <i class="fas fa-file me-2"></i>
+                <span>{{ fichier.nom_original }}</span>
+                <small class="text-muted ms-2">({{ fichier.taille|filesizeformat }})</small>
+                {% if composition.statut == 'SOUMISE' %}
+                <span class="badge bg-success ms-2">Soumis</span>
+                {% elif composition.statut == 'EN_RETARD' %}
+                <span class="badge bg-warning ms-2">En retard</span>
+                {% elif composition.statut == 'CORRIGEE' %}
+                <span class="badge bg-info ms-2">Corrigé</span>
+                {% endif %}
+            </div>
+            <div class="file-actions">
+                <button type="button" class="btn btn-sm btn-outline-primary"
+                        onclick="openFileViewer('{% url 'evaluations:voir_fichier' 'composition' fichier.pk %}', '{{ fichier.nom_original }}')">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <a href="{% url 'evaluations:telecharger_fichier' 'composition' fichier.pk %}"
+                   class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-download"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Correction et note -->
+{% if composition.statut == 'CORRIGEE' %}
+<div class="row">
+    {% if composition.note_obtenue %}
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0"><i class="fas fa-star me-2"></i>Ma note</h6>
+            </div>
+            <div class="card-body">
+                {% with note_finale=composition.note_avec_penalite %}
+                <div class="display-4">
+                    {{ note_finale|floatformat:2|default:composition.note_obtenue|floatformat:2 }}/<span class="fs-6">{{ evaluation.note_maximale }}</span>
+                </div>
+                {% if composition.est_en_retard and evaluation.penalite_retard > 0 %}
+                <small class="text-warning">
+                    Note originale: {{ composition.note_obtenue }}/{{ evaluation.note_maximale }}<br>
+                    Pénalité retard: -{{ evaluation.penalite_retard }}%
+                </small>
+                {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="col-md-8">
+        {% if composition.commentaire_correction %}
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-comment me-2"></i>Commentaires de l'enseignant</h6>
+            </div>
+            <div class="card-body">
+                <p>{{ composition.commentaire_correction|linebreaks }}</p>
+                {% if composition.corrigee_par %}
+                <small class="text-muted">
+                    <i class="fas fa-user me-1"></i>{{ composition.corrigee_par.get_full_name }}
+                    {% if composition.date_correction %}
+                    - {{ composition.date_correction|date:"d/m/Y à H:i" }}
+                    {% endif %}
+                </small>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if composition.fichier_correction_personnalise %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-file-alt me-2"></i>Correction personnalisée</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <p class="mb-0">L'enseignant a fourni une correction personnalisée</p>
+                    <div>
+                        <button type="button" class="btn btn-primary me-2"
+                                onclick="openFileViewer('{% url 'evaluations:voir_fichier' 'correction' evaluation.pk %}', 'Correction personnalisée')">
+                            <i class="fas fa-eye me-2"></i>Ouvrir
+                        </button>
+                        <a href="{% url 'evaluations:telecharger_fichier' 'correction' evaluation.pk %}"
+                           class="btn btn-outline-primary">
+                            <i class="fas fa-download me-2"></i>Télécharger
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Correction générale -->
+{% if evaluation.correction_visible and evaluation.fichier_correction %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h5><i class="fas fa-clipboard-list me-2"></i>Correction générale</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <p class="mb-0">Correction générale de l'évaluation disponible</p>
+            <div>
+                <button type="button" class="btn btn-primary me-2"
+                        onclick="openFileViewer('{% url 'evaluations:voir_fichier' 'correction' evaluation.pk %}', '{{ evaluation.titre }} - Correction')">
+                    <i class="fas fa-eye me-2"></i>Ouvrir
+                </button>
+                <a href="{% url 'evaluations:telecharger_fichier' 'correction' evaluation.pk %}"
+                   class="btn btn-outline-primary">
+                    <i class="fas fa-download me-2"></i>Télécharger
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif evaluation.statut == 'TERMINEE' and not evaluation.correction_visible %}
+<div class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i>
+    La correction sera disponible
+    {% if evaluation.date_publication_correction %}
+        le {{ evaluation.date_publication_correction|date:"d/m/Y à H:i" }}
+    {% else %}
+        prochainement
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configuration de l'upload
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    const uploadForm = document.getElementById('upload-form');
+    const filesList = document.getElementById('files-list');
+
+    // Types de fichiers autorisés
+    const allowedTypes = ['pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (uploadZone && fileInput) {
+        // Configurer la zone de glisser-déposer
+        setupFileUploadZone(uploadZone, fileInput);
+
+        // Gestionnaire de changement de fichier
+        fileInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) {
+                uploadFiles(files);
+            }
+        });
+    }
+
+    // Fonction d'upload des fichiers
+    function uploadFiles(files) {
+        // Validation côté client
+        const errors = validateFileUpload(files, maxSize, allowedTypes);
+        if (errors.length > 0) {
+            showToast(errors.join('<br>'), 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        files.forEach(file => {
+            formData.append('fichiers', file);
+        });
+
+        // Ajouter le token CSRF
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+        // Afficher le spinner de chargement
+        showLoadingSpinner();
+
+        fetch(`{% url 'evaluations:upload_composition' evaluation.pk %}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoadingSpinner();
+
+            if (data.success) {
+                showToast(data.message, 'success');
+                updateFilesList(data.fichiers);
+                updateSubmitButton();
+            } else {
+                showToast(data.error || 'Erreur lors de l\'upload', 'error');
+            }
+        })
+        .catch(error => {
+            hideLoadingSpinner();
+            console.error('Erreur:', error);
+            showToast('Erreur de connexion', 'error');
+        });
+
+        // Réinitialiser l'input
+        fileInput.value = '';
+    }
+
+    // Mettre à jour la liste des fichiers
+    function updateFilesList(newFiles) {
+        const noFilesMsg = document.getElementById('no-files');
+        if (noFilesMsg) {
+            noFilesMsg.remove();
+        }
+
+        newFiles.forEach(file => {
+            const fileItem = createFileItem(file);
+            filesList.appendChild(fileItem);
+        });
+    }
+
+    // Créer un élément de fichier
+    function createFileItem(file) {
+        const div = document.createElement('div');
+        div.className = 'file-item';
+        div.dataset.fileId = file.id;
+
+        div.innerHTML = `
+            <div class="file-info">
+                <i class="fas fa-file me-2"></i>
+                <span>${file.nom}</span>
+                <small class="text-muted ms-2">(${formatFileSize(file.taille)})</small>
+            </div>
+            <div class="file-actions">
+                <button type="button" class="btn btn-sm btn-outline-primary"
+                        onclick="openFileViewer('/evaluations/fichier/composition/${file.id}/voir/', '${file.nom}')">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <a href="/evaluations/fichier/composition/${file.id}/telecharger/"
+                   class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-download"></i>
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-danger"
+                        onclick="deleteFile(${file.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+
+        return div;
+    }
+
+    // Mettre à jour le bouton de soumission
+    function updateSubmitButton() {
+        const submitBtn = document.getElementById('submit-btn');
+        const hasFiles = document.querySelectorAll('.file-item').length > 0;
+
+        if (hasFiles && !submitBtn) {
+            // Créer le bouton de soumission
+            const submitDiv = document.createElement('div');
+            submitDiv.className = 'text-center mt-4';
+            submitDiv.innerHTML = `
+                <button type="button" class="btn btn-success btn-lg" id="submit-btn" onclick="submitComposition()">
+                    <i class="fas fa-paper-plane me-2"></i>Soumettre ma composition
+                </button>
+                <p class="text-muted mt-2 small">
+                    <i class="fas fa-exclamation-circle"></i>
+                    Attention: une fois soumise, vous ne pourrez plus modifier votre composition
+                </p>
+            `;
+            filesList.parentNode.appendChild(submitDiv);
+        } else if (!hasFiles && submitBtn) {
+            submitBtn.parentNode.remove();
+        }
+    }
+
+    // Compte à rebours
+    const countdownElement = document.getElementById('countdown');
+    if (countdownElement) {
+        const endTime = countdownElement.dataset.endTime;
+
+        function updateCountdownTimer() {
+            const timeLeft = updateCountdown(countdownElement, endTime);
+
+            if (timeLeft <= 0) {
+                // Temps écoulé
+                location.reload();
+            }
+        }
+
+        // Mettre à jour toutes les secondes
+        setInterval(updateCountdownTimer, 1000);
+    }
+
+    // Mise à jour du statut de composition
+    function updateCompositionStatus() {
+        fetch(`{% url 'evaluations:api_composition_statut' evaluation.pk %}`)
+            .then(response => response.json())
+            .then(data => {
+                const statusElement = document.getElementById('composition-status');
+                if (statusElement && data.statut !== '{{ composition.statut }}') {
+                    // Le statut a changé, recharger la page
+                    location.reload();
+                }
+            })
+            .catch(error => console.error('Erreur mise à jour statut:', error));
+    }
+
+    // Vérifier le statut toutes les 30 secondes
+    setInterval(updateCompositionStatus, 30000);
+
+    function showLoadingSpinner() {
+        uploadZone.innerHTML = `
+            <div class="text-center">
+                <div class="loading-spinner"></div>
+                <p class="mt-2">Upload en cours...</p>
+            </div>
+        `;
+    }
+
+    function hideLoadingSpinner() {
+        uploadZone.innerHTML = `
+            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+            <h6>Glissez vos fichiers ici ou cliquez pour sélectionner</h6>
+            <p class="text-muted">Formats acceptés: PDF, DOC, DOCX, TXT, JPG, PNG</p>
+            <p class="text-muted small">Taille maximale: 10MB par fichier</p>
+        `;
+    }
+});
+
+// Supprimer un fichier
+function deleteFile(fileId) {
+    if (!confirmDelete('Êtes-vous sûr de vouloir supprimer ce fichier ?')) {
+        return;
+    }
+
+    makeAjaxRequest(`{% url 'evaluations:supprimer_fichier_composition' 0 %}`.replace('0', fileId), {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Supprimer l'élément du DOM
+            const fileItem = document.querySelector(`[data-file-id="${fileId}"]`);
+            if (fileItem) {
+                fileItem.remove();
+            }
+
+            // Vérifier s'il faut afficher "Aucun fichier"
+            const remainingFiles = document.querySelectorAll('.file-item').length;
+            if (remainingFiles === 0) {
+                const noFilesMsg = document.createElement('div');
+                noFilesMsg.id = 'no-files';
+                noFilesMsg.className = 'text-center text-muted';
+                noFilesMsg.innerHTML = `
+                    <i class="fas fa-folder-open fa-2x"></i>
+                    <p class="mt-2">Aucun fichier uploadé</p>
+                `;
+                document.getElementById('files-list').appendChild(noFilesMsg);
+
+                // Supprimer le bouton de soumission
+                const submitBtn = document.getElementById('submit-btn');
+                if (submitBtn) {
+                    submitBtn.parentNode.remove();
+                }
+            }
+
+            showToast(data.message, 'success');
+        } else {
+            showToast(data.error || 'Erreur lors de la suppression', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        showToast('Erreur de connexion', 'error');
+    });
+}
+
+// Soumettre la composition
+function submitComposition() {
+    if (!confirm('Êtes-vous sûr de vouloir soumettre votre composition ? Cette action est irréversible.')) {
+        return;
+    }
+
+    makeAjaxRequest(`{% url 'evaluations:soumettre_composition' evaluation.pk %}`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            // Recharger la page après un court délai
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            showToast(data.error || 'Erreur lors de la soumission', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        showToast('Erreur de connexion', 'error');
+    });
+}
+</script>
+{% endblock %}

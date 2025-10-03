@@ -1,0 +1,262 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Mes Évaluations - FORMIS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/evaluations.css' %}">
+<style>
+  .evaluation-card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    background: #fff;
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+  }
+
+  .evaluation-card:hover {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+  }
+
+  .evaluation-card.brouillon { border-left-color: #6c757d; }
+  .evaluation-card.programmee { border-left-color: #17a2b8; }
+  .evaluation-card.en-cours { border-left-color: #28a745; }
+  .evaluation-card.terminee { border-left-color: #dc3545; }
+
+  .status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .stats-overview {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 1rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .filter-section {
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="d-flex justify-content-between align-items-center">
+    <div>
+      <h1 class="h3 mb-1"><i class="fas fa-clipboard-list text-primary me-2"></i>Mes Évaluations</h1>
+      <p class="text-muted">Gérez toutes vos évaluations et suivez les soumissions</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'evaluations:create' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Nouvelle Évaluation
+      </a>
+      <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="fas fa-download me-2"></i>Export
+      </button>
+      <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="#">Export PDF</a></li>
+        <li><a class="dropdown-item" href="#">Export Excel</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Statistiques Overview -->
+<div class="stats-overview">
+  <div class="row">
+    <div class="col-md-3 col-6 text-center">
+      <div class="display-6 fw-bold">{{ stats_generales.total }}</div>
+      <div class="small">Total Évaluations</div>
+    </div>
+    <div class="col-md-3 col-6 text-center">
+      <div class="display-6 fw-bold">{{ stats_generales.en_cours }}</div>
+      <div class="small">En Cours</div>
+    </div>
+    <div class="col-md-3 col-6 text-center">
+      <div class="display-6 fw-bold">{{ stats_generales.programmees }}</div>
+      <div class="small">Programmées</div>
+    </div>
+    <div class="col-md-3 col-6 text-center">
+      <div class="display-6 fw-bold">{{ stats_generales.terminees }}</div>
+      <div class="small">Terminées</div>
+    </div>
+  </div>
+</div>
+
+<!-- Filtres -->
+<div class="filter-section">
+  <form method="get" class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label">Titre</label>
+      {{ form.titre }}
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Type</label>
+      {{ form.type_evaluation }}
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Statut</label>
+      {{ form.statut }}
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Matière</label>
+      {{ form.matiere }}
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Classe</label>
+      {{ form.classe }}
+    </div>
+    <div class="col-md-1">
+      <label class="form-label">&nbsp;</label>
+      <div class="d-grid">
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-search"></i>
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Liste des évaluations -->
+<div class="row">
+  {% for evaluation in evaluations %}
+  <div class="col-12">
+    <div class="evaluation-card {{ evaluation.statut|lower }}">
+      <div class="row align-items-center">
+        <div class="col-lg-6">
+          <h5 class="mb-1">
+            <a href="{% url 'evaluations:detail_enseignant' evaluation.pk %}"
+               class="text-decoration-none">
+              {{ evaluation.titre }}
+            </a>
+          </h5>
+          <p class="text-muted mb-2">
+            <i class="fas fa-book me-1"></i>
+            {{ evaluation.matiere_module.matiere.nom }} - {{ evaluation.matiere_module.module.nom }}
+          </p>
+          <div class="d-flex align-items-center gap-3">
+            <span class="status-badge bg-{{ evaluation.statut|lower }}">
+              {{ evaluation.get_statut_display }}
+            </span>
+            <small class="text-muted">
+              <i class="fas fa-calendar me-1"></i>
+              {{ evaluation.date_debut|date:"d/m/Y H:i" }}
+            </small>
+            <small class="text-muted">
+              <i class="fas fa-star me-1"></i>
+              Coeff: {{ evaluation.coefficient }}
+            </small>
+          </div>
+        </div>
+
+        <div class="col-lg-3">
+          <div class="row text-center">
+            <div class="col-4">
+              <div class="fw-bold text-primary">{{ evaluation.nb_compositions }}</div>
+              <small class="text-muted">Total</small>
+            </div>
+            <div class="col-4">
+              <div class="fw-bold text-success">{{ evaluation.nb_corrigees }}</div>
+              <small class="text-muted">Corrigées</small>
+            </div>
+            <div class="col-4">
+              <div class="fw-bold text-warning">{{ evaluation.nb_soumises }}</div>
+              <small class="text-muted">À corriger</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 text-end">
+          <div class="btn-group">
+            <a href="{% url 'evaluations:detail_enseignant' evaluation.pk %}"
+               class="btn btn-sm btn-outline-primary">
+              <i class="fas fa-eye"></i> Voir
+            </a>
+            {% if evaluation.statut == 'BROUILLON' or evaluation.statut == 'PROGRAMMEE' %}
+            <a href="{% url 'evaluations:edit' evaluation.pk %}"
+               class="btn btn-sm btn-outline-secondary">
+              <i class="fas fa-edit"></i> Modifier
+            </a>
+            {% endif %}
+            {% if evaluation.nb_soumises > 0 %}
+            <a href="{% url 'evaluations:detail_enseignant' evaluation.pk %}#corrections"
+               class="btn btn-sm btn-warning">
+              <i class="fas fa-pen"></i> Corriger
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="text-center py-5">
+      <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+      <h4 class="text-muted">Aucune évaluation trouvée</h4>
+      <p class="text-muted">Commencez par créer votre première évaluation</p>
+      <a href="{% url 'evaluations:create' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Créer une évaluation
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if evaluations.has_other_pages %}
+<nav aria-label="Pagination" class="mt-4">
+  <ul class="pagination justify-content-center">
+    {% if evaluations.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ evaluations.previous_page_number }}{% if request.GET.items %}&{{ request.GET.urlencode }}{% endif %}">
+          <i class="fas fa-chevron-left"></i>
+        </a>
+      </li>
+    {% endif %}
+
+    {% for num in evaluations.paginator.page_range %}
+      {% if evaluations.number == num %}
+        <li class="page-item active">
+          <span class="page-link">{{ num }}</span>
+        </li>
+      {% elif num > evaluations.number|add:'-3' and num < evaluations.number|add:'3' %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ num }}{% if request.GET.items %}&{{ request.GET.urlencode }}{% endif %}">{{ num }}</a>
+        </li>
+      {% endif %}
+    {% endfor %}
+
+    {% if evaluations.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ evaluations.next_page_number }}{% if request.GET.items %}&{{ request.GET.urlencode }}{% endif %}">
+          <i class="fas fa-chevron-right"></i>
+        </a>
+      </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mise à jour automatique des statuts
+  setInterval(function() {
+    location.reload();
+  }, 60000); // Refresh every minute
+});
+</script>
+{% endblock %}

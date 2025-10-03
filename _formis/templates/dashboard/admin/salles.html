@@ -1,0 +1,615 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Gestion des Salles - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-salles">
+    <!-- Header compact -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Salles</span>
+            </div>
+            <h1>Gestion des Salles</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ stats.total }} total</span>
+                <span class="stat-badge actifs">{{ stats.actives }} actives</span>
+                <span class="stat-badge capacity">{{ stats.capacite_totale }} places</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportSalles()" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="addSalle()">
+                <i class="fas fa-plus"></i> Ajouter
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtres compacts -->
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="Rechercher..."
+                       value="{{ current_filters.search }}" class="form-input-sm">
+            </div>
+            <div class="filter-group">
+                <select name="type_salle" class="form-select-sm">
+                    <option value="">Tous types</option>
+                    {% for type_key, type_label in types_salle %}
+                        <option value="{{ type_key }}" {% if current_filters.type_salle == type_key %}selected{% endif %}>
+                            {{ type_label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="batiment" class="form-select-sm">
+                    <option value="">Tous bâtiments</option>
+                    {% for bat in batiments %}
+                        <option value="{{ bat }}" {% if current_filters.batiment == bat %}selected{% endif %}>
+                            {{ bat }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="etat" class="form-select-sm">
+                    <option value="">Tous états</option>
+                    {% for etat_key, etat_label in etats %}
+                        <option value="{{ etat_key }}" {% if current_filters.etat == etat_key %}selected{% endif %}>
+                            {{ etat_label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:admin_salles' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tableau optimisé -->
+    <div class="salles-table-container">
+        <div class="table-wrapper">
+            <table class="salles-table">
+                <thead>
+                    <tr>
+                        <th width="30">
+                            <input type="checkbox" class="select-all-header" id="selectAllSalles">
+                        </th>
+                        <th width="150">Identification</th>
+                        <th width="150">Type & Localisation</th>
+                        <th width="100">Capacité</th>
+                        <th width="200">Équipements</th>
+                        <th width="80">État</th>
+                        <th width="80">Statut</th>
+                        <th width="80">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for salle in salles %}
+                    <tr class="salle-row">
+                        <td>
+                            <input type="checkbox" class="salle-checkbox" value="{{ salle.id }}">
+                        </td>
+                        <td>
+                            <div class="salle-info">
+                                <div class="salle-name">{{ salle.nom }}</div>
+                                <code class="code-sm">{{ salle.code }}</code>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="location-info">
+                                <div class="type-badge type-{{ salle.type_salle|lower }}">
+                                    {{ salle.get_type_salle_display }}
+                                </div>
+                                {% if salle.batiment %}
+                                    <small>{{ salle.batiment }}{% if salle.etage %} - {{ salle.etage }}{% endif %}</small>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="capacity-info">
+                                <i class="fas fa-users"></i>
+                                <strong>{{ salle.capacite }}</strong> places
+                                {% if salle.surface %}
+                                    <small>{{ salle.surface }}m²</small>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="equipment-info">
+                                {% if salle.projecteur %}<span class="badge-eq"><i class="fas fa-video"></i></span>{% endif %}
+                                {% if salle.ordinateur %}<span class="badge-eq"><i class="fas fa-laptop"></i></span>{% endif %}
+                                {% if salle.climatisation %}<span class="badge-eq"><i class="fas fa-snowflake"></i></span>{% endif %}
+                                {% if salle.wifi %}<span class="badge-eq"><i class="fas fa-wifi"></i></span>{% endif %}
+                                {% if salle.tableau_blanc %}<span class="badge-eq"><i class="fas fa-chalkboard"></i></span>{% endif %}
+                                {% if salle.systeme_audio %}<span class="badge-eq"><i class="fas fa-volume-up"></i></span>{% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="etat-badge etat-{{ salle.etat|lower }}">
+                                {{ salle.get_etat_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="status-info">
+                                {% if salle.est_active %}
+                                    <i class="fas fa-check-circle text-success" title="Active"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-danger" title="Inactive"></i>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons-sm">
+                                <button class="btn-icon-sm btn-primary" onclick="viewSalle('{{ salle.id }}')" title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <div class="dropdown-compact">
+                                    <button class="btn-icon-sm btn-outline dropdown-toggle">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="dropdown-menu-compact">
+                                        <a href="#" onclick="editSalle('{{ salle.id }}')">
+                                            <i class="fas fa-edit"></i> Modifier
+                                        </a>
+                                        <a href="#" onclick="viewSchedule('{{ salle.id }}')">
+                                            <i class="fas fa-calendar"></i> Emploi du temps
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        {% if salle.est_active %}
+                                            <a href="#" onclick="toggleSalleStatus('{{ salle.id }}', false)" class="text-warning">
+                                                <i class="fas fa-pause"></i> Désactiver
+                                            </a>
+                                        {% else %}
+                                            <a href="#" onclick="toggleSalleStatus('{{ salle.id }}', true)" class="text-success">
+                                                <i class="fas fa-play"></i> Activer
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <div class="empty-content">
+                                <i class="fas fa-door-open fa-2x text-muted"></i>
+                                <p class="mt-2">Aucune salle trouvée</p>
+                                <button class="btn btn-sm btn-primary" onclick="addSalle()">
+                                    <i class="fas fa-plus"></i> Ajouter
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% include 'components/pagination.html' with page_obj=salles %}
+    </div>
+</div>
+
+<style>
+.admin-salles {
+    padding: 15px;
+}
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: var(--shadow-sm);
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav .current {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.header-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.stat-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--light-gray);
+    border-radius: 12px;
+    font-size: 11px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.stat-badge.actifs {
+    background: #d4edda;
+    color: #155724;
+}
+
+.stat-badge.capacity {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.filters-section {
+    background: var(--white);
+    padding: 12px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.form-input-sm, .form-select-sm {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    height: 32px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.salles-table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.salles-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 100%;
+}
+
+.salles-table th {
+    background: var(--light-gray);
+    padding: 8px 6px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+}
+
+.salles-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--gray);
+    vertical-align: middle;
+    font-size: var(--font-size-xs);
+}
+
+.salle-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.salle-name {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: var(--font-size-sm);
+}
+
+.code-sm {
+    background: var(--light-gray);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 10px;
+    color: var(--text-dark);
+}
+
+.location-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.type-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.type-salle_classe { background: #e3f2fd; color: #1565c0; }
+.type-laboratoire { background: #f3e5f5; color: #6a1b9a; }
+.type-bibliotheque { background: #e8f5e9; color: #2e7d32; }
+.type-amphitheatre { background: #fff3e0; color: #e65100; }
+.type-salle_informatique { background: #e0f2f1; color: #00695c; }
+
+.capacity-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 11px;
+}
+
+.equipment-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+
+.badge-eq {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: var(--light-gray);
+    border-radius: 4px;
+    font-size: 10px;
+    color: var(--primary-color);
+}
+
+.etat-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.etat-excellent { background: #d4edda; color: #155724; }
+.etat-bon { background: #d1ecf1; color: #0c5460; }
+.etat-correct { background: #fff3cd; color: #856404; }
+.etat-mauvais { background: #f8d7da; color: #721c24; }
+.etat-maintenance { background: #e2e3e5; color: #383d41; }
+
+.status-info {
+    display: flex;
+    justify-content: center;
+}
+
+.action-buttons-sm {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.btn-icon-sm {
+    width: 24px;
+    height: 24px;
+    border-radius: 3px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.3s;
+}
+
+.btn-icon-sm.btn-primary { background: var(--primary-color); color: white; }
+.btn-icon-sm.btn-outline {
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: var(--light-gray);
+}
+
+.dropdown-compact {
+    position: relative;
+}
+
+.dropdown-menu-compact {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    min-width: 150px;
+}
+
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 11px;
+}
+
+.dropdown-menu-compact a:hover {
+    background: var(--light-gray);
+}
+
+.text-success { color: var(--success-color); }
+.text-danger { color: var(--danger-color); }
+.text-warning { color: var(--warning-color); }
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 3px 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-content {
+    color: var(--text-light);
+}
+
+.mt-2 { margin-top: 8px; }
+
+@media (max-width: 768px) {
+    .page-header-compact {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .filters-form {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .salles-table {
+        min-width: 900px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestion des dropdowns
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.style.display = 'none';
+            });
+
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        });
+    });
+
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    });
+});
+
+function exportSalles() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/dashboard/admin/salles/export/?${params.toString()}`;
+}
+
+function addSalle() {
+    window.location.href = `/dashboard/admin/salles/add/`;
+}
+
+function viewSalle(salleId) {
+    window.location.href = `/dashboard/admin/salles/${salleId}/`;
+}
+
+function editSalle(salleId) {
+    window.location.href = `/dashboard/admin/salles/${salleId}/edit/`;
+}
+
+function viewSchedule(salleId) {
+    window.location.href = `/dashboard/admin/salles/${salleId}/schedule/`;
+}
+
+function toggleSalleStatus(salleId, activate) {
+    if (confirm(`${activate ? 'Activer' : 'Désactiver'} cette salle ?`)) {
+        fetch(`/dashboard/admin/salles/${salleId}/toggle-status/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert('Erreur');
+        });
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

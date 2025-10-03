@@ -1,0 +1,561 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{{ niveau.nom }} - Détails{% endblock %}
+
+{% block content %}
+<div class="niveau-detail">
+    <!-- Header -->
+    <div class="detail-header">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <a href="{% url 'dashboard:admin' %}">Dashboard</a>
+                <i class="fas fa-chevron-right"></i>
+                <a href="{% url 'dashboard:admin_niveaux' %}">Niveaux</a>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">{{ niveau.nom }}</span>
+            </div>
+            <div class="header-title">
+                <h1>{{ niveau.nom }}</h1>
+                <div class="header-badges">
+                    <span class="ordre-badge-large">{{ niveau.ordre }}</span>
+                    <code class="code-badge">{{ niveau.code }}</code>
+                    {% if niveau.est_actif %}
+                        <span class="status-badge active">Actif</span>
+                    {% else %}
+                        <span class="status-badge inactive">Inactif</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'academic:niveau_update' niveau.id %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-edit"></i> Modifier
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e3f2fd;">
+                <i class="fas fa-users-class" style="color: #1976d2;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ niveau.nombre_classes }}</div>
+                <div class="stat-label">Classes</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e8f5e9;">
+                <i class="fas fa-users" style="color: #2e7d32;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ niveau.nombre_etudiants }}</div>
+                <div class="stat-label">Étudiants</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #fff3e0;">
+                <i class="fas fa-money-bill-wave" style="color: #e65100;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">
+                    {% if niveau.frais_scolarite %}
+                        {{ niveau.frais_scolarite|floatformat:0 }}
+                    {% elif niveau.filiere.frais_scolarite %}
+                        {{ niveau.filiere.frais_scolarite|floatformat:0 }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </div>
+                <div class="stat-label">Frais (FCFA)</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #f3e5f5;">
+                <i class="fas fa-calendar-alt" style="color: #7b1fa2;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ niveau.date_creation|date:"d/m/Y" }}</div>
+                <div class="stat-label">Créé le</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="detail-grid">
+        <!-- Informations générales -->
+        <div class="detail-section">
+            <div class="section-header">
+                <h3><i class="fas fa-info-circle"></i> Informations générales</h3>
+            </div>
+            <div class="section-content">
+                <div class="info-row">
+                    <span class="info-label">Filière</span>
+                    <span class="info-value">
+                        <a href="{% url 'academic:filiere_detail' niveau.filiere.id %}">
+                            {{ niveau.filiere.nom }}
+                        </a>
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Type</span>
+                    <span class="info-value">{{ niveau.filiere.get_type_filiere_display }}</span>
+                </div>
+                {% if niveau.filiere.departement %}
+                    <div class="info-row">
+                        <span class="info-label">Département</span>
+                        <span class="info-value">
+                            <a href="{% url 'academic:departement_detail' niveau.filiere.departement.id %}">
+                                {{ niveau.filiere.departement.nom }}
+                            </a>
+                        </span>
+                    </div>
+                {% endif %}
+                <div class="info-row">
+                    <span class="info-label">Code</span>
+                    <span class="info-value"><code>{{ niveau.code }}</code></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Ordre dans la filière</span>
+                    <span class="info-value">{{ niveau.ordre }}{% if niveau.ordre == 1 %}ère{% else %}ème{% endif %} année</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Description -->
+        {% if niveau.description %}
+        <div class="detail-section">
+            <div class="section-header">
+                <h3><i class="fas fa-align-left"></i> Description</h3>
+            </div>
+            <div class="section-content">
+                <p class="description-text">{{ niveau.description }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Frais de scolarité -->
+        <div class="detail-section">
+            <div class="section-header">
+                <h3><i class="fas fa-money-bill-wave"></i> Frais de scolarité</h3>
+            </div>
+            <div class="section-content">
+                {% if niveau.frais_scolarite %}
+                    <div class="info-row">
+                        <span class="info-label">Frais spécifiques</span>
+                        <span class="info-value frais-specific">{{ niveau.frais_scolarite|floatformat:0 }} FCFA</span>
+                    </div>
+                {% elif niveau.filiere.frais_scolarite %}
+                    <div class="info-row">
+                        <span class="info-label">Frais de la filière</span>
+                        <span class="info-value frais-default">{{ niveau.filiere.frais_scolarite|floatformat:0 }} FCFA</span>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Aucun frais défini</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Classes -->
+    {% if classes %}
+    <div class="detail-section">
+        <div class="section-header">
+            <h3><i class="fas fa-users-class"></i> Classes ({{ niveau.nombre_classes }})</h3>
+            <a href="{% url 'academic:classe_create' %}?niveau={{ niveau.id }}" class="btn-link">
+                <i class="fas fa-plus"></i> Ajouter une classe
+            </a>
+        </div>
+        <div class="classes-grid">
+            {% for classe in classes %}
+                <div class="classe-card">
+                    <div class="classe-header">
+                        <h4>{{ classe.nom }}</h4>
+                        <code>{{ classe.code }}</code>
+                    </div>
+                    <div class="classe-info">
+                        <div class="info-item">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>{{ classe.annee_academique.nom }}</span>
+                        </div>
+                        {% if classe.professeur_principal %}
+                            <div class="info-item">
+                                <i class="fas fa-user-tie"></i>
+                                <span>{{ classe.professeur_principal.get_full_name|truncatechars:20 }}</span>
+                            </div>
+                        {% endif %}
+                        <div class="info-item">
+                            <i class="fas fa-users"></i>
+                            <span>{{ classe.nombre_etudiants }} étudiant{{ classe.nombre_etudiants|pluralize }}</span>
+                        </div>
+                        {% if classe.capacite_maximale %}
+                            <div class="info-item">
+                                <i class="fas fa-chair"></i>
+                                <span>{{ classe.get_places_disponibles }} place{{ classe.get_places_disponibles|pluralize }} dispo</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="classe-actions">
+                        <a href="{% url 'academic:classe_detail' classe.id %}" class="btn btn-sm btn-outline">
+                            <i class="fas fa-eye"></i> Voir
+                        </a>
+                        <a href="{% url 'academic:classe_update' classe.id %}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-edit"></i> Modifier
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="detail-section">
+        <div class="section-header">
+            <h3><i class="fas fa-users-class"></i> Classes</h3>
+        </div>
+        <div class="empty-state-sm">
+            <i class="fas fa-users-class fa-2x"></i>
+            <p>Aucune classe configurée pour ce niveau</p>
+            <a href="{% url 'academic:classe_create' %}?niveau={{ niveau.id }}" class="btn btn-sm btn-primary">
+                <i class="fas fa-plus"></i> Créer une classe
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.niveau-detail {
+    padding: 15px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.breadcrumb-nav {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav a {
+    color: #6b7280;
+    text-decoration: none;
+}
+
+.breadcrumb-nav a:hover {
+    color: #2563eb;
+}
+
+.breadcrumb-nav .current {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.header-title {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.header-title h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.header-badges {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.ordre-badge-large {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: #2563eb;
+    color: white;
+    border-radius: 50%;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.code-badge {
+    background: #f3f4f6;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.status-badge.active {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.detail-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.section-header {
+    padding: 15px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-link {
+    font-size: 13px;
+    color: #2563eb;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+.section-content {
+    padding: 15px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 13px;
+    color: #1f2937;
+    text-align: right;
+}
+
+.info-value a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.info-value a:hover {
+    text-decoration: underline;
+}
+
+.frais-specific {
+    color: #059669;
+    font-weight: 600;
+}
+
+.frais-default {
+    color: #6b7280;
+}
+
+.description-text {
+    font-size: 14px;
+    color: #1f2937;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.classes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
+    padding: 15px;
+}
+
+.classe-card {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.classe-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.classe-header h4 {
+    margin: 0;
+    font-size: 15px;
+    color: #1f2937;
+}
+
+.classe-header code {
+    font-size: 11px;
+    background: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.classe-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.info-item i {
+    width: 16px;
+    font-size: 11px;
+}
+
+.classe-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.empty-state-sm {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6b7280;
+}
+
+.empty-state-sm i {
+    color: #d1d5db;
+    margin-bottom: 10px;
+}
+
+.empty-state-sm p {
+    margin: 10px 0;
+}
+
+.text-muted {
+    color: #6b7280;
+    font-size: 13px;
+}
+
+@media (max-width: 768px) {
+    .detail-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .classes-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

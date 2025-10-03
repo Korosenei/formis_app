@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block page_title %}Candidature - FORMIS{% endblock %}</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/candidature/candidature.css">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{% url 'core:home' %}" class="navbar-brand">
+                <i class="fas fa-graduation-cap"></i>
+                FORMIS
+            </a>
+            <div class="nav-actions">
+                <a href="{% url 'accounts:login' %}" class="btn btn-outline">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Se connecter
+                </a>
+                <a href="{% url 'core:home' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Accueil
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="candidature-container">
+        <!-- Header -->
+        <div class="header-section">
+            <h1 class="main-title">
+                <i class="fas fa-user-plus"></i>
+                Formulaire de Candidature
+            </h1>
+            <p class="main-subtitle">Complétez votre dossier de candidature en suivant les étapes</p>
+        </div>
+
+        <!-- Progress Steps -->
+        <div class="progress-container">
+            <div class="progress-steps">
+                <div class="step-item active" data-step="1">
+                    <div class="step-circle">
+                        <i class="fas fa-user"></i>
+                        <span class="step-number">1</span>
+                    </div>
+                    <div class="step-info">
+                        <h6>Informations Personnelles</h6>
+                        <small>Identité et contact</small>
+                    </div>
+                </div>
+
+                <div class="step-item" data-step="2">
+                    <div class="step-circle">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span class="step-number">2</span>
+                    </div>
+                    <div class="step-info">
+                        <h6>Formation Souhaitée</h6>
+                        <small>Établissement et filière</small>
+                    </div>
+                </div>
+
+                <div class="step-item" data-step="3">
+                    <div class="step-circle">
+                        <i class="fas fa-file-upload"></i>
+                        <span class="step-number">3</span>
+                    </div>
+                    <div class="step-info">
+                        <h6>Documents</h6>
+                        <small>Pièces justificatives</small>
+                    </div>
+                </div>
+
+                <div class="step-item" data-step="4">
+                    <div class="step-circle">
+                        <i class="fas fa-check"></i>
+                        <span class="step-number">4</span>
+                    </div>
+                    <div class="step-info">
+                        <h6>Confirmation</h6>
+                        <small>Vérification et soumission</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Content -->
+        <form id="candidature-form" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- Étape 1: Informations Personnelles -->
+            {% include 'public/candidature/etape1.html' %}
+            
+            <!-- Étape 2: Formation Souhaitée -->
+            {% include 'public/candidature/etape2.html' %}
+            
+            <!-- Étape 3: Documents -->
+            {% include 'public/candidature/etape3.html' %}
+            
+            <!-- Étape 4: Confirmation -->
+            {% include 'public/candidature/etape4.html' %}
+
+            <!-- Navigation Buttons -->
+            <div class="form-navigation">
+                <button type="button" class="btn btn-outline" id="btn-previous" style="visibility: hidden;">
+                    <i class="fas fa-arrow-left"></i>
+                    Précédent
+                </button>
+
+                <div class="nav-right">
+                    <button type="button" class="btn btn-outline" id="btn-save-draft">
+                        <i class="fas fa-save"></i>
+                        Sauvegarder
+                    </button>
+
+                    <button type="button" class="btn btn-primary" id="btn-next">
+                        Suivant
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+
+                    <button type="submit" class="btn btn-success hidden" id="btn-submit">
+                        <i class="fas fa-paper-plane"></i>
+                        Soumettre la candidature
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Loading Component -->
+    {% include 'public/candidature/loading.html' %}
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+    <!-- JavaScript -->
+    <script src="/static/js/candidature/candidature.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

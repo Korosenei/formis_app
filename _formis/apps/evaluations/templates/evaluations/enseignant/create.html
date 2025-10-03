@@ -1,0 +1,412 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Nouvelle Évaluation - FORMIS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/evaluations.css' %}">
+<style>
+  .form-section {
+    background: white;
+    border-radius: 0.75rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  }
+
+  .section-header {
+    border-bottom: 2px solid #f1f3f4;
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .section-header h4 {
+    color: #4e73df;
+    margin-bottom: 0.5rem;
+  }
+
+  .form-floating {
+    margin-bottom: 1rem;
+  }
+
+  .file-upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    background: #f8f9fa;
+  }
+
+  .file-upload-area:hover,
+  .file-upload-area.dragover {
+    border-color: #4e73df;
+    background-color: #e3f2fd;
+  }
+
+  .coefficient-warning {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .action-buttons {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 1.5rem 0;
+    border-top: 1px solid #dee2e6;
+    margin-top: 2rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="d-flex align-items-center">
+    <a href="{% url 'evaluations:list_enseignant' %}" class="btn btn-outline-secondary me-3">
+      <i class="fas fa-arrow-left"></i>
+    </a>
+    <div>
+      <h1 class="h3 mb-1"><i class="fas fa-plus-circle text-primary me-2"></i>Nouvelle Évaluation</h1>
+      <p class="text-muted mb-0">Créez une nouvelle évaluation pour vos étudiants</p>
+    </div>
+  </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" id="evaluationForm">
+  {% csrf_token %}
+
+  <!-- Informations générales -->
+  <div class="form-section">
+    <div class="section-header">
+      <h4><i class="fas fa-info-circle me-2"></i>Informations Générales</h4>
+      <p class="text-muted mb-0">Définissez les informations de base de votre évaluation</p>
+    </div>
+
+    <div class="row">
+      <div class="col-md-8">
+        <div class="form-floating">
+          {{ form.titre }}
+          <label for="{{ form.titre.id_for_label }}">Titre de l'évaluation *</label>
+          {% if form.titre.errors %}
+            <div class="invalid-feedback d-block">{{ form.titre.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="form-floating">
+          {{ form.type_evaluation }}
+          <label for="{{ form.type_evaluation.id_for_label }}">Type d'évaluation *</label>
+          {% if form.type_evaluation.errors %}
+            <div class="invalid-feedback d-block">{{ form.type_evaluation.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="form-floating">
+      {{ form.description }}
+      <label for="{{ form.description.id_for_label }}">Description</label>
+      {% if form.description.errors %}
+        <div class="invalid-feedback d-block">{{ form.description.errors.0 }}</div>
+      {% endif %}
+    </div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <div class="form-floating">
+          {{ form.matiere_module }}
+          <label for="{{ form.matiere_module.id_for_label }}">Matière/Module *</label>
+          {% if form.matiere_module.errors %}
+            <div class="invalid-feedback d-block">{{ form.matiere_module.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Classes concernées *</label>
+        <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+          {{ form.classes }}
+        </div>
+        {% if form.classes.errors %}
+          <div class="invalid-feedback d-block">{{ form.classes.errors.0 }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Notation -->
+  <div class="form-section">
+    <div class="section-header">
+      <h4><i class="fas fa-star me-2"></i>Notation</h4>
+      <p class="text-muted mb-0">Définissez le coefficient et la note maximale</p>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <div class="form-floating">
+          {{ form.coefficient }}
+          <label for="{{ form.coefficient.id_for_label }}">Coefficient *</label>
+          {% if form.coefficient.errors %}
+            <div class="invalid-feedback d-block">{{ form.coefficient.errors.0 }}</div>
+          {% endif %}
+        </div>
+        <div class="coefficient-warning" id="coefficientWarning" style="display: none;">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          <span id="coefficientMessage"></span>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="form-floating">
+          {{ form.note_maximale }}
+          <label for="{{ form.note_maximale.id_for_label }}">Note maximale *</label>
+          {% if form.note_maximale.errors %}
+            <div class="invalid-feedback d-block">{{ form.note_maximale.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Planning -->
+  <div class="form-section">
+    <div class="section-header">
+      <h4><i class="fas fa-calendar-alt me-2"></i>Planning</h4>
+      <p class="text-muted mb-0">Programmez votre évaluation</p>
+    </div>
+
+    <div class="row">
+      <div class="col-md-4">
+        <div class="form-floating">
+          {{ form.date_debut }}
+          <label for="{{ form.date_debut.id_for_label }}">Date et heure de début *</label>
+          {% if form.date_debut.errors %}
+            <div class="invalid-feedback d-block">{{ form.date_debut.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="form-floating">
+          {{ form.date_fin }}
+          <label for="{{ form.date_fin.id_for_label }}">Date et heure de fin *</label>
+          {% if form.date_fin.errors %}
+            <div class="invalid-feedback d-block">{{ form.date_fin.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="form-floating">
+          {{ form.duree_minutes }}
+          <label for="{{ form.duree_minutes.id_for_label }}">Durée (minutes)</label>
+          {% if form.duree_minutes.errors %}
+            <div class="invalid-feedback d-block">{{ form.duree_minutes.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fichiers -->
+  <div class="form-section">
+    <div class="section-header">
+      <h4><i class="fas fa-file-upload me-2"></i>Fichiers</h4>
+      <p class="text-muted mb-0">Ajoutez le sujet et éventuellement la correction</p>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <label class="form-label">Fichier d'évaluation (Sujet) *</label>
+        <div class="file-upload-area" id="evaluationFileArea">
+          {{ form.fichier_evaluation }}
+          <div class="mt-2">
+            <i class="fas fa-cloud-upload-alt fa-2x text-muted mb-2"></i>
+            <p class="mb-0">Cliquez pour sélectionner ou glissez-déposez</p>
+            <small class="text-muted">PDF, DOC, DOCX, TXT</small>
+          </div>
+        </div>
+        {% if form.fichier_evaluation.errors %}
+          <div class="invalid-feedback d-block">{{ form.fichier_evaluation.errors.0 }}</div>
+        {% endif %}
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Fichier de correction (optionnel)</label>
+        <div class="file-upload-area" id="correctionFileArea">
+          {{ form.fichier_correction }}
+          <div class="mt-2">
+            <i class="fas fa-check-circle fa-2x text-muted mb-2"></i>
+            <p class="mb-0">Cliquez pour sélectionner ou glissez-déposez</p>
+            <small class="text-muted">PDF, DOC, DOCX, TXT</small>
+          </div>
+        </div>
+        {% if form.fichier_correction.errors %}
+          <div class="invalid-feedback d-block">{{ form.fichier_correction.errors.0 }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Paramètres de correction -->
+  <div class="form-section">
+    <div class="section-header">
+      <h4><i class="fas fa-cogs me-2"></i>Paramètres de Correction</h4>
+      <p class="text-muted mb-0">Configurez la visibilité de la correction</p>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <div class="form-check form-switch">
+          {{ form.correction_visible_immediatement }}
+          <label class="form-check-label" for="{{ form.correction_visible_immediatement.id_for_label }}">
+            Correction visible immédiatement après l'évaluation
+          </label>
+        </div>
+        {% if form.correction_visible_immediatement.errors %}
+          <div class="invalid-feedback d-block">{{ form.correction_visible_immediatement.errors.0 }}</div>
+        {% endif %}
+      </div>
+      <div class="col-md-6">
+        <div class="form-floating" id="datePublicationGroup">
+          {{ form.date_publication_correction }}
+          <label for="{{ form.date_publication_correction.id_for_label }}">Date de publication différée</label>
+          {% if form.date_publication_correction.errors %}
+            <div class="invalid-feedback d-block">{{ form.date_publication_correction.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paramètres de retard -->
+  <div class="form-section">
+    <div class="section-header">
+      <h4><i class="fas fa-clock me-2"></i>Gestion des Retards</h4>
+      <p class="text-muted mb-0">Configurez les règles pour les soumissions tardives</p>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <div class="form-check form-switch">
+          {{ form.autorise_retard }}
+          <label class="form-check-label" for="{{ form.autorise_retard.id_for_label }}">
+            Autoriser les soumissions en retard
+          </label>
+        </div>
+        {% if form.autorise_retard.errors %}
+          <div class="invalid-feedback d-block">{{ form.autorise_retard.errors.0 }}</div>
+        {% endif %}
+      </div>
+      <div class="col-md-6">
+        <div class="form-floating" id="penaliteGroup">
+          {{ form.penalite_retard }}
+          <label for="{{ form.penalite_retard.id_for_label }}">Pénalité de retard (%)</label>
+          {% if form.penalite_retard.errors %}
+            <div class="invalid-feedback d-block">{{ form.penalite_retard.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Boutons d'action -->
+  <div class="action-buttons">
+    <div class="d-flex justify-content-between">
+      <a href="{% url 'evaluations:list_enseignant' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-times me-2"></i>Annuler
+      </a>
+      <div class="d-flex gap-2">
+        <button type="submit" name="save_as_draft" class="btn btn-outline-primary">
+          <i class="fas fa-save me-2"></i>Sauvegarder en brouillon
+        </button>
+        <button type="submit" name="save_and_continue" class="btn btn-success">
+          <i class="fas fa-arrow-right me-2"></i>Sauvegarder et continuer
+        </button>
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-check me-2"></i>Créer l'évaluation
+        </button>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Gestion de l'affichage conditionnel des champs
+  const correctionImmediateCheckbox = document.getElementById('{{ form.correction_visible_immediatement.id_for_label }}');
+  const datePublicationGroup = document.getElementById('datePublicationGroup');
+
+  const autoriseRetardCheckbox = document.getElementById('{{ form.autorise_retard.id_for_label }}');
+  const penaliteGroup = document.getElementById('penaliteGroup');
+
+  function toggleDatePublication() {
+    if (correctionImmediateCheckbox.checked) {
+      datePublicationGroup.style.display = 'none';
+    } else {
+      datePublicationGroup.style.display = 'block';
+    }
+  }
+
+  function togglePenalite() {
+    if (autoriseRetardCheckbox.checked) {
+      penaliteGroup.style.display = 'block';
+    } else {
+      penaliteGroup.style.display = 'none';
+    }
+  }
+
+  correctionImmediateCheckbox.addEventListener('change', toggleDatePublication);
+  autoriseRetardCheckbox.addEventListener('change', togglePenalite);
+
+  // État initial
+  toggleDatePublication();
+  togglePenalite();
+
+  // Calcul automatique de la durée
+  const dateDebutInput = document.getElementById('{{ form.date_debut.id_for_label }}');
+  const dateFinInput = document.getElementById('{{ form.date_fin.id_for_label }}');
+  const dureeInput = document.getElementById('{{ form.duree_minutes.id_for_label }}');
+
+  function calculateDuration() {
+    if (dateDebutInput.value && dateFinInput.value) {
+      const debut = new Date(dateDebutInput.value);
+      const fin = new Date(dateFinInput.value);
+      const diffMs = fin - debut;
+      const diffMinutes = Math.floor(diffMs / 60000);
+
+      if (diffMinutes > 0) {
+        dureeInput.value = diffMinutes;
+      }
+    }
+  }
+
+  dateDebutInput.addEventListener('change', calculateDuration);
+  dateFinInput.addEventListener('change', calculateDuration);
+
+  // Validation du formulaire
+  const form = document.getElementById('evaluationForm');
+  form.addEventListener('submit', function(e) {
+    // Validation des dates
+    if (dateDebutInput.value && dateFinInput.value) {
+      const debut = new Date(dateDebutInput.value);
+      const fin = new Date(dateFinInput.value);
+
+      if (fin <= debut) {
+        e.preventDefault();
+        alert('La date de fin doit être postérieure à la date de début.');
+        return false;
+      }
+
+      if (debut <= new Date()) {
+        e.preventDefault();
+        alert('La date de début doit être dans le futur.');
+        return false;
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,248 @@
+{% extends 'base/dashboard_base.html' %}
+
+{% load static %}
+
+{% block title %}Dashboard Enseignant{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-card {
+        border: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-radius: 10px;
+        transition: transform 0.2s;
+    }
+    .dashboard-card:hover {
+        transform: translateY(-2px);
+    }
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+    }
+    .stat-icon {
+        font-size: 2.5rem;
+        opacity: 0.8;
+    }
+    .course-item {
+        border-left: 4px solid #007bff;
+        background: #f8f9fa;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        border-radius: 0 5px 5px 0;
+    }
+    .urgent-item {
+        border-left-color: #dc3545;
+        background: #fff5f5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- En-tête -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0">
+                <i class="fas fa-tachometer-alt me-2"></i>
+                Dashboard Enseignant
+            </h1>
+            <p class="text-muted">Bienvenue, {{ user.get_full_name }}</p>
+        </div>
+    </div>
+
+    <!-- Statistiques rapides -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="row align-items-center">
+                    <div class="col-8">
+                        <h3 class="mb-0">{{ cours_semaine }}</h3>
+                        <p class="mb-0">Cours cette semaine</p>
+                    </div>
+                    <div class="col-4 text-end">
+                        <i class="fas fa-calendar-week stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="row align-items-center">
+                    <div class="col-8">
+                        <h3 class="mb-0">{{ presences_a_valider }}</h3>
+                        <p class="mb-0">Présences à valider</p>
+                    </div>
+                    <div class="col-4 text-end">
+                        <i class="fas fa-user-check stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="row align-items-center">
+                    <div class="col-8">
+                        <h3 class="mb-0">{{ cours_sans_cahier }}</h3>
+                        <p class="mb-0">Cahiers à remplir</p>
+                    </div>
+                    <div class="col-4 text-end">
+                        <i class="fas fa-book stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                <div class="row align-items-center">
+                    <div class="col-8">
+                        <h3 class="mb-0">{{ cours_aujourd_hui.count }}</h3>
+                        <p class="mb-0">Cours aujourd'hui</p>
+                    </div>
+                    <div class="col-4 text-end">
+                        <i class="fas fa-chalkboard-teacher stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Cours du jour -->
+        <div class="col-lg-8 mb-4">
+            <div class="card dashboard-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-day me-2"></i>
+                        Cours d'aujourd'hui
+                    </h5>
+                    <span class="badge bg-primary">{{ cours_aujourd_hui.count }} cours</span>
+                </div>
+                <div class="card-body">
+                    {% if cours_aujourd_hui %}
+                        {% for cours in cours_aujourd_hui %}
+                        <div class="course-item">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <h6 class="mb-1">{{ cours.titre }}</h6>
+                                    <p class="mb-1 text-muted">
+                                        <i class="fas fa-users me-1"></i>{{ cours.classe.nom }}
+                                        <span class="ms-2">
+                                            <i class="fas fa-book me-1"></i>{{ cours.matiere.nom }}
+                                        </span>
+                                    </p>
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>
+                                        {{ cours.heure_debut_prevue|time:"H:i" }} - {{ cours.heure_fin_prevue|time:"H:i" }}
+                                        {% if cours.salle %}
+                                        <span class="ms-2">
+                                            <i class="fas fa-map-marker-alt me-1"></i>{{ cours.salle.nom }}
+                                        </span>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'courses:cours_detail' cours.pk %}" class="btn btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% if not cours.presence_prise %}
+                                        <a href="{% url 'courses:presence_bulk_create' cours.pk %}" class="btn btn-outline-success">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                        {% endif %}
+                                        {% if cours.cours_en_ligne and cours.streaming_actif %}
+                                        <a href="{% url 'courses:cours_streaming' cours.pk %}" class="btn btn-outline-info">
+                                            <i class="fas fa-video"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-check fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">Aucun cours prévu aujourd'hui</h6>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions rapides -->
+        <div class="col-lg-4">
+            <div class="card dashboard-card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>
+                        Actions rapides
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'courses:cours_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Nouveau cours
+                        </a>
+                        <a href="{% url 'courses:cours_list' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-list me-2"></i>Mes cours
+                        </a>
+                        <a href="{% url 'courses:cahier_texte_list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-book me-2"></i>Cahiers de texte
+                        </a>
+                        <a href="{% url 'courses:presence_list' %}" class="btn btn-outline-info">
+                            <i class="fas fa-user-check me-2"></i>Présences
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tâches urgentes -->
+            {% if cours_sans_cahier > 0 or presences_a_valider > 0 %}
+            <div class="card dashboard-card">
+                <div class="card-header">
+                    <h5 class="mb-0 text-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Tâches urgentes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if cours_sans_cahier > 0 %}
+                    <div class="course-item urgent-item">
+                        <h6 class="mb-1 text-danger">Cahiers de texte à remplir</h6>
+                        <p class="mb-2">{{ cours_sans_cahier }} cours sans cahier de texte</p>
+                        <a href="{% url 'courses:cahier_texte_list' %}" class="btn btn-sm btn-danger">
+                            <i class="fas fa-edit me-1"></i>Compléter
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if presences_a_valider > 0 %}
+                    <div class="course-item urgent-item">
+                        <h6 class="mb-1 text-danger">Présences à valider</h6>
+                        <p class="mb-2">{{ presences_a_valider }} justifications d'absence</p>
+                        <a href="{% url 'courses:presence_list' %}" class="btn btn-sm btn-danger">
+                            <i class="fas fa-check-circle me-1"></i>Valider
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Actualiser la page toutes les 5 minutes
+    setTimeout(function() {
+        window.location.reload();
+    }, 300000);
+});
+</script>
+{% endblock %}

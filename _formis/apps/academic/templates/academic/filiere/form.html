@@ -1,0 +1,556 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{{ title }} - Filière{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <!-- Header -->
+    <div class="form-header">
+        <div class="breadcrumb-nav">
+            <a href="{% url 'dashboard:admin' %}">Dashboard</a>
+            <i class="fas fa-chevron-right"></i>
+            <a href="{{ cancel_url }}">Filières</a>
+            <i class="fas fa-chevron-right"></i>
+            <span class="current">{{ title }}</span>
+        </div>
+        <h1>{{ title }}</h1>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="form-card">
+        <form method="POST" class="modern-form" id="filiereForm">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <!-- Section Informations de base -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-info-circle"></i>
+                    Informations de base
+                </h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.departement.id_for_label }}">
+                            Département
+                        </label>
+                        {{ form.departement }}
+                        {% if form.departement.errors %}
+                            <div class="error-message">{{ form.departement.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text">Département auquel appartient la filière (optionnel)</small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-8">
+                        <label for="{{ form.nom.id_for_label }}" class="required">
+                            Nom de la filière
+                        </label>
+                        {{ form.nom }}
+                        {% if form.nom.errors %}
+                            <div class="error-message">{{ form.nom.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="{{ form.code.id_for_label }}" class="required">
+                            Code
+                        </label>
+                        {{ form.code }}
+                        {% if form.code.errors %}
+                            <div class="error-message">{{ form.code.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text">Ex: LIC-INFO</small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.description.id_for_label }}">
+                            Description
+                        </label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                            <div class="error-message">{{ form.description.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text">Description détaillée de la filière</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Détails académiques -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-graduation-cap"></i>
+                    Détails académiques
+                </h3>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="{{ form.type_filiere.id_for_label }}" class="required">
+                            Type de filière
+                        </label>
+                        {{ form.type_filiere }}
+                        {% if form.type_filiere.errors %}
+                            <div class="error-message">{{ form.type_filiere.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="{{ form.duree_annees.id_for_label }}" class="required">
+                            Durée (années)
+                        </label>
+                        {{ form.duree_annees }}
+                        {% if form.duree_annees.errors %}
+                            <div class="error-message">{{ form.duree_annees.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.nom_diplome.id_for_label }}" class="required">
+                            Nom du diplôme
+                        </label>
+                        {{ form.nom_diplome }}
+                        {% if form.nom_diplome.errors %}
+                            <div class="error-message">{{ form.nom_diplome.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text">Ex: Licence Professionnelle, Master, etc.</small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.prerequis.id_for_label }}">
+                            Prérequis
+                        </label>
+                        {{ form.prerequis }}
+                        {% if form.prerequis.errors %}
+                            <div class="error-message">{{ form.prerequis.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text">Conditions d'admission et prérequis nécessaires</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Capacité et frais -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-calculator"></i>
+                    Capacité et frais
+                </h3>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="{{ form.frais_scolarite.id_for_label }}">
+                            Frais de scolarité (FCFA)
+                        </label>
+                        <div class="input-group">
+                            <span class="input-prefix">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </span>
+                            {{ form.frais_scolarite }}
+                        </div>
+                        {% if form.frais_scolarite.errors %}
+                            <div class="error-message">{{ form.frais_scolarite.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text">Frais annuels par défaut pour cette filière</small>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="{{ form.capacite_maximale.id_for_label }}">
+                            Capacité maximale
+                        </label>
+                        <div class="input-group">
+                            <span class="input-prefix">
+                                <i class="fas fa-users"></i>
+                            </span>
+                            {{ form.capacite_maximale }}
+                        </div>
+                        {% if form.capacite_maximale.errors %}
+                            <div class="error-message">{{ form.capacite_maximale.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text">Nombre total de places disponibles (optionnel)</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Statut -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-toggle-on"></i>
+                    Statut
+                </h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="custom-checkbox">
+                            {{ form.est_active }}
+                            <label for="{{ form.est_active.id_for_label }}">
+                                Filière active
+                            </label>
+                        </div>
+                        {% if form.est_active.errors %}
+                            <div class="error-message">{{ form.est_active.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text">Une filière inactive ne sera pas visible pour les inscriptions</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="form-actions">
+                <a href="{{ cancel_url }}" class="btn btn-outline">
+                    <i class="fas fa-times"></i> Annuler
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> {{ submit_text }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.form-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.form-header {
+    margin-bottom: 20px;
+}
+
+.breadcrumb-nav {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.breadcrumb-nav a {
+    color: #6b7280;
+    text-decoration: none;
+}
+
+.breadcrumb-nav a:hover {
+    color: #2563eb;
+}
+
+.breadcrumb-nav .current {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.form-header h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.form-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 30px;
+}
+
+.modern-form {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.form-section {
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 25px;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-title i {
+    color: #2563eb;
+    font-size: 18px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-row:last-child {
+    margin-bottom: 0;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.col-md-4 {
+    grid-column: span 1;
+}
+
+.form-group.col-md-6 {
+    grid-column: span 1;
+}
+
+.form-group.col-md-8 {
+    grid-column: span 2;
+}
+
+.form-row:has(.col-md-8) {
+    grid-template-columns: 2fr 1fr;
+}
+
+.form-row:has(.col-md-6) {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1f2937;
+    margin-bottom: 8px;
+}
+
+.form-group label.required::after {
+    content: " *";
+    color: #ef4444;
+}
+
+.form-control,
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.form-control:focus,
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.input-group {
+    display: flex;
+    align-items: stretch;
+}
+
+.input-prefix {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-right: none;
+    border-radius: 6px 0 0 6px;
+    color: #6b7280;
+}
+
+.input-group input {
+    border-radius: 0 6px 6px 0 !important;
+}
+
+.form-text {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 5px;
+}
+
+.error-message {
+    color: #ef4444;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+
+.alert-danger {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.custom-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.custom-checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.custom-checkbox label {
+    margin: 0;
+    cursor: pointer;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.btn {
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    border: none;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.btn-outline {
+    background: white;
+    color: #1f2937;
+    border: 1px solid #d1d5db;
+}
+
+.btn-outline:hover {
+    background: #f3f4f6;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .form-container {
+        padding: 15px;
+    }
+
+    .form-card {
+        padding: 20px;
+    }
+
+    .form-row,
+    .form-row:has(.col-md-8),
+    .form-row:has(.col-md-6) {
+        grid-template-columns: 1fr;
+    }
+
+    .form-group.col-md-4,
+    .form-group.col-md-6,
+    .form-group.col-md-8 {
+        grid-column: span 1;
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('filiereForm');
+
+    // Validation avant soumission
+    form.addEventListener('submit', function(e) {
+        const nom = form.querySelector('[name="nom"]').value.trim();
+        const code = form.querySelector('[name="code"]').value.trim();
+        const duree = form.querySelector('[name="duree_annees"]').value;
+        const diplome = form.querySelector('[name="nom_diplome"]').value.trim();
+        const type = form.querySelector('[name="type_filiere"]').value;
+
+        if (!nom || !code || !duree || !diplome || !type) {
+            e.preventDefault();
+            alert('Veuillez remplir tous les champs obligatoires');
+            return false;
+        }
+    });
+
+    // Auto-génération du code depuis le nom (optionnel)
+    const nomInput = form.querySelector('[name="nom"]');
+    const codeInput = form.querySelector('[name="code"]');
+
+    if (nomInput && codeInput && !codeInput.value) {
+        nomInput.addEventListener('blur', function() {
+            if (!codeInput.value) {
+                // Extraire les premières lettres significatives
+                const words = this.value.split(' ');
+                let code = '';
+
+                if (words.length > 1) {
+                    // Prendre première lettre de chaque mot
+                    code = words.map(w => w.charAt(0)).join('').toUpperCase();
+                } else {
+                    // Prendre les 4 premières lettres
+                    code = this.value.substring(0, 4).toUpperCase();
+                }
+
+                code = code.replace(/[^A-Z0-9]/g, '');
+                if (code) {
+                    codeInput.value = code;
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

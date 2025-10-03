@@ -1,0 +1,505 @@
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo" id="logo">
+      <i class="fas fa-graduation-cap"></i>
+      <span class="logo-text">FORMIS</span>
+    </div>
+    <button class="sidebar-toggle" id="sidebarToggle">
+      <i class="fas fa-bars"></i>
+    </button>
+  </div>
+
+  <nav class="sidebar-nav">
+    <!-- SUPERADMIN MENU -->
+    {% if user.role == 'SUPERADMIN' %}
+    <ul class="nav-menu">
+      <li class="nav-item">
+        <a href="{% url 'dashboard:superadmin' %}" class="nav-link {% if request.resolver_match.url_name == 'superadmin' %}active{% endif %}">
+          <i class="fas fa-tachometer-alt"></i>
+          <span class="nav-text">Tableau de bord</span>
+        </a>
+      </li>
+
+      <li class="nav-item has-submenu">
+        <a href="#" class="nav-link">
+          <i class="fas fa-building"></i>
+          <span class="nav-text">Établissements</span>
+          <i class="fas fa-chevron-down submenu-arrow"></i>
+        </a>
+        <ul class="submenu">
+          <li><a href="{% url 'establishments:etablissement_list' %}">Liste des établissements</a></li>
+          <li><a href="{% url 'establishments:etablissement_create' %}">Nouvel établissement</a></li>
+          <li><a href="{% url 'establishments:type_etablissement_list' %}">Types d'établissements</a></li>
+          <li><a href="{% url 'establishments:localite_list' %}">Localités</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item has-submenu">
+        <a href="#" class="nav-link">
+          <i class="fas fa-users-cog"></i>
+          <span class="nav-text">Utilisateurs</span>
+          <i class="fas fa-chevron-down submenu-arrow"></i>
+        </a>
+        <ul class="submenu">
+          <li><a href="{% url 'dashboard:superadmin_users' %}">Tous les utilisateurs</a></li>
+          <li><a href="{% url 'dashboard:superadmin_admins' %}">Administrateurs</a></li>
+          <li><a href="{% url 'dashboard:superadmin_teachers' %}">Enseignants</a></li>
+          <li><a href="{% url 'dashboard:superadmin_students' %}">Apprenants</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:superadmin_statistics' %}" class="nav-link">
+          <i class="fas fa-chart-bar"></i>
+          <span class="nav-text">Statistiques globales</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:superadmin_reports' %}" class="nav-link">
+          <i class="fas fa-file-chart-line"></i>
+          <span class="nav-text">Rapports</span>
+        </a>
+      </li>
+
+      <li class="nav-item has-submenu">
+        <a href="#" class="nav-link">
+          <i class="fas fa-cogs"></i>
+          <span class="nav-text">Configuration</span>
+          <i class="fas fa-chevron-down submenu-arrow"></i>
+        </a>
+        <ul class="submenu">
+          <li><a href="{% url 'dashboard:superadmin_system_settings' %}">Paramètres système</a></li>
+          <li><a href="{% url 'dashboard:superadmin_backups' %}">Sauvegardes</a></li>
+          <li><a href="{% url 'dashboard:superadmin_logs' %}">Journaux système</a></li>
+          <li><a href="{% url 'dashboard:superadmin_maintenance' %}">Maintenance</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:superadmin_support' %}" class="nav-link">
+          <i class="fas fa-life-ring"></i>
+          <span class="nav-text">Support</span>
+        </a>
+      </li>
+    </ul>
+
+    <!-- ADMIN ÉTABLISSEMENT MENU -->
+    {% elif user.role == 'ADMIN' %}
+    <ul class="nav-menu">
+      <li class="nav-item">
+        <a href="{% url 'dashboard:admin' %}" class="nav-link {% if request.resolver_match.url_name == 'admin' %}active{% endif %}">
+          <i class="fas fa-tachometer-alt"></i>
+          <span class="nav-text">Tableau de bord</span>
+        </a>
+      </li>
+
+      <li class="nav-item has-submenu">
+        <a href="#" class="nav-link {% if 'users' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="fas fa-users"></i>
+          <span class="nav-text">Utilisateurs</span>
+          <i class="fas fa-chevron-down submenu-arrow"></i>
+        </a>
+        <ul class="submenu">
+          <li><a href="{% url 'dashboard:admin_users' %}">Tous les utilisateurs</a></li>
+          <li><a href="{% url 'dashboard:admin_students' %}">Apprenants</a></li>
+          <li><a href="{% url 'dashboard:admin_teachers' %}">Enseignants</a></li>
+          <li><a href="#">Chefs de département</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item has-submenu">
+        <a href="#" class="nav-link {% if 'academic' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="fas fa-graduation-cap"></i>
+          <span class="nav-text">Structure académique</span>
+          <i class="fas fa-chevron-down submenu-arrow"></i>
+        </a>
+        <ul class="submenu">
+          <li><a href="{% url 'academic:departement_list' %}">Départements</a></li>
+          <li><a href="{% url 'academic:filiere_list' %}">Filières</a></li>
+          <li><a href="{% url 'academic:niveau_list' %}">Niveaux</a></li>
+          <li><a href="{% url 'academic:classe_list' %}">Classes</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item has-submenu">
+        <a href="#" class="nav-link {% if 'candidatures' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="fas fa-user-plus"></i>
+          <span class="nav-text">Candidatures</span>
+          <i class="fas fa-chevron-down submenu-arrow"></i>
+        </a>
+        <ul class="submenu">
+          <li><a href="{% url 'dashboard:admin_candidatures' %}">Toutes les candidatures</a></li>
+          <li><a href="#admin_candidature_list">En attente</a></li>
+          <li><a href="#">Approuvées</a></li>
+          <li><a href="#">Rejetées</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item has-submenu">
+        <a href="#" class="nav-link {% if 'courses' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="fas fa-book"></i>
+          <span class="nav-text">Enseignements</span>
+          <i class="fas fa-chevron-down submenu-arrow"></i>
+        </a>
+        <ul class="submenu">
+          <li><a href="{% url 'dashboard:admin_courses' %}">Tous les cours</a></li>
+          <li><a href="{% url 'courses:module_list' %}">Modules</a></li>
+          <li><a href="{% url 'courses:matiere_list' %}">Matières</a></li>
+          <li><a href="{% url 'courses:emploi_du_temps_list' %}">Emplois du temps</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item">
+        <a href="#admin_evaluations" class="nav-link">
+          <i class="fas fa-tasks"></i>
+          <span class="nav-text">Évaluations</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:admin_payments' %}" class="nav-link">
+          <i class="fas fa-credit-card"></i>
+          <span class="nav-text">Paiements</span>
+        </a>
+      </li>
+
+      <li class="nav-item has-submenu">
+        <a href="#" class="nav-link">
+          <i class="fas fa-building"></i>
+          <span class="nav-text">Infrastructure</span>
+          <i class="fas fa-chevron-down submenu-arrow"></i>
+        </a>
+        <ul class="submenu">
+          <li><a href="{% url 'establishments:salle_list' %}">Salles</a></li>
+          <li><a href="{% url 'establishments:campus_list' %}">Campus</a></li>
+          <li><a href="#">Équipements</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item has-submenu">
+        <a href="#" class="nav-link {% if 'settings' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="fas fa-cog"></i>
+          <span class="nav-text">Configuration</span>
+          <i class="fas fa-chevron-down submenu-arrow"></i>
+        </a>
+        <ul class="submenu">
+          <li><a href="{% url 'dashboard:admin_settings' %}">Paramètres généraux</a></li>
+          <li><a href="{% url 'establishments:annee_academique_list' %}">Années académiques</a></li>
+          <li><a href="{% url 'establishments:bareme_notation_list' %}">Barèmes de notation</a></li>
+          <li><a href="{% url 'establishments:jour_ferie_list' %}">Jours fériés</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:admin_reports' %}" class="nav-link">
+          <i class="fas fa-chart-line"></i>
+          <span class="nav-text">Rapports</span>
+        </a>
+      </li>
+    </ul>
+
+    <!-- CHEF DE DÉPARTEMENT MENU -->
+    {% elif user.role == 'CHEF_DEPARTEMENT' %}
+    <ul class="nav-menu">
+      <li class="nav-item">
+        <a href="{% url 'dashboard:department_head' %}" class="nav-link {% if request.resolver_match.url_name == 'department_head' %}active{% endif %}">
+          <i class="fas fa-tachometer-alt"></i>
+          <span class="nav-text">Tableau de bord</span>
+        </a>
+      </li>
+
+      <li class="nav-item has-submenu">
+        <a href="#" class="nav-link {% if 'teachers' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="fas fa-chalkboard-teacher"></i>
+          <span class="nav-text">Enseignants</span>
+          <i class="fas fa-chevron-down submenu-arrow"></i>
+        </a>
+        <ul class="submenu">
+          <li><a href="{% url 'dashboard:department_head_teachers' %}">Mes enseignants</a></li>
+          <li><a href="#">Planning enseignants</a></li>
+          <li><a href="#">Charge horaire</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item has-submenu">
+        <a href="#" class="nav-link {% if 'students' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="fas fa-users"></i>
+          <span class="nav-text">Apprenants</span>
+          <i class="fas fa-chevron-down submenu-arrow"></i>
+        </a>
+        <ul class="submenu">
+          <li><a href="{% url 'dashboard:department_head_students' %}">Mes apprenants</a></li>
+          <li><a href="#">Par filière</a></li>
+          <li><a href="#">Par niveau</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item has-submenu">
+        <a href="#" class="nav-link {% if 'courses' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="fas fa-book"></i>
+          <span class="nav-text">Enseignements</span>
+          <i class="fas fa-chevron-down submenu-arrow"></i>
+        </a>
+        <ul class="submenu">
+          <li><a href="{% url 'dashboard:department_head_courses' %}">Cours du département</a></li>
+          <li><a href="#">Modules</a></li>
+          <li><a href="#">Programmes</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:department_head_candidatures' %}" class="nav-link {% if 'candidatures' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="fas fa-user-plus"></i>
+          <span class="nav-text">Candidatures</span>
+        </a>
+      </li>
+
+      <li class="nav-item has-submenu">
+        <a href="#" class="nav-link {% if 'evaluations' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="fas fa-tasks"></i>
+          <span class="nav-text">Évaluations</span>
+          <i class="fas fa-chevron-down submenu-arrow"></i>
+        </a>
+        <ul class="submenu">
+          <li><a href="{% url 'dashboard:department_head_evaluations' %}">Toutes les évaluations</a></li>
+          <li><a href="#">Calendrier des examens</a></li>
+          <li><a href="#">Résultats</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:department_head_reports' %}" class="nav-link">
+          <i class="fas fa-chart-line"></i>
+          <span class="nav-text">Rapports</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a href="#" class="nav-link">
+          <i class="fas fa-cog"></i>
+          <span class="nav-text">Paramètres</span>
+        </a>
+      </li>
+    </ul>
+
+    <!-- ENSEIGNANT MENU -->
+    {% elif user.role == 'ENSEIGNANT' %}
+    <ul class="nav-menu">
+      <li class="nav-item">
+        <a
+          href="{% url 'dashboard:teacher' %}"
+          class="nav-link {% if request.resolver_match.url_name == 'teacher' %}active{% endif %}"
+        >
+          <i class="fas fa-tachometer-alt"></i>
+          <span class="nav-text">Tableau de bord</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          href="{% url 'dashboard:teacher_courses' %}"
+          class="nav-link {% if 'courses' in request.resolver_match.url_name %}active{% endif %}"
+        >
+          <i class="fas fa-chalkboard-teacher"></i>
+          <span class="nav-text">Mes Enseignements</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{% url 'dashboard:teacher_schedule' %}" class="nav-link">
+          <i class="fas fa-calendar-alt"></i>
+          <span class="nav-text">Emploi du temps</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{% url 'dashboard:teacher_logbook' %}" class="nav-link">
+          <i class="fas fa-book-open"></i>
+          <span class="nav-text">Cahier de textes</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{% url 'dashboard:teacher_evaluations' %}" class="nav-link">
+          <i class="fas fa-edit"></i>
+          <span class="nav-text">Évaluations</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{% url 'dashboard:teacher_evaluations' %}" class="nav-link">
+          <i class="fas fa-chart-bar"></i>
+          <span class="nav-text">Notes & Corrections</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{% url 'dashboard:teacher_attendance' %}" class="nav-link">
+          <i class="fas fa-user-check"></i>
+          <span class="nav-text">Présences</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{% url 'dashboard:teacher_students' %}" class="nav-link">
+          <i class="fas fa-users"></i>
+          <span class="nav-text">Mes Étudiants</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{% url 'dashboard:teacher_resources' %}" class="nav-link">
+          <i class="fas fa-folder-open"></i>
+          <span class="nav-text">Ressources</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="{% url 'dashboard:teacher_reports' %}" class="nav-link">
+          <i class="fas fa-chart-line"></i>
+          <span class="nav-text">Rapports</span>
+        </a>
+      </li>
+    </ul>
+
+    <!-- APPRENANT MENU -->
+    {% elif user.role == 'APPRENANT' %}
+    <ul class="nav-menu">
+      <li class="nav-item">
+        <a
+          href="{% url 'dashboard:student' %}"
+          class="nav-link {% if request.resolver_match.url_name == 'student' %}active{% endif %}"
+        >
+          <i class="fas fa-tachometer-alt"></i>
+          <span class="nav-text">Tableau de bord</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          href="{% url 'dashboard:student_courses' %}"
+          class="nav-link {% if 'courses' in request.resolver_match.url_name %}active{% endif %}"
+        >
+          <i class="fas fa-book"></i>
+          <span class="nav-text">Mes Cours</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          href="{% url 'dashboard:student_schedule' %}"
+          class="nav-link {% if 'schedule' in request.resolver_match.url_name %}active{% endif %}"
+        >
+          <i class="fas fa-calendar-alt"></i>
+          <span class="nav-text">Emploi du temps</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          href="{% url 'dashboard:student_evaluations' %}"
+          class="nav-link {% if 'evaluations' in request.resolver_match.url_name %}active{% endif %}"
+        >
+          <i class="fas fa-edit"></i>
+          <span class="nav-text">Évaluations</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          href="{% url 'dashboard:student_resultats' %}"
+          class="nav-link {% if 'resultats' in request.resolver_match.url_name %}active{% endif %}"
+        >
+          <i class="fas fa-chart-line"></i>
+          <span class="nav-text">Notes & Résultats</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          href="{% url 'dashboard:student_attendances' %}"
+          class="nav-link {% if 'attendance' in request.resolver_match.url_name %}active{% endif %}"
+        >
+          <i class="fas fa-user-check"></i>
+          <span class="nav-text">Présences</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          href="{% url 'dashboard:student_paiements' %}"
+          class="nav-link {% if 'paiements' in request.resolver_match.url_name %}active{% endif %}"
+        >
+          <i class="fas fa-credit-card"></i>
+          <span class="nav-text">Paiements</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          href="{% url 'dashboard:student_resources' %}"
+          class="nav-link {% if 'resources' in request.resolver_match.url_name %}active{% endif %}"
+        >
+          <i class="fas fa-folder-open"></i>
+          <span class="nav-text">Ressources</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          href="{% url 'dashboard:student_documents' %}"
+          class="nav-link {% if 'documents' in request.resolver_match.url_name %}active{% endif %}"
+        >
+          <i class="fas fa-file-alt"></i>
+          <span class="nav-text">Documents</span>
+        </a>
+      </li>
+    </ul>
+    {% endif %} <!-- THIS IS THE MISSING ENDIF TAG -->
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-info">
+      {% if user.photo_profil %}
+      <div class="user-avatar">
+        <img src="{{ user.photo_profil.url }}" alt="{{ user.get_full_name }}" />
+      </div>
+      {% else %}
+      <div class="user-avatar">
+        <i class="fas fa-user-circle"></i>
+      </div>
+      {% endif %}
+      <div class="user-details">
+        <span class="user-name">{{ user.get_full_name }}</span>
+        <span class="user-matricule">{{ user.matricule }}</span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .sidebar-footer {
+    padding: 15px;
+    border-top: 1px solid #e1e5eb;
+    background-color: #f8f9fa;
+  }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+  }
+
+  .user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #4e73df;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+
+  .user-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .user-avatar i {
+    font-size: 20px;
+  }
+
+  .user-details {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+</style>

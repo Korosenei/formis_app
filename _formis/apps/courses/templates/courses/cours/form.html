@@ -1,0 +1,291 @@
+{% extends 'base/dashboard_base.html' %} 
+{% load static %}
+
+{% block title %}
+{% if object %}Modifier le cours{% else %}Nouveau cours{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .required-field::after {
+        content: " *";
+        color: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-chalkboard-teacher me-2"></i>
+                        {% if object %}Modifier le cours{% else %}Nouveau cours{% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="coursForm">
+                        {% csrf_token %}
+                        
+                        <!-- Section Informations générales -->
+                        <div class="form-section">
+                            <h5 class="mb-3">
+                                <i class="fas fa-info-circle me-2"></i>Informations générales
+                            </h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label required-field">{{ form.titre.label }}</label>
+                                        {{ form.titre }}
+                                        {% if form.titre.errors %}
+                                        <div class="text-danger">{{ form.titre.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label required-field">{{ form.type_cours.label }}</label>
+                                        {{ form.type_cours }}
+                                        {% if form.type_cours.errors %}
+                                        <div class="text-danger">{{ form.type_cours.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.description.label }}</label>
+                                {{ form.description }}
+                                {% if form.description.errors %}
+                                <div class="text-danger">{{ form.description.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Section Attribution -->
+                        <div class="form-section">
+                            <h5 class="mb-3">
+                                <i class="fas fa-users me-2"></i>Attribution
+                            </h5>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label required-field">{{ form.classe.label }}</label>
+                                        {{ form.classe }}
+                                        {% if form.classe.errors %}
+                                        <div class="text-danger">{{ form.classe.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label required-field">{{ form.matiere_module.label }}</label>
+                                        {{ form.matiere_module }}
+                                        {% if form.matiere_module.errors %}
+                                        <div class="text-danger">{{ form.matiere_module.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label required-field">{{ form.enseignant.label }}</label>
+                                        {{ form.enseignant }}
+                                        {% if form.enseignant.errors %}
+                                        <div class="text-danger">{{ form.enseignant.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label required-field">{{ form.periode_academique.label }}</label>
+                                        {{ form.periode_academique }}
+                                        {% if form.periode_academique.errors %}
+                                        <div class="text-danger">{{ form.periode_academique.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">{{ form.statut.label }}</label>
+                                        {{ form.statut }}
+                                        {% if form.statut.errors %}
+                                        <div class="text-danger">{{ form.statut.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section Planification -->
+                        <div class="form-section">
+                            <h5 class="mb-3">
+                                <i class="fas fa-calendar me-2"></i>Planification
+                            </h5>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label required-field">{{ form.date_prevue.label }}</label>
+                                        {{ form.date_prevue }}
+                                        {% if form.date_prevue.errors %}
+                                        <div class="text-danger">{{ form.date_prevue.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label required-field">{{ form.heure_debut_prevue.label }}</label>
+                                        {{ form.heure_debut_prevue }}
+                                        {% if form.heure_debut_prevue.errors %}
+                                        <div class="text-danger">{{ form.heure_debut_prevue.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label required-field">{{ form.heure_fin_prevue.label }}</label>
+                                        {{ form.heure_fin_prevue }}
+                                        {% if form.heure_fin_prevue.errors %}
+                                        <div class="text-danger">{{ form.heure_fin_prevue.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">{{ form.salle.label }}</label>
+                                        {{ form.salle }}
+                                        {% if form.salle.errors %}
+                                        <div class="text-danger">{{ form.salle.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section Cours en ligne -->
+                        <div class="form-section">
+                            <h5 class="mb-3">
+                                <i class="fas fa-video me-2"></i>Cours en ligne
+                            </h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check mb-3">
+                                        {{ form.cours_en_ligne }}
+                                        <label class="form-check-label" for="{{ form.cours_en_ligne.id_for_label }}">
+                                            {{ form.cours_en_ligne.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="streaming-options" style="display: none;">
+                                <div class="mb-3">
+                                    <label class="form-label">{{ form.url_streaming.label }}</label>
+                                    {{ form.url_streaming }}
+                                    {% if form.url_streaming.errors %}
+                                    <div class="text-danger">{{ form.url_streaming.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section Contenu pédagogique -->
+                        <div class="form-section">
+                            <h5 class="mb-3">
+                                <i class="fas fa-book-open me-2"></i>Contenu pédagogique
+                            </h5>
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.objectifs.label }}</label>
+                                {{ form.objectifs }}
+                                {% if form.objectifs.errors %}
+                                <div class="text-danger">{{ form.objectifs.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.contenu.label }}</label>
+                                {{ form.contenu }}
+                                {% if form.contenu.errors %}
+                                <div class="text-danger">{{ form.contenu.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.prerequis.label }}</label>
+                                {{ form.prerequis }}
+                                {% if form.prerequis.errors %}
+                                <div class="text-danger">{{ form.prerequis.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Boutons d'action -->
+                        <div class="text-end">
+                            <a href="{% if object %}{% url 'courses:cours_detail' object.pk %}{% else %}{% url 'courses:cours_list' %}{% endif %}" 
+                               class="btn btn-secondary me-2">
+                                <i class="fas fa-times me-1"></i>Annuler
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>
+                                {% if object %}Modifier{% else %}Créer{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestion du cours en ligne
+    const coursEnLigneCheckbox = document.getElementById('{{ form.cours_en_ligne.id_for_label }}');
+    const streamingOptions = document.getElementById('streaming-options');
+    
+    function toggleStreamingOptions() {
+        if (coursEnLigneCheckbox.checked) {
+            streamingOptions.style.display = 'block';
+        } else {
+            streamingOptions.style.display = 'none';
+        }
+    }
+    
+    coursEnLigneCheckbox.addEventListener('change', toggleStreamingOptions);
+    toggleStreamingOptions(); // Initial state
+
+    // Filtrage dynamique matière-module selon la classe
+    const classeSelect = document.getElementById('{{ form.classe.id_for_label }}');
+    const matiereModuleSelect = document.getElementById('{{ form.matiere_module.id_for_label }}');
+    
+    if (classeSelect && matiereModuleSelect) {
+        classeSelect.addEventListener('change', function() {
+            const classeId = this.value;
+            if (classeId) {
+                fetch(`{% url 'courses:ajax_matiere_modules' %}?niveau_id=${classeId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        matiereModuleSelect.innerHTML = '<option value="">---------</option>';
+                        data.results.forEach(item => {
+                            const option = document.createElement('option');
+                            option.value = item.id;
+                            option.textContent = item.text;
+                            matiereModuleSelect.appendChild(option);
+                        });
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

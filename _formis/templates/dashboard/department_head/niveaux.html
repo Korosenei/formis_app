@@ -1,0 +1,743 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Gestion des Niveaux - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-niveaux">
+    <!-- Header compact -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Niveaux</span>
+            </div>
+            <h1>Gestion des Niveaux</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ niveaux.paginator.count }} total</span>
+                <span class="stat-badge actifs">{{ niveaux|dictsort:"est_actif"|dictsort:"True"|length }} actifs</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportNiveaux()" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+            <a href="{% url 'academic:niveau_create' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Ajouter
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtres compacts -->
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="Rechercher..."
+                       value="{{ current_filters.search }}" class="form-input-sm">
+            </div>
+            <div class="filter-group">
+                <select name="departement" class="form-select-sm">
+                    <option value="">Tous départements</option>
+                    {% for dept in departements %}
+                        <option value="{{ dept.id }}" {% if current_filters.departement == dept.id|stringformat:"s" %}selected{% endif %}>
+                            {{ dept.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="filiere" class="form-select-sm">
+                    <option value="">Toutes filières</option>
+                    {% for filiere in filieres %}
+                        <option value="{{ filiere.id }}" {% if current_filters.filiere == filiere.id|stringformat:"s" %}selected{% endif %}>
+                            {{ filiere.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="est_actif" class="form-select-sm">
+                    <option value="">Tous statuts</option>
+                    <option value="True" {% if current_filters.est_actif == 'True' %}selected{% endif %}>Actif</option>
+                    <option value="False" {% if current_filters.est_actif == 'False' %}selected{% endif %}>Inactif</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:admin_niveaux' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Actions en lot -->
+    <div class="bulk-actions-bar" id="bulkActionsBar" style="display: none;">
+        <div class="bulk-info">
+            <i class="fas fa-check-square"></i>
+            <span id="selectedCount">0</span> sélectionné(s)
+        </div>
+        <div class="bulk-buttons">
+            <button class="btn btn-sm btn-warning" onclick="bulkExport()">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Tableau optimisé -->
+    <div class="niveaux-table-container">
+        <div class="table-wrapper">
+            <table class="niveaux-table">
+                <thead>
+                    <tr>
+                        <th width="30">
+                            <input type="checkbox" class="select-all-header" id="selectAllNiveaux">
+                        </th>
+                        <th width="180">Niveau</th>
+                        <th width="80">Code</th>
+                        <th width="80">Ordre</th>
+                        <th width="200">Filière</th>
+                        <th width="120">Département</th>
+                        <th width="100">Frais scolarité</th>
+                        <th width="80">Classes</th>
+                        <th width="80">Étudiants</th>
+                        <th width="60">Statut</th>
+                        <th width="80">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for niveau in niveaux %}
+                    <tr class="niveau-row">
+                        <td>
+                            <input type="checkbox" class="niveau-checkbox" value="{{ niveau.id }}">
+                        </td>
+                        <td>
+                            <div class="niveau-info">
+                                <span class="niveau-name">{{ niveau.nom }}</span>
+                                {% if niveau.description %}
+                                    <small class="niveau-desc">{{ niveau.description|truncatechars:30 }}</small>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <code class="code-badge">{{ niveau.code }}</code>
+                        </td>
+                        <td class="text-center">
+                            <span class="ordre-badge">
+                                {{ niveau.ordre }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="filiere-info">
+                                <span class="filiere-name">{{ niveau.filiere.nom|truncatechars:25 }}</span>
+                                <small class="filiere-type">{{ niveau.filiere.get_type_filiere_display }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            {% if niveau.filiere.departement %}
+                                <span class="dept-tag">{{ niveau.filiere.departement.nom|truncatechars:18 }}</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if niveau.frais_scolarite %}
+                                <div class="frais-info">
+                                    <span class="frais-amount">{{ niveau.frais_scolarite|floatformat:0 }} FCFA</span>
+                                    <small class="frais-note">spécifique</small>
+                                </div>
+                            {% elif niveau.filiere.frais_scolarite %}
+                                <span class="frais-default">{{ niveau.filiere.frais_scolarite|floatformat:0 }} FCFA</span>
+                            {% else %}
+                                <span class="text-muted">Non défini</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <span class="count-badge count-classes">
+                                {{ niveau.nombre_classes }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="count-badge count-etudiants">
+                                {{ niveau.nombre_etudiants }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if niveau.est_actif %}
+                                <i class="fas fa-check-circle text-success" title="Actif"></i>
+                            {% else %}
+                                <i class="fas fa-times-circle text-danger" title="Inactif"></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons-sm">
+                                <a href="#academic:niveau_detail" class="btn-icon-sm btn-primary" title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'academic:niveau_update' niveau.id %}" class="btn-icon-sm btn-info" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <div class="dropdown-compact">
+                                    <button class="btn-icon-sm btn-outline dropdown-toggle">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="dropdown-menu-compact">
+                                        <a href="#academic:niveau_detail">
+                                            <i class="fas fa-eye"></i> Détails
+                                        </a>
+                                        <a href="{% url 'academic:niveau_update' niveau.id %}">
+                                            <i class="fas fa-edit"></i> Modifier
+                                        </a>
+                                        <a href="#" onclick="viewClasses('{{ niveau.id }}')">
+                                            <i class="fas fa-users-class"></i> Classes
+                                        </a>
+                                        <a href="#" onclick="viewMatiere('{{ niveau.id }}')">
+                                            <i class="fas fa-book"></i> Matières
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        <a href="#" onclick="deleteNiveau('{{ niveau.id }}')" class="text-danger">
+                                            <i class="fas fa-trash"></i> Supprimer
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="empty-state">
+                            <div class="empty-content">
+                                <i class="fas fa-layer-group fa-2x text-muted"></i>
+                                <p class="mt-2">Aucun niveau trouvé</p>
+                                <a href="{% url 'academic:niveau_create' %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus"></i> Ajouter
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% include 'components/pagination.html' with page_obj=niveaux %}
+    </div>
+</div>
+
+<style>
+.admin-niveaux {
+    padding: 15px;
+}
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: var(--shadow-sm);
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav .current {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.header-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.stat-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--light-gray);
+    border-radius: 12px;
+    font-size: 11px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.stat-badge.actifs {
+    background: #d4edda;
+    color: #155724;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.filters-section {
+    background: var(--white);
+    padding: 12px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 0.8fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.form-input-sm, .form-select-sm {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    height: 32px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.bulk-actions-bar {
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: var(--border-radius);
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--font-size-sm);
+}
+
+.bulk-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #155724;
+    font-weight: 500;
+}
+
+.bulk-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.niveaux-table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.niveaux-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 100%;
+}
+
+.niveaux-table th {
+    background: var(--light-gray);
+    padding: 8px 6px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+}
+
+.niveaux-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--gray);
+    vertical-align: middle;
+    font-size: var(--font-size-xs);
+}
+
+.niveau-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.niveau-name {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: var(--font-size-sm);
+}
+
+.niveau-desc {
+    color: var(--text-light);
+    font-size: 10px;
+}
+
+.code-badge {
+    background: var(--light-gray);
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 11px;
+    color: var(--text-dark);
+}
+
+.ordre-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.filiere-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.filiere-name {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: 11px;
+}
+
+.filiere-type {
+    color: var(--text-light);
+    font-size: 10px;
+}
+
+.dept-tag {
+    display: inline-block;
+    padding: 2px 6px;
+    background: var(--light-gray);
+    border-radius: 3px;
+    font-size: 10px;
+    color: var(--text-dark);
+}
+
+.frais-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.frais-amount {
+    font-weight: 600;
+    color: var(--success-color);
+    font-size: 11px;
+}
+
+.frais-note {
+    color: var(--text-light);
+    font-size: 9px;
+    font-style: italic;
+}
+
+.frais-default {
+    color: var(--text-dark);
+    font-size: 11px;
+}
+
+.count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.count-classes {
+    background: var(--info-color);
+    color: white;
+}
+
+.count-etudiants {
+    background: var(--success-color);
+    color: white;
+}
+
+.action-buttons-sm {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.btn-icon-sm {
+    width: 24px;
+    height: 24px;
+    border-radius: 3px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+
+.btn-icon-sm.btn-primary { background: var(--primary-color); color: white; }
+.btn-icon-sm.btn-info { background: var(--info-color); color: white; }
+.btn-icon-sm.btn-outline {
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+}
+
+.btn-icon-sm:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+}
+
+.btn-icon:hover {
+    background: var(--light-gray);
+}
+
+/* Dropdown compact */
+.niveaux-table-container,
+.table-wrapper,
+.niveaux-table tr,
+.niveaux-table td {
+    overflow: visible !important;
+}
+
+.dropdown-compact {
+    position: relative;
+}
+
+.dropdown-menu-compact {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    min-width: 140px;
+}
+
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 11px;
+}
+
+.dropdown-menu-compact a:hover {
+    background: var(--light-gray);
+}
+
+.text-success { color: var(--success-color); }
+.text-danger { color: var(--danger-color); }
+.text-warning { color: var(--warning-color); }
+.text-muted { color: var(--text-light); }
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 3px 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-content {
+    color: var(--text-light);
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mt-2 { margin-top: 8px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-header-compact {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .filters-form {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .niveaux-table {
+        min-width: 1100px;
+    }
+
+    .header-stats {
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-start;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAllNiveaux');
+    const checkboxes = document.querySelectorAll('.niveau-checkbox');
+    const bulkBar = document.getElementById('bulkActionsBar');
+    const selectedCount = document.getElementById('selectedCount');
+
+    selectAll?.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+        updateBulkActions();
+    });
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    function updateBulkActions() {
+        const selected = document.querySelectorAll('.niveau-checkbox:checked').length;
+        selectedCount.textContent = selected;
+        bulkBar.style.display = selected > 0 ? 'flex' : 'none';
+
+        if (selectAll) {
+            selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+            selectAll.checked = selected === checkboxes.length;
+        }
+    }
+
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.style.display = 'none';
+            });
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        });
+    });
+
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    });
+});
+
+function exportNiveaux() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/academic/niveaux/export/?${params.toString()}`;
+}
+
+function viewClasses(niveauId) {
+    window.location.href = `/dashboard/admin/classes/?niveau=${niveauId}`;
+}
+
+function viewMatiere(niveauId) {
+    window.location.href = `/academic/matieres/?niveau=${niveauId}`;
+}
+
+function deleteNiveau(niveauId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce niveau ?')) {
+        fetch(`/academic/niveaux/${niveauId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur lors de la suppression');
+        })
+        .catch(error => {
+            alert('Erreur lors de la suppression');
+        });
+    }
+}
+
+function bulkExport() {
+    const selected = Array.from(document.querySelectorAll('.niveau-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins un niveau');
+        return;
+    }
+    const params = new URLSearchParams();
+    params.set('niveaux', selected.join(','));
+    window.location.href = `/academic/niveaux/export/?${params.toString()}`;
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

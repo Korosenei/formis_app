@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Établissements - FORMIS</title>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="stylesheet" href="/static/css/responsive.css">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header simplifié -->
+    <header class="header">
+        <nav class="nav">
+            <div class="nav-container">
+                <div class="nav-brand">
+                    <a href="{% url 'core:home' %}" class="text-decoration-none">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span>FORMIS</span>
+                    </a>
+                </div>
+
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a href="{% url 'core:home' %}" class="nav-link">ACCUEIL</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{% url 'core:establishment_list' %}" class="nav-link active">ÉTABLISSEMENTS</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{% url 'enrollment:candidature_create' %}" class="nav-link">CANDIDATER</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{% url 'core:contact' %}" class="nav-link">CONTACT</a>
+                    </li>
+                </ul>
+
+                <div class="nav-auth">
+                    <a href="{% url 'accounts:login' %}" class="btn-login">
+                        Se connecter
+                    </a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Hero Section pour la page -->
+    <section class="page-hero py-5 bg-primary text-white">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="display-4 fw-bold mb-3">
+                        <i class="fas fa-school me-3"></i>
+                        Nos Établissements
+                    </h1>
+                    <p class="lead mb-4">
+                        Découvrez tous nos établissements partenaires et trouvez celui qui correspond à vos ambitions
+                    </p>
+                </div>
+                <div class="col-lg-4 text-end">
+                    <div class="stats-summary">
+                        <div class="stat-item mb-2">
+                            <h3 class="fw-bold">{{ establishments|length }}</h3>
+                            <span>Établissements</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section des filtres -->
+    <section class="filters-section py-4 bg-light">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <form method="get" class="filter-form">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label for="type" class="form-label">Type d'établissement</label>
+                                <select class="form-select" name="type" id="type">
+                                    <option value="">Tous les types</option>
+                                    {% for type in establishment_types %}
+                                        <option value="{{ type.id }}" 
+                                                {% if request.GET.type == type.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ type.nom }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="locality" class="form-label">Localité</label>
+                                <select class="form-select" name="locality" id="locality">
+                                    <option value="">Toutes les localités</option>
+                                    {% for locality in localities %}
+                                        <option value="{{ locality.id }}"
+                                                {% if request.GET.locality == locality.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ locality.nom }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-grid gap-2 d-md-flex">
+                                    <button type="submit" class="btn btn-primary flex-fill">
+                                        <i class="fas fa-search me-2"></i>
+                                        Filtrer
+                                    </button>
+                                    <a href="{% url 'core:establishment_list' %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times me-2"></i>
+                                        Réinitialiser
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section principale des établissements -->
+    <section class="establishments-grid py-5">
+        <div class="container">
+            <!-- Résultats et tri -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h4 class="fw-bold">
+                        {{ establishments|length }} établissement{{ establishments|length|pluralize }} trouvé{{ establishments|length|pluralize }}
+                    </h4>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-primary active" id="grid-view">
+                            <i class="fas fa-th-large"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" id="list-view">
+                            <i class="fas fa-list"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grille des établissements -->
+            <div class="row g-4" id="establishments-container">
+                {% for establishment in establishments %}
+                    <div class="col-lg-4 col-md-6 establishment-item">
+                        <div class="card h-100 shadow-sm border-0 establishment-card">
+                            <!-- Image ou placeholder -->
+                            {% if establishment.logo %}
+                                <img src="{{ establishment.logo.url }}" 
+                                     class="card-img-top" 
+                                     alt="{{ establishment.nom }}" 
+                                     style="height: 220px; object-fit: cover;">
+                            {% else %}
+                                <div class="card-img-top bg-gradient text-white d-flex align-items-center justify-content-center position-relative" 
+                                     style="height: 220px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                    <i class="fas fa-school" style="font-size: 4rem; opacity: 0.8;"></i>
+                                    <div class="position-absolute top-0 end-0 p-2">
+                                        {% if establishment.actif %}
+                                            <span class="badge bg-success">Actif</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactif</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            <div class="card-body d-flex flex-column">
+                                <!-- En-tête -->
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h5 class="card-title fw-bold mb-0 flex-grow-1">
+                                            {{ establishment.nom }}
+                                        </h5>
+                                    </div>
+                                    <span class="badge bg-primary">{{ establishment.type_etablissement.nom }}</span>
+                                </div>
+
+                                <!-- Description -->
+                                <p class="card-text text-muted flex-grow-1 small">
+                                    {% if establishment.description %}
+                                        {{ establishment.description|truncatechars:140 }}
+                                    {% else %}
+                                        Établissement de formation d'excellence proposant des programmes adaptés aux besoins du marché.
+                                    {% endif %}
+                                </p>
+
+                                <!-- Informations détaillées -->
+                                <div class="establishment-details mb-3">
+                                    <!-- Localisation -->
+                                    <div class="detail-item mb-2">
+                                        <i class="fas fa-map-marker-alt text-danger me-2"></i>
+                                        <small class="text-muted">
+                                            {{ establishment.localite.nom }}
+                                            {% if establishment.localite.region %}, {{ establishment.localite.region }}{% endif %}
+                                        </small>
+                                    </div>
+
+                                    <!-- Contact -->
+                                    {% if establishment.telephone %}
+                                        <div class="detail-item mb-2">
+                                            <i class="fas fa-phone text-success me-2"></i>
+                                            <small class="text-muted">{{ establishment.telephone }}</small>
+                                        </div>
+                                    {% endif %}
+
+                                    {% if establishment.email %}
+                                        <div class="detail-item mb-2">
+                                            <i class="fas fa-envelope text-info me-2"></i>
+                                            <small class="text-muted">{{ establishment.email }}</small>
+                                        </div>
+                                    {% endif %}
+
+                                    <!-- Adresse -->
+                                    {% if establishment.adresse %}
+                                        <div class="detail-item mb-2">
+                                            <i class="fas fa-home text-warning me-2"></i>
+                                            <small class="text-muted">{{ establishment.adresse|truncatechars:50 }}</small>
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Capacité et occupation -->
+                                {% if establishment.capacite_max or establishment.etudiants_actuels %}
+                                    <div class="capacity-info mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <small class="text-muted fw-semibold">Capacité</small>
+                                            <small class="text-muted">
+                                                {{ establishment.etudiants_actuels|default:0 }} / {{ establishment.capacite_max|default:"∞" }}
+                                            </small>
+                                        </div>
+                                        {% if establishment.capacite_max and establishment.etudiants_actuels %}
+                                            <div class="progress" style="height: 6px;">
+                                                {% widthratio establishment.etudiants_actuels establishment.capacite_max 100 as percentage %}
+                                                <div class="progress-bar bg-success" 
+                                                     style="width: {{ percentage }}%"
+                                                     role="progressbar"></div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="card-footer bg-transparent border-0 pt-0">
+                                <div class="d-grid gap-2">
+                                    <a href="{% url 'core:establishment_detail' establishment.pk %}" 
+                                       class="btn btn-primary">
+                                        <i class="fas fa-eye me-2"></i>
+                                        Voir les détails
+                                    </a>
+                                    
+                                    <div class="btn-group w-100" role="group">
+                                        {% if establishment.site_web %}
+                                            <a href="{{ establishment.site_web }}" 
+                                               target="_blank" 
+                                               class="btn btn-outline-info btn-sm">
+                                                <i class="fas fa-globe me-1"></i>
+                                                Site web
+                                            </a>
+                                        {% endif %}
+                                        
+                                        <a href="{% url 'enrollment:candidature_create' %}" 
+                                           class="btn btn-outline-success btn-sm">
+                                            <i class="fas fa-user-plus me-1"></i>
+                                            Candidater
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <!-- Message si aucun établissement -->
+                    <div class="col-12">
+                        <div class="text-center py-5">
+                            <div class="mb-4">
+                                <i class="fas fa-search text-muted" style="font-size: 5rem; opacity: 0.3;"></i>
+                            </div>
+                            <h3 class="text-muted mb-3">Aucun établissement trouvé</h3>
+                            <p class="text-muted mb-4">
+                                Aucun établissement ne correspond à vos critères de recherche.
+                                <br>Essayez de modifier vos filtres ou de réinitialiser la recherche.
+                            </p>
+                            <a href="{% url 'core:establishment_list' %}" class="btn btn-primary">
+                                <i class="fas fa-refresh me-2"></i>
+                                Voir tous les établissements
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if is_paginated %}
+                <div class="row mt-5">
+                    <div class="col-12">
+                        <nav aria-label="Navigation des établissements">
+                            <ul class="pagination justify-content-center">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% if request.GET.type %}type={{ request.GET.type }}&{% endif %}{% if request.GET.locality %}locality={{ request.GET.locality }}&{% endif %}page=1">
+                                            <i class="fas fa-angle-double-left"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% if request.GET.type %}type={{ request.GET.type }}&{% endif %}{% if request.GET.locality %}locality={{ request.GET.locality }}&{% endif %}page={{ page_obj.previous_page_number }}">
+                                            <i class="fas fa-angle-left"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+
+                                <li class="page-item active">
+                                    <span class="page-link">
+                                        Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
+                                    </span>
+                                </li>
+
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% if request.GET.type %}type={{ request.GET.type }}&{% endif %}{% if request.GET.locality %}locality={{ request.GET.locality }}&{% endif %}page={{ page_obj.next_page_number }}">
+                                            <i class="fas fa-angle-right"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% if request.GET.type %}type={{ request.GET.type }}&{% endif %}{% if request.GET.locality %}locality={{ request.GET.locality }}&{% endif %}page={{ page_obj.paginator.num_pages }}">
+                                            <i class="fas fa-angle-double-right"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Section CTA -->
+    <section class="cta-section py-5 bg-primary text-white">
+        <div class="container">
+            <div class="row justify-content-center text-center">
+                <div class="col-lg-8">
+                    <h2 class="fw-bold mb-3">Prêt à commencer votre parcours ?</h2>
+                    <p class="lead mb-4">
+                        Rejoignez des milliers d'étudiants qui font confiance à nos établissements partenaires
+                    </p>
+                    <a href="{% url 'enrollment:candidature_create' %}" class="btn btn-light btn-lg">
+                        <i class="fas fa-user-plus me-2"></i>
+                        Déposer ma candidature
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer bg-dark text-white py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="footer-brand mb-3">
+                        <i class="fas fa-graduation-cap me-2"></i>
+                        <span class="fs-4 fw-bold">FORMIS</span>
+                    </div>
+                    <p class="text-muted">
+                        Plateforme de gestion éducative moderne pour tous vos besoins de formation.
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <div class="footer-links">
+                        <h6 class="fw-bold mb-3">Liens rapides</h6>
+                        <ul class="list-unstyled">
+                            <li><a href="{% url 'core:home' %}" class="text-decoration-none text-muted">Accueil</a></li>
+                            <li><a href="{% url 'core:establishment_list' %}" class="text-decoration-none text-muted">Établissements</a></li>
+                            <li><a href="{% url 'core:contact' %}" class="text-decoration-none text-muted">Contact</a></li>
+                            <li><a href="{% url 'core:about' %}" class="text-decoration-none text-muted">À propos</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <hr class="my-4">
+            <div class="text-center">
+                <p class="mb-0 text-muted">Copyright ©2025 FORMIS. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom CSS -->
+    <style>
+        .establishment-card {
+            transition: all 0.3s ease;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .establishment-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+        
+        .page-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .filters-section {
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .detail-item {
+            display: flex;
+            align-items-center;
+        }
+        
+        .capacity-info .progress {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .cta-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .btn-group .btn {
+            flex: 1;
+        }
+        
+        @media (max-width: 768px) {
+            .establishment-card {
+                margin-bottom: 1rem;
+            }
+            
+            .page-hero h1 {
+                font-size: 2rem;
+            }
+        }
+        
+        /* Vue liste */
+        .list-view .establishment-item {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+        
+        .list-view .establishment-card {
+            flex-direction: row;
+        }
+        
+        .list-view .card-img-top {
+            width: 200px;
+            height: 150px;
+            flex-shrink: 0;
+        }
+    </style>
+
+    <!-- Custom JS -->
+    <script>
+        // Toggle entre vue grille et vue liste
+        document.getElementById('grid-view').addEventListener('click', function() {
+            document.getElementById('establishments-container').classList.remove('list-view');
+            this.classList.add('active');
+            document.getElementById('list-view').classList.remove('active');
+        });
+
+        document.getElementById('list-view').addEventListener('click', function() {
+            document.getElementById('establishments-container').classList.add('list-view');
+            this.classList.add('active');
+            document.getElementById('grid-view').classList.remove('active');
+        });
+
+        // Animation d'entrée des cartes
+        const cards = document.querySelectorAll('.establishment-card');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        });
+
+        cards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = `opacity 0.6s ease ${index * 0.1}s, transform 0.6s ease ${index * 0.1}s`;
+            observer.observe(card);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,421 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{{ evaluation.titre }} - Composition - FORMIS{% endblock %}
+
+{% block extra_css %}
+<style>
+  .composer-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 1rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .countdown-display {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    text-align: center;
+    backdrop-filter: blur(10px);
+  }
+
+  .countdown-time {
+    font-family: 'Courier New', monospace;
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+  }
+
+  .upload-zone {
+    border: 3px dashed #dee2e6;
+    border-radius: 1rem;
+    padding: 3rem 2rem;
+    text-align: center;
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .upload-zone:hover,
+  .upload-zone.dragover {
+    border-color: #4e73df;
+    background: #e3f2fd;
+    transform: translateY(-2px);
+  }
+
+  .upload-zone.uploading {
+    border-color: #28a745;
+    background: #d4edda;
+  }
+
+  .file-item {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+  }
+
+  .file-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-color: #4e73df;
+  }
+
+  .file-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    color: white;
+    font-size: 1.25rem;
+  }
+
+  .file-icon.pdf { background: #dc3545; }
+  .file-icon.doc { background: #0d6efd; }
+  .file-icon.txt { background: #6c757d; }
+  .file-icon.img { background: #20c997; }
+  .file-icon.default { background: #6f42c1; }
+
+  .progress-upload {
+    height: 4px;
+    background: #e9ecef;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+  }
+
+  .progress-upload-bar {
+    height: 100%;
+    background: linear-gradient(45deg, #28a745, #20c997);
+    transition: width 0.3s ease;
+    border-radius: 2px;
+  }
+
+  .submit-section {
+    background: white;
+    border: 2px solid #28a745;
+    border-radius: 1rem;
+    padding: 2rem;
+    text-align: center;
+    margin-top: 2rem;
+  }
+
+  .warning-time {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .danger-time {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- En-tête avec compteur -->
+<div class="composer-header">
+  <div class="row align-items-center">
+    <div class="col-md-8">
+      <h1 class="h3 mb-2">{{ evaluation.titre }}</h1>
+      <p class="mb-1 opacity-90">{{ evaluation.matiere_module.matiere.nom }} - {{ evaluation.matiere_module.module.nom }}</p>
+      <p class="mb-0 opacity-75">Prof. {{ evaluation.enseignant.get_full_name }}</p>
+    </div>
+    <div class="col-md-4">
+      <div class="countdown-display">
+        <div class="countdown-time" id="countdownTimer" data-end-time="{{ evaluation.date_fin.isoformat }}">
+          --:--:--
+        </div>
+        <div class="small">Temps restant</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Alertes de temps -->
+<div id="timeWarnings"></div>
+
+<!-- Instructions -->
+{% if evaluation.description %}
+<div class="card mb-4">
+  <div class="card-body">
+    <h5><i class="fas fa-info-circle text-info me-2"></i>Instructions</h5>
+    <p class="mb-0">{{ evaluation.description|linebreaks }}</p>
+  </div>
+</div>
+{% endif %}
+
+<!-- Sujet de l'évaluation -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h5><i class="fas fa-file-alt text-primary me-2"></i>Sujet de l'évaluation</h5>
+
+    {% if evaluation.fichier_evaluation %}
+    <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded">
+      <div class="d-flex align-items-center">
+        <i class="fas fa-file-pdf fa-2x text-danger me-3"></i>
+        <div>
+          <div class="fw-bold">{{ evaluation.fichier_evaluation.name|basename }}</div>
+          <small class="text-muted">Cliquez pour ouvrir le sujet</small>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'evaluations:voir_fichier' 'evaluation' evaluation.pk %}"
+           class="btn btn-primary"
+           data-bs-toggle="modal"
+           data-bs-target="#fileViewerModal">
+          <i class="fas fa-eye me-2"></i>Ouvrir
+        </a>
+        <a href="{% url 'evaluations:telecharger_evaluation' evaluation.pk %}"
+           class="btn btn-outline-primary">
+          <i class="fas fa-download"></i>
+        </a>
+      </div>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-3">
+      <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+      <p>Aucun fichier de sujet disponible</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Zone d'upload -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h5><i class="fas fa-cloud-upload-alt text-success me-2"></i>Mes fichiers de composition</h5>
+
+    <!-- Zone de glisser-déposer -->
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+      <div class="mb-3">
+        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+        <h4 class="text-muted">Glissez vos fichiers ici</h4>
+        <p class="text-muted mb-3">ou cliquez pour sélectionner</p>
+      </div>
+
+      <input type="file"
+             id="fileInput"
+             name="fichiers"
+             multiple
+             accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+             style="display: none;">
+
+      <div class="text-muted small">
+        <i class="fas fa-info-circle me-1"></i>
+        Formats acceptés: PDF, DOC, DOCX, TXT, JPG, PNG (Max: 10MB par fichier)
+      </div>
+
+      <div class="progress-upload" id="uploadProgress" style="display: none;">
+        <div class="progress-upload-bar" id="uploadProgressBar"></div>
+      </div>
+    </div>
+
+    <!-- Liste des fichiers uploadés -->
+    <div id="filesList" class="mt-4">
+      {% for fichier in fichiers %}
+      <div class="file-item" data-file-id="{{ fichier.pk }}">
+        <div class="file-icon {% if 'pdf' in fichier.type_mime %}pdf{% elif 'word' in fichier.type_mime or 'doc' in fichier.type_mime %}doc{% elif 'text' in fichier.type_mime %}txt{% elif 'image' in fichier.type_mime %}img{% else %}default{% endif %}">
+          <i class="fas fa-file{% if 'pdf' in fichier.type_mime %}-pdf{% elif 'word' in fichier.type_mime or 'doc' in fichier.type_mime %}-word{% elif 'text' in fichier.type_mime %}-alt{% elif 'image' in fichier.type_mime %}-image{% endif %}"></i>
+        </div>
+
+        <div class="flex-grow-1">
+          <div class="fw-bold">{{ fichier.nom_original }}</div>
+          <div class="text-muted small">
+            {{ fichier.taille|filesizeformat }} - {{ fichier.date_creation|date:"d/m/Y H:i" }}
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <a href="{% url 'evaluations:voir_fichier' 'composition' fichier.pk %}"
+             class="btn btn-sm btn-outline-primary"
+             data-bs-toggle="modal"
+             data-bs-target="#fileViewerModal">
+            <i class="fas fa-eye"></i>
+          </a>
+
+          <button type="button"
+                  class="btn btn-sm btn-outline-danger"
+                  onclick="supprimerFichier({{ fichier.pk }}, '{{ fichier.nom_original }}')">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+      {% empty %}
+      <div id="noFilesMessage" class="text-center text-muted py-4">
+        <i class="fas fa-inbox fa-2x mb-2"></i>
+        <p>Aucun fichier uploadé</p>
+        <small>Commencez by ajouter vos fichiers de composition</small>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Section de soumission -->
+{% if composition.peut_soumettre %}
+<div class="submit-section">
+  <h4 class="text-success mb-3">
+    <i class="fas fa-paper-plane me-2"></i>
+    Prêt à soumettre votre composition ?
+  </h4>
+
+  <p class="text-muted mb-4">
+    Une fois soumise, vous ne pourrez plus modifier votre composition.
+    Assurez-vous d'avoir uploadé tous vos fichiers.
+  </p>
+
+  <div class="d-flex justify-content-center gap-3">
+    <button type="button"
+            class="btn btn-outline-secondary btn-lg"
+            onclick="sauvegarderBrouillon()">
+      <i class="fas fa-save me-2"></i>Sauvegarder en cours
+    </button>
+
+    <button type="button"
+            class="btn btn-success btn-lg"
+            onclick="soumettreComposition()"
+            {% if not fichiers %}disabled{% endif %}>
+      <i class="fas fa-check me-2"></i>Soumettre définitivement
+    </button>
+  </div>
+
+  {% if not fichiers %}
+  <small class="text-warning mt-2 d-block">
+    <i class="fas fa-exclamation-triangle me-1"></i>
+    Vous devez uploader au moins un fichier pour pouvoir soumettre
+  </small>
+  {% endif %}
+</div>
+{% else %}
+<div class="alert alert-info text-center">
+  <h4><i class="fas fa-info-circle me-2"></i>Composition terminée</h4>
+  <p class="mb-0">
+    {% if composition.statut == 'SOUMISE' %}
+      Votre composition a été soumise le {{ composition.date_soumission|date:"d/m/Y à H:i" }}
+    {% elif composition.statut == 'EN_RETARD' %}
+      Votre composition a été soumise en retard le {{ composition.date_soumission|date:"d/m/Y à H:i" }}
+    {% elif composition.statut == 'CORRIGEE' %}
+      Votre composition a été corrigée. Consultez vos notes.
+    {% else %}
+      Le temps de composition est écoulé.
+    {% endif %}
+  </p>
+</div>
+{% endif %}
+
+<!-- Modal pour visualiser les fichiers -->
+<div class="modal fade" id="fileViewerModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Visualisation du fichier</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div id="fileViewerContent" style="height: 70vh;">
+          <div class="d-flex justify-content-center align-items-center h-100">
+            <div class="spinner-border" role="status">
+              <span class="visually-hidden">Chargement...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+        <a href="#" class="btn btn-primary" id="downloadFileBtn">
+          <i class="fas fa-download"></i> Télécharger
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmation de soumission -->
+<div class="modal fade" id="submitConfirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>Confirmer la soumission
+        </h5>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3">Êtes-vous sûr de vouloir soumettre définitivement votre composition ?</p>
+        <div class="alert alert-warning">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>Attention :</strong> Cette action est irréversible. Une fois soumise,
+          vous ne pourrez plus modifier votre composition.
+        </div>
+        <div id="submitSummary"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-success" id="confirmSubmitBtn">
+          <i class="fas fa-check me-2"></i>Confirmer la soumission
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let tempsRestant = {{ temps_restant }};
+let fichierCount = {{ fichiers|length }};
+
+// Gestion du compteur de temps
+function updateCountdown() {
+    const timer = document.getElementById('countdownTimer');
+    const warnings = document.getElementById('timeWarnings');
+
+    if (tempsRestant <= 0) {
+        timer.textContent = 'Temps écoulé';
+        timer.classList.add('text-danger');
+
+        // Désactiver tous les contrôles
+        document.getElementById('uploadZone').style.display = 'none';
+        document.querySelector('.submit-section').style.display = 'none';
+
+        warnings.innerHTML = `
+            <div class="danger-time">
+                <i class="fas fa-times-circle me-2"></i>
+                <strong>Temps écoulé !</strong> Vous ne pouvez plus modifier votre composition.
+            </div>
+        `;
+        return;
+    }
+
+    const hours = Math.floor(tempsRestant / 3600);
+    const minutes = Math.floor((tempsRestant % 3600) / 60);
+    const seconds = tempsRestant % 60;
+
+    timer.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+    // Alertes selon le temps restant
+    if (tempsRestant <= 300 && tempsRestant > 0) { // 5 minutes
+        timer.classList.add('text-danger');
+        warnings.innerHTML = `
+            <div class="danger-time">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Urgent !</strong> Il ne vous reste que ${Math.floor(tempsRestant/60)} minute(s).

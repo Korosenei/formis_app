@@ -1,0 +1,793 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{{ classe.nom }} - Détails{% endblock %}
+
+{% block content %}
+<div class="classe-detail">
+    <!-- Header -->
+    <div class="detail-header">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <a href="{% url 'dashboard:admin' %}">Dashboard</a>
+                <i class="fas fa-chevron-right"></i>
+                <a href="{{ cancel_url }}">Classes</a>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">{{ classe.nom }}</span>
+            </div>
+            <div class="header-title">
+                <h1>{{ classe.nom }}</h1>
+                <div class="header-badges">
+                    <code class="code-badge">{{ classe.code }}</code>
+                    <span class="annee-badge">
+                        <i class="fas fa-calendar-alt"></i>
+                        {{ classe.annee_academique.nom }}
+                    </span>
+                    {% if classe.est_active %}
+                        <span class="status-badge active">Active</span>
+                    {% else %}
+                        <span class="status-badge inactive">Inactive</span>
+                    {% endif %}
+                    {% if classe.est_pleine %}
+                        <span class="status-badge full">Classe pleine</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'academic:classe_update' classe.id %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-edit"></i> Modifier
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e3f2fd;">
+                <i class="fas fa-users" style="color: #1976d2;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ classe.nombre_etudiants }}</div>
+                <div class="stat-label">Étudiants</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e8f5e9;">
+                <i class="fas fa-chair" style="color: #2e7d32;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">
+                    {% if classe.capacite_maximale %}
+                        {{ classe.get_places_disponibles }}
+                    {% else %}
+                        ∞
+                    {% endif %}
+                </div>
+                <div class="stat-label">Places disponibles</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #fff3e0;">
+                <i class="fas fa-percentage" style="color: #e65100;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">
+                    {% if classe.capacite_maximale %}
+                        {{ classe.nombre_etudiants|floatformat:0|add:"0" }}%
+                    {% else %}
+                        -
+                    {% endif %}
+                </div>
+                <div class="stat-label">Taux de remplissage</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #f3e5f5;">
+                <i class="fas fa-calendar-plus" style="color: #7b1fa2;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ classe.date_creation|date:"d/m/Y" }}</div>
+                <div class="stat-label">Créée le</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="detail-grid">
+        <!-- Informations académiques -->
+        <div class="detail-section">
+            <div class="section-header">
+                <h3><i class="fas fa-graduation-cap"></i> Informations académiques</h3>
+            </div>
+            <div class="section-content">
+                <div class="info-row">
+                    <span class="info-label">Filière</span>
+                    <span class="info-value">
+                        <a href="{% url 'academic:filiere_detail' classe.niveau.filiere.id %}">
+                            {{ classe.niveau.filiere.nom }}
+                        </a>
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Niveau</span>
+                    <span class="info-value">{{ classe.niveau.nom }}</span>
+                </div>
+                {% if classe.niveau.filiere.departement %}
+                    <div class="info-row">
+                        <span class="info-label">Département</span>
+                        <span class="info-value">
+                            <a href="{% url 'academic:departement_detail' classe.niveau.filiere.departement.id %}">
+                                {{ classe.niveau.filiere.departement.nom }}
+                            </a>
+                        </span>
+                    </div>
+                {% endif %}
+                <div class="info-row">
+                    <span class="info-label">Année académique</span>
+                    <span class="info-value">{{ classe.annee_academique.nom }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Code</span>
+                    <span class="info-value"><code>{{ classe.code }}</code></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Responsable et Salle -->
+        <div class="detail-section">
+            <div class="section-header">
+                <h3><i class="fas fa-user-tie"></i> Responsable et Salle</h3>
+            </div>
+            <div class="section-content">
+                {% if classe.professeur_principal %}
+                    <div class="prof-card">
+                        <div class="prof-avatar">
+                            {% if classe.professeur_principal.photo_profil %}
+                                <img src="{{ classe.professeur_principal.photo_profil.url }}" alt="">
+                            {% else %}
+                                <i class="fas fa-user"></i>
+                            {% endif %}
+                        </div>
+                        <div class="prof-info">
+                            <h4>{{ classe.professeur_principal.get_full_name }}</h4>
+                            <p>{{ classe.professeur_principal.email }}</p>
+                            {% if classe.professeur_principal.telephone %}
+                                <p><i class="fas fa-phone"></i> {{ classe.professeur_principal.telephone }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Aucun professeur principal assigné</p>
+                {% endif %}
+
+                {% if classe.salle_principale %}
+                    <div class="salle-info">
+                        <div class="salle-icon">
+                            <i class="fas fa-door-open"></i>
+                        </div>
+                        <div>
+                            <h5>{{ classe.salle_principale.nom }}</h5>
+                            {% if classe.salle_principale.batiment %}
+                                <p>{{ classe.salle_principale.batiment }}</p>
+                            {% endif %}
+                            {% if classe.salle_principale.capacite %}
+                                <p><i class="fas fa-chair"></i> {{ classe.salle_principale.capacite }} places</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-muted mt-2">Aucune salle principale assignée</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Capacité -->
+        <div class="detail-section full-width">
+            <div class="section-header">
+                <h3><i class="fas fa-users"></i> Capacité et effectif</h3>
+            </div>
+            <div class="section-content">
+                <div class="capacity-stats">
+                    <div class="capacity-bar">
+                        <div class="capacity-fill" style="width: {% if classe.capacite_maximale %}{{ classe.nombre_etudiants|floatformat:0 }}%{% else %}0{% endif %}">
+                            <span>{{ classe.nombre_etudiants }} étudiant{{ classe.nombre_etudiants|pluralize }}</span>
+                        </div>
+                    </div>
+                    <div class="capacity-details">
+                        <div class="capacity-item">
+                            <span class="capacity-label">Effectif actuel</span>
+                            <span class="capacity-value">{{ classe.nombre_etudiants }}</span>
+                        </div>
+                        <div class="capacity-item">
+                            <span class="capacity-label">Capacité maximale</span>
+                            <span class="capacity-value">
+                                {% if classe.capacite_maximale %}
+                                    {{ classe.capacite_maximale }}
+                                {% else %}
+                                    Illimité
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% if classe.capacite_maximale %}
+                            <div class="capacity-item">
+                                <span class="capacity-label">Places restantes</span>
+                                <span class="capacity-value {% if classe.get_places_disponibles == 0 %}text-danger{% else %}text-success{% endif %}">
+                                    {{ classe.get_places_disponibles }}
+                                </span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Étudiants -->
+    {% if etudiants %}
+    <div class="detail-section">
+        <div class="section-header">
+            <h3><i class="fas fa-users"></i> Étudiants ({{ classe.nombre_etudiants }})</h3>
+            <a href="/dashboard/admin/students/?classe={{ classe.id }}" class="btn-link">Voir tous</a>
+        </div>
+        <div class="etudiants-list">
+            {% for etudiant in etudiants %}
+                <div class="etudiant-item">
+                    <div class="etudiant-avatar">
+                        {% if etudiant.utilisateur.photo_profil %}
+                            <img src="{{ etudiant.utilisateur.photo_profil.url }}" alt="">
+                        {% else %}
+                            <i class="fas fa-user"></i>
+                        {% endif %}
+                    </div>
+                    <div class="etudiant-info">
+                        <h4>{{ etudiant.utilisateur.get_full_name }}</h4>
+                        <p>{{ etudiant.utilisateur.matricule }}</p>
+                        <p>{{ etudiant.utilisateur.email }}</p>
+                    </div>
+                    <div class="etudiant-status">
+                        {% if etudiant.statut_paiement == 'COMPLET' %}
+                            <span class="badge badge-success">Paiement OK</span>
+                        {% elif etudiant.statut_paiement == 'PARTIEL' %}
+                            <span class="badge badge-warning">Partiel</span>
+                        {% else %}
+                            <span class="badge badge-danger">En attente</span>
+                        {% endif %}
+                    </div>
+                    <div class="etudiant-actions">
+                        <a href="{% url 'accounts:user_detail' etudiant.utilisateur.id %}" class="btn-icon-sm btn-primary">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="detail-section">
+        <div class="section-header">
+            <h3><i class="fas fa-users"></i> Étudiants</h3>
+        </div>
+        <div class="empty-state-sm">
+            <i class="fas fa-users fa-2x"></i>
+            <p>Aucun étudiant inscrit dans cette classe</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.classe-detail {
+    padding: 15px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.breadcrumb-nav {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav a {
+    color: #6b7280;
+    text-decoration: none;
+}
+
+.breadcrumb-nav a:hover {
+    color: #2563eb;
+}
+
+.breadcrumb-nav .current {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.header-title {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.header-title h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.header-badges {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.code-badge {
+    background: #f3f4f6;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.annee-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: #e0e7ff;
+    color: #3730a3;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.status-badge.active {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-badge.full {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.detail-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.detail-section.full-width {
+    grid-column: 1 / -1;
+}
+
+.section-header {
+    padding: 15px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-link {
+    font-size: 13px;
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+.section-content {
+    padding: 15px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 13px;
+    color: #1f2937;
+    text-align: right;
+}
+
+.info-value a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.info-value a:hover {
+    text-decoration: underline;
+}
+
+.prof-card {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    padding: 15px;
+    background: #f9fafb;
+    border-radius: 8px;
+}
+
+.prof-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #6b7280;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.prof-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.prof-info h4 {
+    margin: 0 0 5px 0;
+    font-size: 15px;
+    color: #1f2937;
+}
+
+.prof-info p {
+    margin: 0;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.salle-info {
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
+    padding: 15px;
+    background: #f9fafb;
+    border-radius: 8px;
+    margin-top: 15px;
+}
+
+.salle-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: #e0e7ff;
+    color: #3730a3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.salle-info h5 {
+    margin: 0 0 5px 0;
+    font-size: 14px;
+    color: #1f2937;
+}
+
+.salle-info p {
+    margin: 0;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.capacity-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.capacity-bar {
+    width: 100%;
+    height: 40px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.capacity-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #059669);
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    transition: width 0.3s ease;
+}
+
+.capacity-fill span {
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.capacity-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.capacity-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.capacity-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.capacity-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.text-success {
+    color: #059669 !important;
+}
+
+.text-danger {
+    color: #ef4444 !important;
+}
+
+.etudiants-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+}
+
+.etudiant-item {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.etudiant-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #6b7280;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.etudiant-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.etudiant-info {
+    flex: 1;
+}
+
+.etudiant-info h4 {
+    margin: 0 0 3px 0;
+    font-size: 14px;
+    color: #1f2937;
+}
+
+.etudiant-info p {
+    margin: 0;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.etudiant-status {
+    flex-shrink: 0;
+}
+
+.badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.etudiant-actions {
+    flex-shrink: 0;
+}
+
+.btn-icon-sm {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+
+.btn-icon-sm.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-icon-sm:hover {
+    transform: scale(1.1);
+}
+
+.empty-state-sm {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6b7280;
+}
+
+.empty-state-sm i {
+    color: #d1d5db;
+    margin-bottom: 10px;
+}
+
+.empty-state-sm p {
+    margin: 10px 0;
+}
+
+.text-muted {
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.mt-2 {
+    margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+    .detail-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .capacity-details {
+        grid-template-columns: 1fr;
+    }
+
+    .etudiant-item {
+        flex-wrap: wrap;
+    }
+}
+</style>
+{% endblock %}

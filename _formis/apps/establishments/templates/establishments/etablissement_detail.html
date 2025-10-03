@@ -1,0 +1,413 @@
+{% extends 'establishments/base.html' %}
+{% load humanize %}
+
+{% block title %}{{ etablissement.nom }} - Détails{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="mt-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'establishments:dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'establishments:etablissement_list' %}">Établissements</a></li>
+        <li class="breadcrumb-item active">{{ etablissement.nom }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<!-- En-tête avec image de couverture -->
+<div class="page-header" {% if etablissement.image_couverture %}style="background: linear-gradient(rgba(44, 62, 80, 0.8), rgba(52, 152, 219, 0.8)), url('{{ etablissement.image_couverture.url }}') center/cover;"{% endif %}>
+    <div class="container-fluid">
+        <div class="row align-items-center">
+            <div class="col-md-2">
+                {% if etablissement.logo %}
+                    <img src="{{ etablissement.logo.url }}" alt="Logo {{ etablissement.nom }}" class="img-fluid rounded" style="max-height: 100px; background: white; padding: 10px;">
+                {% else %}
+                    <div class="bg-white rounded d-flex align-items-center justify-content-center" style="width: 100px; height: 100px;">
+                        <i class="fas fa-building fa-3x text-primary"></i>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="col-md-8">
+                <h1 class="h2 mb-1">{{ etablissement.nom }}</h1>
+                {% if etablissement.sigle %}
+                    <p class="mb-1"><strong>{{ etablissement.sigle }}</strong></p>
+                {% endif %}
+                <p class="mb-0">
+                    <span class="badge bg-info me-2">{{ etablissement.type_etablissement.nom }}</span>
+                    <span class="badge bg-secondary">{{ etablissement.localite.nom }}</span>
+                    {% if etablissement.actif %}
+                        <span class="badge bg-success">Actif</span>
+                    {% else %}
+                        <span class="badge bg-danger">Inactif</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-2 text-end">
+                <div class="btn-group" role="group">
+                    <a href="{% url 'establishments:etablissement_edit' etablissement.pk %}" class="btn btn-warning">
+                        <i class="fas fa-edit me-2"></i>Modifier
+                    </a>
+                    <a href="{% url 'establishments:etablissement_rapport_pdf' etablissement.pk %}" class="btn btn-success">
+                        <i class="fas fa-file-pdf me-2"></i>PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistiques rapides -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                <h4 class="text-primary">{{ etablissement.etudiants_actuels|intcomma }}</h4>
+                <p class="mb-0 text-muted">Étudiants actuels</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card success">
+            <div class="card-body text-center">
+                <i class="fas fa-chair fa-2x text-success mb-2"></i>
+                <h4 class="text-success">{{ etablissement.capacite_totale|intcomma }}</h4>
+                <p class="mb-0 text-muted">Capacité totale</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card warning">
+            <div class="card-body text-center">
+                <i class="fas fa-door-open fa-2x text-warning mb-2"></i>
+                <h4 class="text-warning">{{ salles.count }}</h4>
+                <p class="mb-0 text-muted">Salles</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card danger">
+            <div class="card-body text-center">
+                <i class="fas fa-percentage fa-2x text-danger mb-2"></i>
+                <h4 class="text-danger">{{ etablissement.taux_occupation|floatformat:1 }}%</h4>
+                <p class="mb-0 text-muted">Taux d'occupation</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Informations principales -->
+    <div class="col-md-8 mb-4">
+        <!-- Informations générales -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Informations Générales
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Code:</strong></td>
+                                <td>{{ etablissement.code }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Type:</strong></td>
+                                <td>{{ etablissement.type_etablissement.nom }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Localité:</strong></td>
+                                <td>{{ etablissement.localite.nom }}{% if etablissement.localite.region %}, {{ etablissement.localite.region }}{% endif %}</td>
+                            </tr>
+                            {% if etablissement.nom_directeur %}
+                            <tr>
+                                <td><strong>Directeur:</strong></td>
+                                <td>{{ etablissement.nom_directeur }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            {% if etablissement.date_creation %}
+                            <tr>
+                                <td><strong>Date de création:</strong></td>
+                                <td>{{ etablissement.date_creation|date:"d/m/Y" }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if etablissement.numero_enregistrement %}
+                            <tr>
+                                <td><strong>N° Enregistrement:</strong></td>
+                                <td>{{ etablissement.numero_enregistrement }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <td><strong>Statut:</strong></td>
+                                <td>
+                                    {% if etablissement.actif %}
+                                        <span class="badge bg-success">Actif</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactif</span>
+                                    {% endif %}
+                                    {% if etablissement.public %}
+                                        <span class="badge bg-primary ms-1">Public</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                {% if etablissement.description %}
+                <hr>
+                <div>
+                    <h6><i class="fas fa-align-left me-2"></i>Description</h6>
+                    <p>{{ etablissement.description|linebreaks }}</p>
+                </div>
+                {% endif %}
+
+                <div class="row">
+                    {% if etablissement.mission %}
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-bullseye me-2"></i>Mission</h6>
+                        <p>{{ etablissement.mission|linebreaks }}</p>
+                    </div>
+                    {% endif %}
+                    {% if etablissement.vision %}
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-eye me-2"></i>Vision</h6>
+                        <p>{{ etablissement.vision|linebreaks }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-address-card me-2"></i>
+                    Coordonnées
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <strong><i class="fas fa-map-marker-alt me-2"></i>Adresse:</strong><br>
+                        {{ etablissement.adresse }}
+                    </div>
+                </div>
+                <div class="row">
+                    {% if etablissement.telephone %}
+                    <div class="col-md-4 mb-2">
+                        <strong><i class="fas fa-phone me-2"></i>Téléphone:</strong><br>
+                        <a href="tel:{{ etablissement.telephone }}" class="text-decoration-none">{{ etablissement.telephone }}</a>
+                    </div>
+                    {% endif %}
+                    {% if etablissement.email %}
+                    <div class="col-md-4 mb-2">
+                        <strong><i class="fas fa-envelope me-2"></i>Email:</strong><br>
+                        <a href="mailto:{{ etablissement.email }}" class="text-decoration-none">{{ etablissement.email }}</a>
+                    </div>
+                    {% endif %}
+                    {% if etablissement.site_web %}
+                    <div class="col-md-4 mb-2">
+                        <strong><i class="fas fa-globe me-2"></i>Site web:</strong><br>
+                        <a href="{{ etablissement.site_web }}" target="_blank" class="text-decoration-none">{{ etablissement.site_web }}</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Salles -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-door-open me-2"></i>
+                    Salles ({{ salles.count }})
+                </h5>
+                <a href="{% url 'establishments:salle_create' %}?etablissement={{ etablissement.pk }}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-plus me-2"></i>Nouvelle salle
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if salles %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Salle</th>
+                                    <th>Type</th>
+                                    <th>Capacité</th>
+                                    <th>Localisation</th>
+                                    <th>État</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for salle in salles %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ salle.nom }}</strong>
+                                        <br><small class="text-muted">{{ salle.code }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ salle.get_type_salle_display }}</span>
+                                    </td>
+                                    <td>{{ salle.capacite }}</td>
+                                    <td>
+                                        {% if salle.batiment %}{{ salle.batiment }}{% endif %}
+                                        {% if salle.etage %} - {{ salle.etage }}{% endif %}
+                                    </td>
+                                    <td>
+                                        {% if salle.etat == 'EXCELLENT' %}
+                                            <span class="badge bg-success">{{ salle.get_etat_display }}</span>
+                                        {% elif salle.etat == 'BON' %}
+                                            <span class="badge bg-primary">{{ salle.get_etat_display }}</span>
+                                        {% elif salle.etat == 'CORRECT' %}
+                                            <span class="badge bg-warning">{{ salle.get_etat_display }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ salle.get_etat_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'establishments:salle_detail' salle.pk %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'establishments:salle_edit' salle.pk %}" class="btn btn-sm btn-outline-warning">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-door-open fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Aucune salle enregistrée</p>
+                        <a href="{% url 'establishments:salle_create' %}?etablissement={{ etablissement.pk }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Ajouter une salle
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar droite -->
+    <div class="col-md-4">
+        <!-- Campus -->
+        {% if campus_list %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-map-marker-alt me-2"></i>
+                    Campus ({{ campus_list.count }})
+                </h6>
+            </div>
+            <div class="card-body">
+                {% for campus in campus_list %}
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="flex-grow-1">
+                            <strong>{{ campus.nom }}</strong>
+                            {% if campus.est_campus_principal %}
+                                <span class="badge bg-primary badge-custom ms-1">Principal</span>
+                            {% endif %}
+                            <br><small class="text-muted">{{ campus.adresse }}</small>
+                        </div>
+                        <a href="{% url 'establishments:campus_detail' campus.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </div>
+                    {% if not forloop.last %}<hr class="my-2">{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Années académiques -->
+        {% if annees_academiques %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-calendar-alt me-2"></i>
+                    Années Académiques
+                </h6>
+            </div>
+            <div class="card-body">
+                {% for annee in annees_academiques %}
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div>
+                            <strong>{{ annee.nom }}</strong>
+                            {% if annee.est_courante %}
+                                <span class="badge bg-success badge-custom">Courante</span>
+                            {% endif %}
+                            <br><small class="text-muted">{{ annee.date_debut|date:"d/m/Y" }} - {{ annee.date_fin|date:"d/m/Y" }}</small>
+                        </div>
+                    </div>
+                    {% if not forloop.last %}<hr class="my-2">{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Jours fériés à venir -->
+        {% if jours_feries %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-calendar-times me-2"></i>
+                    Jours Fériés à Venir
+                </h6>
+            </div>
+            <div class="card-body">
+                {% for jour in jours_feries %}
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="rounded me-3" style="width: 8px; height: 8px; background-color: {{ jour.couleur }};"></div>
+                        <div class="flex-grow-1">
+                            <strong>{{ jour.nom }}</strong>
+                            <br><small class="text-muted">{{ jour.date_debut|date:"d/m/Y" }}{% if jour.date_fin != jour.date_debut %} - {{ jour.date_fin|date:"d/m/Y" }}{% endif %}</small>
+                        </div>
+                    </div>
+                    {% if not forloop.last %}<hr class="my-2">{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Actions rapides -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>
+                    Actions Rapides
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'establishments:etablissement_parametres' etablissement.pk %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-cog me-2"></i>Paramètres
+                    </a>
+                    <a href="{% url 'establishments:salle_create' %}?etablissement={{ etablissement.pk }}" class="btn btn-outline-success btn-sm">
+                        <i class="fas fa-plus me-2"></i>Nouvelle Salle
+                    </a>
+                    <a href="{% url 'establishments:annee_academique_create' %}?etablissement={{ etablissement.pk }}" class="btn btn-outline-info btn-sm">
+                        <i class="fas fa-calendar-plus me-2"></i>Nouvelle Année
+                    </a>
+                    <a href="{% url 'establishments:bareme_notation_create' %}?etablissement={{ etablissement.pk }}" class="btn btn-outline-warning btn-sm">
+                        <i class="fas fa-star me-2"></i>Nouveau Barème
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

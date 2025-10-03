@@ -1,0 +1,71 @@
+{% extends 'enrollment/candidature/emails/base_email.html' %}
+
+{% block title %}Candidature Approuvée - {{ candidature.numero_candidature }}{% endblock %}
+
+{% block content %}
+<h2 style="color: #28a745;">🎉 Candidature Approuvée !</h2>
+
+<p>Bonjour <strong>{{ candidature.prenom }} {{ candidature.nom }}</strong>,</p>
+
+<div class="info-box success-box">
+    <p><strong>🎊 Excellente nouvelle !</strong></p>
+    <p>Nous avons le plaisir de vous informer que votre candidature <strong>{{ candidature.numero_candidature }}</strong> a été <strong>APPROUVÉE</strong>.</p>
+</div>
+
+<div class="candidature-details">
+    <h3>📋 Détails de votre admission</h3>
+    <div class="detail-row">
+        <span class="detail-label">Formation :</span>
+        <span class="detail-value"><strong>{{ candidature.filiere.nom }} - {{ candidature.niveau.nom }}</strong></span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Établissement :</span>
+        <span class="detail-value">{{ etablissement.nom }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Année académique :</span>
+        <span class="detail-value">{{ candidature.annee_academique.nom }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Date d'approbation :</span>
+        <span class="detail-value">{{ candidature.date_decision|date:"d/m/Y à H:i" }}</span>
+    </div>
+    {% if candidature.notes_approbation %}
+    <div class="detail-row">
+        <span class="detail-label">Notes :</span>
+        <span class="detail-value">{{ candidature.notes_approbation }}</span>
+    </div>
+    {% endif %}
+</div>
+
+<div class="info-box">
+    <p><strong>📋 Prochaines étapes :</strong></p>
+    <ol>
+        <li><strong>Compte utilisateur :</strong> Un compte étudiant a été créé pour vous (voir email séparé)</li>
+        <li><strong>Inscription administrative :</strong> Rendez-vous au secrétariat avec les documents originaux</li>
+        <li><strong>Paiement des frais :</strong> Procédez au règlement des frais d'inscription</li>
+        <li><strong>Emploi du temps :</strong> Consultez votre planning via votre compte étudiant</li>
+    </ol>
+</div>
+
+{% if candidature.frais_dossier_requis %}
+<div class="info-box warning-box">
+    <p><strong>💰 Frais d'inscription :</strong></p>
+    {% if candidature.montant_frais_dossier %}
+        <p>Montant à régler : <strong>{{ candidature.montant_frais_dossier }} FCFA</strong></p>
+    {% endif %}
+    <p>Merci de vous présenter au service financier pour finaliser votre inscription.</p>
+</div>
+{% endif %}
+
+<div class="info-box">
+    <p><strong>📞 Contact :</strong></p>
+    <p>Pour toute question, contactez le secrétariat en mentionnant votre numéro de candidature : <strong>{{ candidature.numero_candidature }}</strong></p>
+</div>
+
+<p style="margin-top: 30px;">
+    Toutes nos félicitations et bienvenue dans notre établissement !<br><br>
+    Cordialement,<br>
+    <strong>L'équipe de {{ etablissement.nom }}</strong>
+</p>
+{% endblock %}

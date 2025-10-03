@@ -1,0 +1,444 @@
+soit :
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Accueil - FORMIS</title>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/main.css" />
+    <link rel="stylesheet" href="/static/css/components.css" />
+    <link rel="stylesheet" href="/static/css/responsive.css" />
+
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="header">
+      <nav class="nav">
+        <div class="nav-container">
+          <div class="nav-brand">
+            <i class="fas fa-graduation-cap"></i>
+            <span>FORMIS</span>
+          </div>
+
+          <ul class="nav-menu">
+            <li class="nav-item">
+              <a href="{% url 'core:home' %}" class="nav-link active"
+                >ACCUEIL</a
+              >
+            </li>
+            <li class="nav-item">
+              <a
+                href="{% url 'enrollment:candidature_create' %}"
+                class="nav-link"
+                >CANDIDATER</a
+              >
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link">NOUS CONTACTER</a>
+            </li>
+          </ul>
+
+          <div class="nav-auth">
+            <div class="contact-info">
+              <i class="fas fa-phone"></i>
+              <span>(+226) 71 88 20 20</span>
+            </div>
+            <div class="login-form">
+              <a href="{% url 'accounts:login' %}" class="btn-login">
+                Se connecter
+              </a>
+            </div>
+          </div>
+
+          <div class="nav-toggle">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero-container">
+        <div class="hero-content">
+          <div class="hero-text">
+            <div class="hero-brand">
+              <span class="brand-name">FORMIS</span>
+            </div>
+            <h1 class="hero-title">
+              L'enseignement<br />
+              à portée de main.
+            </h1>
+            <button class="btn-contact">Contact</button>
+          </div>
+
+          <div class="hero-illustration">
+            <div class="character">
+              <div class="character-body"></div>
+              <div class="character-head"></div>
+              <div class="character-glasses"></div>
+              <div class="character-arm-left"></div>
+              <div class="character-arm-right"></div>
+            </div>
+
+            <div class="floating-elements">
+              <div class="device">
+                <div class="device-screen">
+                  <div class="screen-line"></div>
+                  <div class="screen-line short"></div>
+                  <div class="screen-line"></div>
+                </div>
+              </div>
+
+              <div class="geometric-shapes">
+                <div class="shape circle">
+                  <i class="fas fa-check"></i>
+                </div>
+                <div class="shape triangle">
+                  <i class="fas fa-play"></i>
+                </div>
+                <div class="shape square">
+                  <i class="fas fa-plus"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-features">
+          <div class="feature">
+            <i class="fas fa-laptop"></i>
+            <span>Cours en ligne</span>
+          </div>
+          <div class="feature">
+            <i class="fas fa-users"></i>
+            <span>Un Corps enseignant de qualité</span>
+          </div>
+          <div class="feature">
+            <i class="fas fa-headset"></i>
+            <span>Support 7J/24H</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+      <div class="container">
+        <div class="section-header">
+          <h2>Pourquoi choisir FORMIS ?</h2>
+          <p>Une solution complète pour tous vos besoins éducatifs</p>
+        </div>
+
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i class="fas fa-school"></i>
+            </div>
+            <h3>Gestion Multi-établissements</h3>
+            <p>
+              Gérez facilement plusieurs établissements : écoles primaires,
+              secondaires, universités, centres de formation.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i class="fas fa-users"></i>
+            </div>
+            <h3>Gestion des Utilisateurs</h3>
+            <p>
+              Système de rôles complet : superadmin, administrateurs, chefs de
+              département, enseignants et apprenants.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i class="fas fa-book"></i>
+            </div>
+            <h3>Gestion Pédagogique</h3>
+            <p>
+              Cahier de textes, évaluations, notes, ressources pédagogiques et
+              suivi de progression.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i class="fas fa-chart-bar"></i>
+            </div>
+            <h3>Statistiques & Rapports</h3>
+            <p>
+              Tableaux de bord interactifs, statistiques en temps réel et
+              génération de rapports détaillés.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i class="fas fa-credit-card"></i>
+            </div>
+            <h3>Gestion Financière</h3>
+            <p>
+              Suivi des paiements, tranches, reçus automatiques et génération de
+              documents.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">
+              <i class="fas fa-mobile-alt"></i>
+            </div>
+            <h3>Interface Moderne</h3>
+            <p>
+              Interface responsive et intuitive, accessible sur tous les
+              appareils et navigateurs.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- News Section -->
+    <section class="news">
+      <div class="container">
+        <div class="section-header">
+          <h2>ACTUALITÉS</h2>
+        </div>
+
+        <div class="news-grid">
+          <div class="news-card">
+            <div class="news-image">
+              <div class="news-placeholder">
+                <i class="fas fa-newspaper"></i>
+              </div>
+            </div>
+            <div class="news-content">
+              <div class="news-date">15 Sept 2025</div>
+              <h3>Nouvelle rentrée académique</h3>
+              <p>
+                Découvrez les nouveautés de cette année académique avec de
+                nouveaux programmes et formations.
+              </p>
+              <a href="#" class="news-link">Lire la suite</a>
+            </div>
+          </div>
+
+          <div class="news-card">
+            <div class="news-image">
+              <div class="news-placeholder">
+                <i class="fas fa-graduation-cap"></i>
+              </div>
+            </div>
+            <div class="news-content">
+              <div class="news-date">10 Sept 2025</div>
+              <h3>Cérémonie de remise des diplômes</h3>
+              <p>
+                Félicitations à nos nouveaux diplômés qui ont brillamment
+                terminé leur parcours.
+              </p>
+              <a href="#" class="news-link">Lire la suite</a>
+            </div>
+          </div>
+
+          <div class="news-card">
+            <div class="news-image">
+              <div class="news-placeholder">
+                <i class="fas fa-award"></i>
+              </div>
+            </div>
+            <div class="news-content">
+              <div class="news-date">5 Sept 2025</div>
+              <h3>Excellence académique</h3>
+              <p>
+                FORMIS reconnu pour son excellence dans l'accompagnement des
+                étudiants.
+              </p>
+              <a href="#" class="news-link">Lire la suite</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section Établissements en vedette -->
+    <section class="py-5 bg-light">
+      <div class="container">
+        <div class="text-center mb-5">
+          <h2 class="fw-bold mb-3">Établissements Partenaires</h2>
+          <p class="lead text-muted">
+            Découvrez nos établissements de formation
+          </p>
+        </div>
+
+        <div class="row g-4">
+          {% for etablissement in featured_etablissements %}
+          <div class="col-lg-4 col-md-6">
+            <div class="card h-100 establishment-card">
+              {% if etablissement.logo %}
+              <img
+                src="{{ etablissement.logo.url }}"
+                class="card-img-top"
+                alt="{{ etablissement.nom }}"
+                style="height: 200px; object-fit: cover"
+              />
+              {% else %}
+              <div
+                class="card-img-top bg-primary d-flex align-items-center justify-content-center text-white"
+                style="height: 200px"
+              >
+                <i class="fas fa-school" style="font-size: 3rem"></i>
+              </div>
+              {% endif %}
+
+              <div class="card-body">
+                <h5 class="card-title fw-bold">{{ etablissement.nom }}</h5>
+                <p class="card-text text-muted">
+                  {% if etablissement.description %} {{
+                  etablissement.description|truncatechars:100 }} {% else %}
+                  Aucune description disponible. {% endif %}
+                </p>
+
+                <div class="mb-3">
+                  <small class="text-muted">
+                    <i class="fas fa-map-marker-alt me-1"></i>
+                    {% if etablissement.localite %} {{
+                    etablissement.localite.nom }} {% if
+                    etablissement.localite.region %} , {{
+                    etablissement.localite.region }} {% endif %} {% else %}
+                    Localité non spécifiée {% endif %}
+                  </small>
+                </div>
+
+                <div class="mb-3">
+                  <span class="badge bg-primary me-1">
+                    {% if etablissement.type_etablissement %} {{
+                    etablissement.type_etablissement.nom }} {% else %} Type non
+                    spécifié {% endif %}
+                  </span>
+                  {% if etablissement.actif %}
+                  <span class="badge bg-success">Actif</span>
+                  {% else %}
+                  <span class="badge bg-secondary">Inactif</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="card-footer bg-transparent">
+                <!-- Utilisation de l'URL publique -->
+                <a
+                  href="{% url 'core:establishment_detail' etablissement.pk %}"
+                  class="btn btn-primary w-100"
+                >
+                  <i class="fas fa-eye me-2"></i>
+                  Voir les formations
+                </a>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="col-12 text-center">
+            <div class="py-5">
+              <i class="fas fa-school text-muted" style="font-size: 4rem"></i>
+              <h4 class="mt-3 text-muted">Aucun établissement disponible</h4>
+              <p class="text-muted">
+                Les établissements seront bientôt disponibles.
+              </p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="text-center mt-5">
+          <!-- Utilisation de l'URL publique -->
+          <a
+            href="{% url 'core:establishment_list' %}"
+            class="btn btn-outline-primary btn-lg"
+          >
+            <i class="fas fa-search me-2"></i>
+            Voir tous les établissements
+          </a>
+        </div>
+      </div>
+    </section>
+    <br />
+
+    <!-- CTA Section -->
+    <section class="py-5 cta">
+      <div class="container">
+        <div class="cta-content">
+          <h2>Vous voulez faire partie de nos futurs étudiants !</h2>
+          <a href="{% url 'enrollment:candidature_create' %}" class="btn-cta"
+            >Inscrivez-vous maintenant</a
+          >
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-brand">
+            <i class="fas fa-graduation-cap"></i>
+            <span>FORMIS</span>
+          </div>
+          <div class="footer-links">
+            <a href="{% url 'core:home' %}">Accueil</a>
+            <a href="#">Établissements</a>
+            <a href="#">Contact</a>
+            <a href="#">À propos</a>
+          </div>
+          <div class="footer-copy">
+            <p>Copyright ©2025 FORMIS</p>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Custom JS -->
+    <script src="/static/js/main.js"></script>
+    <script src="/static/js/animations.js"></script>
+
+    <style>
+      .establishment-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      .establishment-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      }
+
+      .stat-card {
+        transition: transform 0.3s ease;
+      }
+
+      .stat-card:hover {
+        transform: translateY(-2px);
+      }
+
+      .establishments-section {
+        background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);
+      }
+    </style>
+  </body>
+</html>
+
+

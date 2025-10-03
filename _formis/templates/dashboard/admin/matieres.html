@@ -1,0 +1,787 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Gestion des Matières - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-matieres">
+    <!-- Header compact -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Matières</span>
+            </div>
+            <h1>Gestion des Matières</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ matieres.paginator.count }} total</span>
+                <span class="stat-badge actifs">{{ nombre_matieres_actives }} actives</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportMatieres()" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+            <a href="{% url 'courses:matiere_create' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Ajouter
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtres compacts -->
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="Rechercher..."
+                       value="{{ current_filters.search }}" class="form-input-sm">
+            </div>
+            <div class="filter-group">
+                <select name="actif" class="form-select-sm">
+                    <option value="">Tous statuts</option>
+                    <option value="True" {% if current_filters.actif == 'True' %}selected{% endif %}>Actives</option>
+                    <option value="False" {% if current_filters.actif == 'False' %}selected{% endif %}>Inactives</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="sort" class="form-select-sm">
+                    <option value="nom" {% if current_filters.sort == 'nom' %}selected{% endif %}>Nom A-Z</option>
+                    <option value="-nom" {% if current_filters.sort == '-nom' %}selected{% endif %}>Nom Z-A</option>
+                    <option value="code" {% if current_filters.sort == 'code' %}selected{% endif %}>Code</option>
+                    <option value="-coefficient" {% if current_filters.sort == '-coefficient' %}selected{% endif %}>Coefficient</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:admin_matieres' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Actions en lot -->
+    <div class="bulk-actions-bar" id="bulkActionsBar" style="display: none;">
+        <div class="bulk-info">
+            <i class="fas fa-check-square"></i>
+            <span id="selectedCount">0</span> sélectionné(s)
+        </div>
+        <div class="bulk-buttons">
+            <button class="btn btn-sm btn-warning" onclick="bulkExport()">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+            <button class="btn btn-sm btn-info" onclick="bulkAssignModules()">
+                <i class="fas fa-link"></i> Assigner modules
+            </button>
+        </div>
+    </div>
+
+    <!-- Tableau optimisé -->
+    <div class="matieres-table-container">
+        <div class="table-wrapper">
+            <table class="matieres-table">
+                <thead>
+                    <tr>
+                        <th width="30">
+                            <input type="checkbox" class="select-all-header" id="selectAllMatieres">
+                        </th>
+                        <th width="250">Matière</th>
+                        <th width="100">Code</th>
+                        <th width="80">Coefficient</th>
+                        <th width="120">Volume horaire</th>
+                        <th width="100">Théorie</th>
+                        <th width="100">Pratique</th>
+                        <th width="80">TD</th>
+                        <th width="60">Modules</th>
+                        <th width="60">Statut</th>
+                        <th width="80">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for matiere in matieres %}
+                    <tr class="matiere-row">
+                        <td>
+                            <input type="checkbox" class="matiere-checkbox" value="{{ matiere.id }}">
+                        </td>
+                        <td>
+                            <div class="matiere-info">
+                                <div class="color-indicator" style="background: {{ matiere.couleur }}"></div>
+                                <div class="matiere-details">
+                                    <div class="matiere-name">{{ matiere.nom|truncatechars:35 }}</div>
+                                    {% if matiere.description %}
+                                        <small class="matiere-desc">{{ matiere.description|truncatechars:50 }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <code class="code-badge">{{ matiere.code }}</code>
+                        </td>
+                        <td class="text-center">
+                            <span class="coef-badge">{{ matiere.coefficient }}</span>
+                        </td>
+                        <td>
+                            <div class="volume-total">
+                                <span class="volume-badge-primary">{{ matiere.volume_horaire_total }}h</span>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <span class="hours-badge hours-theorie">{{ matiere.heures_theorie }}h</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="hours-badge hours-pratique">{{ matiere.heures_pratique }}h</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="hours-badge hours-td">{{ matiere.heures_td }}h</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="count-badge">{{ matiere.nombre_modules }}</span>
+                        </td>
+                        <td>
+                            <div class="status-info">
+                                {% if matiere.actif %}
+                                    <i class="fas fa-check-circle text-success" title="Active"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-danger" title="Inactive"></i>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons-sm">
+                                <a href="{% url 'courses:matiere_detail' matiere.id %}" class="btn-icon-sm btn-primary" title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'courses:matiere_edit' matiere.id %}" class="btn-icon-sm btn-info" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <div class="dropdown-compact">
+                                    <button class="btn-icon-sm btn-outline dropdown-toggle">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="dropdown-menu-compact">
+                                        <a href="{% url 'courses:matiere_detail' matiere.id %}">
+                                            <i class="fas fa-eye"></i> Détails
+                                        </a>
+                                        <a href="{% url 'courses:matiere_edit' matiere.id %}">
+                                            <i class="fas fa-edit"></i> Modifier
+                                        </a>
+                                        <a href="#" onclick="assignToModules('{{ matiere.id }}')">
+                                            <i class="fas fa-link"></i> Assigner modules
+                                        </a>
+                                        <a href="#" onclick="changeColor('{{ matiere.id }}', '{{ matiere.couleur }}')">
+                                            <i class="fas fa-palette"></i> Changer couleur
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        {% if matiere.actif %}
+                                            <a href="#" onclick="toggleMatiereStatus('{{ matiere.id }}', false)" class="text-warning">
+                                                <i class="fas fa-pause"></i> Désactiver
+                                            </a>
+                                        {% else %}
+                                            <a href="#" onclick="toggleMatiereStatus('{{ matiere.id }}', true)" class="text-success">
+                                                <i class="fas fa-play"></i> Activer
+                                            </a>
+                                        {% endif %}
+                                        <div class="dropdown-divider"></div>
+                                        <a href="#" onclick="deleteMatiere('{{ matiere.id }}')" class="text-danger">
+                                            <i class="fas fa-trash"></i> Supprimer
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="empty-state">
+                            <div class="empty-content">
+                                <i class="fas fa-book-open fa-2x text-muted"></i>
+                                <p class="mt-2">Aucune matière trouvée</p>
+                                <a href="{% url 'courses:matiere_create' %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus"></i> Ajouter
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% include 'components/pagination.html' with page_obj=matieres %}
+    </div>
+</div>
+
+<style>
+.admin-matieres {
+    padding: 15px;
+}
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: var(--shadow-sm);
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav .current {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.header-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.stat-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--light-gray);
+    border-radius: 12px;
+    font-size: 11px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.stat-badge.actifs {
+    background: #d4edda;
+    color: #155724;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.filters-section {
+    background: var(--white);
+    padding: 12px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.form-input-sm, .form-select-sm {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    height: 32px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.bulk-actions-bar {
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: var(--border-radius);
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--font-size-sm);
+}
+
+.bulk-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #155724;
+    font-weight: 500;
+}
+
+.bulk-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.matieres-table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.table-wrapper {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+.matieres-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 100%;
+    table-layout: auto;
+}
+
+.matieres-table th {
+    background: var(--light-gray);
+    padding: 8px 6px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+}
+
+.matieres-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--gray);
+    vertical-align: middle;
+    font-size: var(--font-size-xs);
+}
+
+.matiere-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.color-indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px var(--border-color);
+    flex-shrink: 0;
+}
+
+.matiere-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.matiere-name {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: var(--font-size-sm);
+}
+
+.matiere-desc {
+    color: var(--text-light);
+    font-size: 10px;
+}
+
+.code-badge {
+    background: var(--light-gray);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 10px;
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+.coef-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.volume-total {
+    display: flex;
+    justify-content: center;
+}
+
+.volume-badge-primary {
+    background: var(--success-color);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-block;
+}
+
+.hours-badge {
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.hours-theorie {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.hours-pratique {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.hours-td {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.count-badge {
+    background: var(--warning-color);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-info {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.action-buttons-sm {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.btn-icon-sm {
+    width: 24px;
+    height: 24px;
+    border-radius: 3px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+
+.btn-icon-sm.btn-primary { background: var(--primary-color); color: white; }
+.btn-icon-sm.btn-info { background: var(--info-color); color: white; }
+.btn-icon-sm.btn-outline {
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+}
+
+.btn-icon-sm:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: var(--light-gray);
+    color: var(--text-dark);
+    transition: all 0.3s;
+}
+
+.btn-icon:hover {
+    background: var(--border-color);
+}
+
+/* Dropdown compact */
+.matieres-table-container,
+.table-wrapper,
+.matieres-table tr,
+.matieres-table td {
+    overflow: visible !important;
+}
+
+.matieres-table td {
+    height: auto !important;
+}
+
+.dropdown-compact {
+    position: relative;
+}
+
+.dropdown-menu-compact {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    min-width: 180px;
+}
+
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 11px;
+    transition: background 0.2s;
+}
+
+.dropdown-menu-compact a:hover {
+    background: var(--light-gray);
+}
+
+.dropdown-menu-compact a i {
+    width: 14px;
+    text-align: center;
+}
+
+.text-success { color: var(--success-color); }
+.text-danger { color: var(--danger-color); }
+.text-warning { color: var(--warning-color); }
+.text-muted { color: var(--text-light); }
+.text-info { color: var(--info-color); }
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 4px 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-content {
+    color: var(--text-light);
+}
+
+.mt-2 { margin-top: 8px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-header-compact {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .filters-form {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .matieres-table {
+        min-width: 1000px;
+    }
+
+    .header-stats {
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-start;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestion des sélections multiples
+    const selectAll = document.getElementById('selectAllMatieres');
+    const checkboxes = document.querySelectorAll('.matiere-checkbox');
+    const bulkBar = document.getElementById('bulkActionsBar');
+    const selectedCount = document.getElementById('selectedCount');
+
+    selectAll?.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+        updateBulkActions();
+    });
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    function updateBulkActions() {
+        const selected = document.querySelectorAll('.matiere-checkbox:checked').length;
+        selectedCount.textContent = selected;
+        bulkBar.style.display = selected > 0 ? 'flex' : 'none';
+
+        if (selectAll) {
+            selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+            selectAll.checked = selected === checkboxes.length;
+        }
+    }
+
+    // Gestion des dropdowns
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+
+            // Fermer tous les autres
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.style.display = 'none';
+            });
+
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        });
+    });
+
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    });
+});
+
+// Fonctions
+function exportMatieres() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/courses/matieres/export/?${params.toString()}`;
+}
+
+function deleteMatiere(matiereId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette matière ? Cette action est irréversible.')) {
+        fetch(`/courses/matiere/${matiereId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || 'Erreur lors de la suppression');
+            }
+        })
+        .catch(error => {
+            alert('Erreur de connexion');
+        });
+    }
+}
+
+function toggleMatiereStatus(matiereId, activate) {
+    if (confirm(`${activate ? 'Activer' : 'Désactiver'} cette matière ?`)) {
+        fetch(`/courses/matiere/${matiereId}/toggle-status/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({active: activate})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    }
+}
+
+function assignToModules(matiereId) {
+    window.location.href = `/courses/matiere/${matiereId}/assign-modules/`;
+}
+
+function changeColor(matiereId, currentColor) {
+    const newColor = prompt('Nouvelle couleur (format hex, ex: #3498db):', currentColor);
+    if (newColor && /^#[0-9A-F]{6}$/i.test(newColor)) {
+        fetch(`/courses/matiere/${matiereId}/change-color/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({color: newColor})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    } else if (newColor) {
+        alert('Format de couleur invalide. Utilisez le format #RRGGBB');
+    }
+}
+
+function bulkExport() {
+    const selected = Array.from(document.querySelectorAll('.matiere-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins une matière');
+        return;
+    }
+    const params = new URLSearchParams();
+    params.set('matieres', selected.join(','));
+    window.location.href = `/courses/matieres/export/?${params.toString()}`;
+}
+
+function bulkAssignModules() {
+    const selected = Array.from(document.querySelectorAll('.matiere-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins une matière');
+        return;
+    }
+    window.location.href = `/courses/matieres/bulk-assign-modules/?ids=${selected.join(',')}`;
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

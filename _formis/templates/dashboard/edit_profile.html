@@ -1,0 +1,473 @@
+<!-- templates/dashboard/modals/edit_profile.html -->
+<div class="modal fade" id="editProfileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-edit"></i> Modifier mon profil
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editProfileForm" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <!-- Alerte de succès/erreur -->
+                    <div id="profileAlert" class="alert" style="display: none;"></div>
+
+                    <!-- Photo de profil -->
+                    <div class="form-section">
+                        <h6 class="form-section-title">Photo de profil</h6>
+                        <div class="profile-photo-upload">
+                            <div class="current-photo">
+                                {% if user.photo_profil %}
+                                    <img src="{{ user.photo_profil.url }}" alt="Photo" id="previewPhoto">
+                                {% else %}
+                                    <i class="fas fa-user" id="previewIcon"></i>
+                                {% endif %}
+                            </div>
+                            <div class="photo-actions">
+                                <label for="photoInput" class="btn btn-sm btn-outline">
+                                    <i class="fas fa-camera"></i> Choisir une photo
+                                </label>
+                                <input type="file" id="photoInput" name="photo_profil"
+                                       accept="image/*" style="display: none;">
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        onclick="removePhoto()">
+                                    <i class="fas fa-trash"></i> Supprimer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Informations personnelles -->
+                    <div class="form-section">
+                        <h6 class="form-section-title">Informations personnelles</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="prenom">Prénom <span class="required">*</span></label>
+                                    <input type="text" class="form-control" id="prenom"
+                                           name="prenom" value="{{ user.prenom }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="nom">Nom <span class="required">*</span></label>
+                                    <input type="text" class="form-control" id="nom"
+                                           name="nom" value="{{ user.nom }}" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="email">Email <span class="required">*</span></label>
+                                    <input type="email" class="form-control" id="email"
+                                           name="email" value="{{ user.email }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="telephone">Téléphone</label>
+                                    <input type="tel" class="form-control" id="telephone"
+                                           name="telephone" value="{{ user.telephone|default:'' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="date_naissance">Date de naissance</label>
+                                    <input type="date" class="form-control" id="date_naissance"
+                                           name="date_naissance" value="{{ user.date_naissance|date:'Y-m-d' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="lieu_naissance">Lieu de naissance</label>
+                                    <input type="text" class="form-control" id="lieu_naissance"
+                                           name="lieu_naissance" value="{{ user.lieu_naissance|default:'' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="genre">Genre</label>
+                                    <select class="form-control" id="genre" name="genre">
+                                        <option value="">Sélectionner...</option>
+                                        <option value="M" {% if user.genre == 'M' %}selected{% endif %}>Masculin</option>
+                                        <option value="F" {% if user.genre == 'F' %}selected{% endif %}>Féminin</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="adresse">Adresse complète</label>
+                            <textarea class="form-control" id="adresse" name="adresse"
+                                      rows="2">{{ user.adresse|default:'' }}</textarea>
+                        </div>
+                    </div>
+
+                    {% if user.role == 'APPRENANT' and profil_apprenant %}
+                    <!-- Informations familiales (Apprenant) -->
+                    <div class="form-section">
+                        <h6 class="form-section-title">Informations familiales</h6>
+
+                        <!-- Père -->
+                        <div class="family-group">
+                            <label class="family-label"><i class="fas fa-male"></i> Père</label>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" name="nom_pere"
+                                               placeholder="Nom complet"
+                                               value="{{ profil_apprenant.nom_pere|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <input type="tel" class="form-control" name="telephone_pere"
+                                               placeholder="Téléphone"
+                                               value="{{ profil_apprenant.telephone_pere|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" name="profession_pere"
+                                               placeholder="Profession"
+                                               value="{{ profil_apprenant.profession_pere|default:'' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mère -->
+                        <div class="family-group">
+                            <label class="family-label"><i class="fas fa-female"></i> Mère</label>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" name="nom_mere"
+                                               placeholder="Nom complet"
+                                               value="{{ profil_apprenant.nom_mere|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <input type="tel" class="form-control" name="telephone_mere"
+                                               placeholder="Téléphone"
+                                               value="{{ profil_apprenant.telephone_mere|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" name="profession_mere"
+                                               placeholder="Profession"
+                                               value="{{ profil_apprenant.profession_mere|default:'' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tuteur -->
+                        <div class="family-group">
+                            <label class="family-label"><i class="fas fa-user-shield"></i> Tuteur légal</label>
+                            <div class="row">
+                                <div class="col-md-5">
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" name="nom_tuteur"
+                                               placeholder="Nom complet"
+                                               value="{{ profil_apprenant.nom_tuteur|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <input type="tel" class="form-control" name="telephone_tuteur"
+                                               placeholder="Téléphone"
+                                               value="{{ profil_apprenant.telephone_tuteur|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <input type="text" class="form-control" name="relation_tuteur"
+                                               placeholder="Relation (Oncle, Tante...)"
+                                               value="{{ profil_apprenant.relation_tuteur|default:'' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if user.role == 'ENSEIGNANT' and profil_enseignant %}
+                    <!-- Informations professionnelles (Enseignant) -->
+                    <div class="form-section">
+                        <h6 class="form-section-title">Informations professionnelles</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="specialisation">Spécialisation</label>
+                                    <input type="text" class="form-control" id="specialisation"
+                                           name="specialisation"
+                                           value="{{ profil_enseignant.specialisation|default:'' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="qualifications">Qualifications</label>
+                                    <input type="text" class="form-control" id="qualifications"
+                                           name="qualifications"
+                                           value="{{ profil_enseignant.qualifications|default:'' }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Contact d'urgence -->
+                    <div class="form-section">
+                        <h6 class="form-section-title">Contact d'urgence</h6>
+                        <div class="row">
+                            <div class="col-md-5">
+                                <div class="form-group">
+                                    <label for="nom_contact_urgence">Nom</label>
+                                    <input type="text" class="form-control" id="nom_contact_urgence"
+                                           name="nom_contact_urgence"
+                                           value="{{ profil_utilisateur.nom_contact_urgence|default:'' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="telephone_contact_urgence">Téléphone</label>
+                                    <input type="tel" class="form-control" id="telephone_contact_urgence"
+                                           name="telephone_contact_urgence"
+                                           value="{{ profil_utilisateur.telephone_contact_urgence|default:'' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="relation_contact_urgence">Relation</label>
+                                    <input type="text" class="form-control" id="relation_contact_urgence"
+                                           name="relation_contact_urgence"
+                                           value="{{ profil_utilisateur.relation_contact_urgence|default:'' }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" data-dismiss="modal">
+                        <i class="fas fa-times"></i> Annuler
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="saveProfileBtn">
+                        <i class="fas fa-save"></i> Enregistrer les modifications
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.modal-lg {
+    max-width: 900px;
+}
+
+.form-section {
+    margin-bottom: 30px;
+    padding-bottom: 25px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.form-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.form-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-section-title::before {
+    content: '';
+    width: 3px;
+    height: 16px;
+    background: var(--primary-color);
+    border-radius: 2px;
+}
+
+/* Upload photo */
+.profile-photo-upload {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.current-photo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--light-gray);
+}
+
+.current-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.current-photo i {
+    font-size: 32px;
+    color: var(--text-light);
+}
+
+.photo-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Groupes familiaux */
+.family-group {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: var(--light-gray);
+    border-radius: 6px;
+}
+
+.family-group:last-child {
+    margin-bottom: 0;
+}
+
+.family-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+    font-size: 13px;
+}
+
+.family-label i {
+    width: 20px;
+}
+
+.required {
+    color: var(--danger-color);
+}
+
+/* Alerte */
+#profileAlert {
+    margin-bottom: 20px;
+}
+
+.alert {
+    padding: 12px 15px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.alert-success {
+    background: #d1e7dd;
+    color: #0f5132;
+    border: 1px solid #badbcc;
+}
+
+.alert-danger {
+    background: #f8d7da;
+    color: #842029;
+    border: 1px solid #f5c2c7;
+}
+</style>
+
+<script>
+$(document).ready(function() {
+    // Prévisualisation de la photo
+    $('#photoInput').on('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $('#previewPhoto').remove();
+                $('#previewIcon').remove();
+                $('.current-photo').html(`<img src="${e.target.result}" id="previewPhoto" alt="Preview">`);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Soumission du formulaire
+    $('#editProfileForm').on('submit', function(e) {
+        e.preventDefault();
+
+        const $btn = $('#saveProfileBtn');
+        const originalText = $btn.html();
+        $btn.html('<i class="fas fa-spinner fa-spin"></i> Enregistrement...').prop('disabled', true);
+
+        const formData = new FormData(this);
+
+        $.ajax({
+            url: '{% url "dashboard:edit_profile" %}',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(response) {
+                showProfileAlert('success', response.message || 'Profil mis à jour avec succès');
+                setTimeout(function() {
+                    location.reload();
+                }, 1500);
+            },
+            error: function(xhr) {
+                let errorMsg = 'Une erreur est survenue';
+                if (xhr.responseJSON && xhr.responseJSON.errors) {
+                    const errors = xhr.responseJSON.errors;
+                    errorMsg = Object.values(errors).flat().join('<br>');
+                }
+                showProfileAlert('danger', errorMsg);
+                $btn.html(originalText).prop('disabled', false);
+            }
+        });
+    });
+});
+
+function showProfileAlert(type, message) {
+    const $alert = $('#profileAlert');
+    $alert.removeClass('alert-success alert-danger')
+          .addClass(`alert-${type}`)
+          .html(message)
+          .fadeIn();
+
+    setTimeout(function() {
+        $alert.fadeOut();
+    }, 5000);
+}
+
+function removePhoto() {
+    if (confirm('Voulez-vous vraiment supprimer votre photo de profil ?')) {
+        $('#previewPhoto').remove();
+        $('.current-photo').html('<i class="fas fa-user" id="previewIcon"></i>');
+        $('#photoInput').val('');
+    }
+}
+</script>

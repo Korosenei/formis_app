@@ -1,0 +1,529 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{{ evaluation.titre }} - Détails - FORMIS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/evaluations.css' %}">
+<style>
+  .evaluation-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 1rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .status-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .status-en-cours { background: rgba(40, 167, 69, 0.2); color: #28a745; }
+  .status-programmee { background: rgba(23, 162, 184, 0.2); color: #17a2b8; }
+  .status-terminee { background: rgba(220, 53, 69, 0.2); color: #dc3545; }
+  .status-brouillon { background: rgba(108, 117, 125, 0.2); color: #6c757d; }
+
+  .info-card {
+    background: white;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    margin-bottom: 1.5rem;
+  }
+
+  .composition-item {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    transition: all 0.3s ease;
+  }
+
+  .composition-item:hover {
+    border-color: #4e73df;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .progress-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+  }
+
+  .file-preview {
+    max-width: 100%;
+    height: 400px;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    text-align: center;
+    border-left: 4px solid;
+  }
+
+  .countdown-timer {
+    font-family: 'Courier New', monospace;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #dc3545;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center">
+      <a href="{% url 'evaluations:list_enseignant' %}" class="btn btn-outline-secondary me-3">
+        <i class="fas fa-arrow-left"></i>
+      </a>
+      <div>
+        <h1 class="h3 mb-1">{{ evaluation.titre }}</h1>
+        <p class="text-muted mb-0">{{ evaluation.matiere_module.matiere.nom }} - {{ evaluation.matiere_module.module.nom }}</p>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      {% if evaluation.statut == 'BROUILLON' or evaluation.statut == 'PROGRAMMEE' %}
+      <a href="{% url 'evaluations:edit' evaluation.pk %}" class="btn btn-warning">
+        <i class="fas fa-edit me-2"></i>Modifier
+      </a>
+      {% endif %}
+
+      {% if evaluation.statut == 'TERMINEE' and evaluation.fichier_correction %}
+      <a href="{% url 'evaluations:publier_correction' evaluation.pk %}" class="btn btn-info">
+        <i class="fas fa-share me-2"></i>Publier correction
+      </a>
+      {% endif %}
+
+      <div class="dropdown">
+        <button class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown">
+          <i class="fas fa-ellipsis-v"></i>
+        </button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="#" onclick="imprimerEvaluation()">
+            <i class="fas fa-print me-2"></i>Imprimer
+          </a></li>
+          <li><a class="dropdown-item" href="{% url 'evaluations:exporter_notes' evaluation.pk %}">
+            <i class="fas fa-file-excel me-2"></i>Exporter notes
+          </a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item text-danger" href="{% url 'evaluations:delete' evaluation.pk %}">
+            <i class="fas fa-trash me-2"></i>Supprimer
+          </a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- En-tête de l'évaluation -->
+<div class="evaluation-header">
+  <div class="row align-items-center">
+    <div class="col-md-8">
+      <div class="d-flex align-items-center mb-3">
+        <span class="status-indicator status-{{ evaluation.statut|lower }} me-3">
+          <i class="fas fa-circle me-2" style="font-size: 0.5rem;"></i>
+          {{ evaluation.get_statut_display }}
+        </span>
+        <span class="badge bg-light text-dark">{{ evaluation.get_type_evaluation_display }}</span>
+      </div>
+
+      {% if evaluation.description %}
+      <p class="mb-3 opacity-90">{{ evaluation.description }}</p>
+      {% endif %}
+
+      <div class="row">
+        <div class="col-sm-6">
+          <small class="opacity-75">Début:</small>
+          <div class="fw-bold">{{ evaluation.date_debut|date:"d/m/Y à H:i" }}</div>
+        </div>
+        <div class="col-sm-6">
+          <small class="opacity-75">Fin:</small>
+          <div class="fw-bold">{{ evaluation.date_fin|date:"d/m/Y à H:i" }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4 text-end">
+      {% if evaluation.statut == 'EN_COURS' and temps_restant > 0 %}
+      <div class="text-center">
+        <div class="small opacity-75 mb-1">Temps restant</div>
+        <div class="countdown-timer" data-end-time="{{ evaluation.date_fin.isoformat }}">
+          --:--:--
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="mt-3">
+        <div class="row text-center">
+          <div class="col-6">
+            <div class="h4 mb-0">{{ evaluation.coefficient }}</div>
+            <small class="opacity-75">Coefficient</small>
+          </div>
+          <div class="col-6">
+            <div class="h4 mb-0">{{ evaluation.note_maximale }}</div>
+            <small class="opacity-75">Note sur</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Statistiques -->
+<div class="stats-grid">
+  <div class="stat-card" style="border-left-color: #007bff;">
+    <div class="h3 text-primary mb-1">{{ stats.total_compositions }}</div>
+    <div class="text-muted small">Total compositions</div>
+  </div>
+
+  <div class="stat-card" style="border-left-color: #28a745;">
+    <div class="h3 text-success mb-1">{{ stats.compositions_soumises }}</div>
+    <div class="text-muted small">Soumises</div>
+  </div>
+
+  <div class="stat-card" style="border-left-color: #ffc107;">
+    <div class="h3 text-warning mb-1">{{ stats.compositions_a_corriger }}</div>
+    <div class="text-muted small">À corriger</div>
+  </div>
+
+  <div class="stat-card" style="border-left-color: #17a2b8;">
+    <div class="h3 text-info mb-1">{{ stats.compositions_corrigees }}</div>
+    <div class="text-muted small">Corrigées</div>
+  </div>
+
+  {% if stats.moyenne_generale %}
+  <div class="stat-card" style="border-left-color: #6f42c1;">
+    <div class="h3 text-purple mb-1">{{ stats.moyenne_generale|floatformat:2 }}</div>
+    <div class="text-muted small">Moyenne générale</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Fichiers de l'évaluation -->
+<div class="row">
+  <div class="col-md-6">
+    <div class="info-card">
+      <h5><i class="fas fa-file-alt text-primary me-2"></i>Fichier d'évaluation</h5>
+      {% if evaluation.fichier_evaluation %}
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div class="fw-bold">{{ evaluation.fichier_evaluation.name|basename }}</div>
+          <small class="text-muted">Sujet de l'évaluation</small>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="{% url 'evaluations:voir_fichier' 'evaluation' evaluation.pk %}"
+             class="btn btn-sm btn-outline-primary"
+             data-bs-toggle="modal"
+             data-bs-target="#fileViewerModal">
+            <i class="fas fa-eye"></i> Voir
+          </a>
+          <a href="{% url 'evaluations:telecharger_evaluation' evaluation.pk %}"
+             class="btn btn-sm btn-primary">
+            <i class="fas fa-download"></i>
+          </a>
+        </div>
+      </div>
+      {% else %}
+      <div class="text-muted text-center py-3">
+        <i class="fas fa-file-upload fa-2x mb-2"></i>
+        <p>Aucun fichier d'évaluation</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="info-card">
+      <h5><i class="fas fa-file-check text-success me-2"></i>Fichier de correction</h5>
+      {% if evaluation.fichier_correction %}
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div class="fw-bold">{{ evaluation.fichier_correction.name|basename }}</div>
+          <small class="text-muted">
+            {% if evaluation.correction_visible %}
+            <span class="text-success">Visible aux étudiants</span>
+            {% else %}
+            <span class="text-warning">Pas encore visible</span>
+            {% endif %}
+          </small>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="{% url 'evaluations:voir_fichier' 'correction' evaluation.pk %}"
+             class="btn btn-sm btn-outline-success"
+             data-bs-toggle="modal"
+             data-bs-target="#fileViewerModal">
+            <i class="fas fa-eye"></i> Voir
+          </a>
+          <a href="{% url 'evaluations:telecharger_correction' evaluation.pk %}"
+             class="btn btn-sm btn-success">
+            <i class="fas fa-download"></i>
+          </a>
+        </div>
+      </div>
+      {% else %}
+      <div class="text-muted text-center py-3">
+        <i class="fas fa-file-upload fa-2x mb-2"></i>
+        <p>Aucune correction</p>
+        {% if evaluation.statut == 'TERMINEE' %}
+        <a href="{% url 'evaluations:publier_correction' evaluation.pk %}"
+           class="btn btn-sm btn-success">
+          <i class="fas fa-plus"></i> Ajouter correction
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Statistiques par classe -->
+{% if stats_par_classe %}
+<div class="info-card">
+  <h5><i class="fas fa-chart-bar text-info me-2"></i>Statistiques par classe</h5>
+  <div class="row">
+    {% for classe_nom, classe_stats in stats_par_classe.items %}
+    <div class="col-md-6 col-lg-4 mb-3">
+      <div class="border rounded p-3">
+        <h6 class="fw-bold">{{ classe_nom }}</h6>
+        <div class="row text-center small">
+          <div class="col-4">
+            <div class="fw-bold text-primary">{{ classe_stats.total_apprenants }}</div>
+            <div class="text-muted">Total</div>
+          </div>
+          <div class="col-4">
+            <div class="fw-bold text-success">{{ classe_stats.compositions_corrigees }}</div>
+            <div class="text-muted">Corrigées</div>
+          </div>
+          <div class="col-4">
+            {% if classe_stats.moyenne_classe %}
+            <div class="fw-bold text-info">{{ classe_stats.moyenne_classe|floatformat:1 }}</div>
+            <div class="text-muted">Moyenne</div>
+            {% else %}
+            <div class="text-muted">-</div>
+            <div class="text-muted">Moyenne</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Liste des compositions -->
+<div class="info-card" id="corrections">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5><i class="fas fa-users text-primary me-2"></i>Compositions des étudiants</h5>
+
+    {% if bulk_note_form %}
+    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#bulkCorrectionModal">
+      <i class="fas fa-pen-fancy me-2"></i>Correction en masse
+    </button>
+    {% endif %}
+  </div>
+
+  {% if compositions %}
+  <div class="table-responsive">
+    <table class="table table-hover">
+      <thead>
+        <tr>
+          <th>Étudiant</th>
+          <th>Classe</th>
+          <th>Statut</th>
+          <th>Date soumission</th>
+          <th>Note</th>
+          <th>Fichiers</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for composition in compositions %}
+        <tr class="{% if composition.statut == 'EN_RETARD' %}table-warning{% elif composition.statut == 'CORRIGEE' %}table-success{% endif %}">
+          <td>
+            <div class="d-flex align-items-center">
+              {% if composition.apprenant.photo_profil %}
+              <img src="{{ composition.apprenant.photo_profil.url }}"
+                   class="rounded-circle me-2"
+                   width="32" height="32">
+              {% else %}
+              <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-2"
+                   style="width: 32px; height: 32px; font-size: 0.75rem; color: white;">
+                {{ composition.apprenant.first_name.0 }}{{ composition.apprenant.last_name.0 }}
+              </div>
+              {% endif %}
+              <div>
+                <div class="fw-bold">{{ composition.apprenant.get_full_name }}</div>
+                <small class="text-muted">{{ composition.apprenant.matricule }}</small>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="badge bg-light text-dark">{{ composition.apprenant.classe.nom }}</span>
+          </td>
+          <td>
+            <span class="badge bg-{% if composition.statut == 'EN_COURS' %}secondary{% elif composition.statut == 'SOUMISE' %}primary{% elif composition.statut == 'EN_RETARD' %}warning{% elif composition.statut == 'CORRIGEE' %}success{% endif %}">
+              {{ composition.get_statut_display }}
+            </span>
+          </td>
+          <td>
+            {% if composition.date_soumission %}
+              {{ composition.date_soumission|date:"d/m/Y H:i" }}
+              {% if composition.est_en_retard %}
+                <i class="fas fa-clock text-warning ms-1" title="En retard"></i>
+              {% endif %}
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if composition.note_obtenue %}
+              <span class="fw-bold">{{ composition.note_obtenue }}/{{ evaluation.note_maximale }}</span>
+              {% if composition.est_en_retard and evaluation.penalite_retard > 0 %}
+                <br><small class="text-warning">Avec pénalité: {{ composition.note_avec_penalite }}</small>
+              {% endif %}
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if composition.fichiers_composition.count > 0 %}
+              <span class="badge bg-info">{{ composition.fichiers_composition.count }} fichier{{ composition.fichiers_composition.count|pluralize }}</span>
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="btn-group">
+              {% if composition.fichiers_composition.count > 0 %}
+              <button class="btn btn-sm btn-outline-primary"
+                      onclick="voirComposition({{ composition.pk }})">
+                <i class="fas fa-eye"></i>
+              </button>
+              {% endif %}
+
+              {% if composition.statut in 'SOUMISE,EN_RETARD' %}
+              <a href="{% url 'evaluations:corriger_composition' composition.pk %}"
+                 class="btn btn-sm btn-warning">
+                <i class="fas fa-pen"></i>
+              </a>
+              {% elif composition.statut == 'CORRIGEE' %}
+              <a href="{% url 'evaluations:corriger_composition' composition.pk %}"
+                 class="btn btn-sm btn-success">
+                <i class="fas fa-edit"></i>
+              </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-center py-5">
+    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+    <h5 class="text-muted">Aucune composition</h5>
+    <p class="text-muted">Les compositions apparaîtront ici une fois que les étudiants commenceront à soumettre.</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal de correction en masse -->
+{% if bulk_note_form %}
+<div class="modal fade" id="bulkCorrectionModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Correction en masse</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{% url 'evaluations:correction_en_masse' evaluation.pk %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Étudiant</th>
+                  <th>Note</th>
+                  <th>Commentaire</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{ bulk_note_form.as_table }}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer toutes les notes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Mise à jour du compteur temps restant
+function updateCountdowns() {
+    document.querySelectorAll('[data-end-time]').forEach(element => {
+        const endTime = new Date(element.dataset.endTime);
+        const now = new Date();
+        const diff = endTime - now;
+
+        if (diff > 0) {
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            element.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        } else {
+            element.textContent = 'Terminé';
+            element.classList.remove('countdown-timer');
+            element.classList.add('text-muted');
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateCountdowns();
+    setInterval(updateCountdowns, 1000);
+});
+
+function voirComposition(compositionId) {
+    // Ouvrir modal avec les fichiers de composition
+    // Implementation à compléter
+}
+
+function imprimerEvaluation() {
+    window.print();
+}
+</script>
+{% endblock %}
