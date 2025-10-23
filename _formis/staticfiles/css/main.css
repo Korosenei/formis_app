@@ -257,19 +257,6 @@ a:hover {
   gap: var(--spacing-sm);
 }
 
-.login-input {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 2px solid var(--gray-200);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  transition: border-color var(--transition-fast);
-}
-
-.login-input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-}
-
 .btn-login {
   background: var(--primary-color);
   color: var(--white);
@@ -284,6 +271,7 @@ a:hover {
 .btn-login:hover {
   background: var(--primary-dark);
   transform: translateY(-2px);
+  color: var(--gray-700);
 }
 
 .nav-toggle {
@@ -541,6 +529,36 @@ a:hover {
   left: 20%;
   animation: float 7s ease-in-out infinite reverse;
 }
+
+/* Styles pour les cartes d'établissements */
+.establishment-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.establishment-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.1);
+}
+
+.establishment-card .card-img-top {
+    height: 200px;
+    object-fit: cover;
+}
+
+.establishment-card .card-title {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.establishment-card .badge {
+    font-size: 0.75rem;
+    padding: 0.35em 0.65em;
+}
+
 
 /* ===== HERO FEATURES ===== */
 .hero-features {
