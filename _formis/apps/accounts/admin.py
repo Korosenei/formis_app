@@ -1,3 +1,4 @@
+# apps/accounts/admin.py
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import Utilisateur, ProfilUtilisateur, ProfilApprenant, ProfilEnseignant
@@ -59,13 +60,11 @@ class UtilisateurAdmin(UserAdmin):
             queryset = queryset.filter(departement=request.user.departement)
         return queryset
 
-
 @admin.register(ProfilUtilisateur)
 class ProfilUtilisateurAdmin(admin.ModelAdmin):
     list_display = ('utilisateur', 'langue', 'fuseau_horaire', 'recevoir_notifications')
     list_filter = ('langue', 'recevoir_notifications', 'recevoir_notifications_email')
     search_fields = ('utilisateur__prenom', 'utilisateur__nom', 'utilisateur__email')
-
 
 @admin.register(ProfilApprenant)
 class ProfilApprenantAdmin(admin.ModelAdmin):
@@ -75,7 +74,6 @@ class ProfilApprenantAdmin(admin.ModelAdmin):
     )
     list_filter = ('statut_paiement', 'niveau_actuel', 'classe_actuelle')
     search_fields = ('utilisateur__prenom', 'utilisateur__nom')
-
 
 @admin.register(ProfilEnseignant)
 class ProfilEnseignantAdmin(admin.ModelAdmin):

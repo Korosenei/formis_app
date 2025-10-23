@@ -17,8 +17,8 @@
             </div>
             <h1>Gestion des Filières</h1>
             <div class="header-stats">
-                <span class="stat-badge">{{ filieres.paginator.count }} total</span>
-                <span class="stat-badge actifs">{{ filieres|dictsort:"est_active"|dictsort:"True"|length }} actives</span>
+                <span class="stat-badge">{{ page_obj.paginator.count }} total</span>
+                <span class="stat-badge actifs">{{ filieres|length }} sur cette page</span>
             </div>
         </div>
         <div class="header-actions">
@@ -216,7 +216,9 @@
         </div>
 
         <!-- Pagination -->
-        {% include 'components/pagination.html' with page_obj=filieres %}
+        {% if filieres %}
+            {% include 'components/pagination.html' with page_obj=page_obj %}
+        {% endif %}
     </div>
 </div>
 

@@ -17,7 +17,8 @@
             </div>
             <h1>Gestion des Modules</h1>
             <div class="header-stats">
-                <span class="stat-badge">{{ modules.paginator.count }} total</span>
+                <span class="stat-badge">{{ page_obj.paginator.count }} total</span>
+                <span class="stat-badge actifs">{{ modules|length }} sur cette page</span>
             </div>
         </div>
         <div class="header-actions">
@@ -78,31 +79,50 @@
         </form>
     </div>
 
+    <!-- Actions en lot -->
+    <div class="bulk-actions-bar" id="bulkActionsBar" style="display: none;">
+        <div class="bulk-info">
+            <i class="fas fa-check-square"></i>
+            <span id="selectedCount">0</span> sélectionné(s)
+        </div>
+        <div class="bulk-buttons">
+            <button class="btn btn-sm btn-warning" onclick="bulkExport()">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+        </div>
+    </div>
+
     <!-- Tableau optimisé -->
     <div class="modules-table-container">
         <div class="table-wrapper">
             <table class="modules-table">
                 <thead>
                     <tr>
-                        <th width="250">Module</th>
+                        <th width="30">
+                            <input type="checkbox" class="select-all-header" id="selectAllModules">
+                        </th>
+                        <th>Module</th>
                         <th width="100">Code</th>
-                        <th width="180">Cursus académique</th>
+                        <th width="180">Niveau</th>
                         <th width="150">Coordinateur</th>
-                        <th width="100">Volume horaire</th>
+                        <th width="80">Matières</th>
                         <th width="80">Crédits</th>
-                        <th width="60">Matières</th>
+                        <th width="80">Heures</th>
                         <th width="60">Statut</th>
                         <th width="80">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for module in modules %}
-                    <tr class="module-row">
+                    <tr class="module-row" id="module-row-{{ module.id }}">
+                        <td>
+                            <input type="checkbox" class="module-checkbox" value="{{ module.id }}">
+                        </td>
                         <td>
                             <div class="module-info">
-                                <div class="module-name">{{ module.nom|truncatechars:40 }}</div>
+                                <span class="module-name">{{ module.nom }}</span>
                                 {% if module.description %}
-                                    <small class="module-desc">{{ module.description|truncatechars:60 }}</small>
+                                    <small class="module-desc">{{ module.description|truncatechars:40 }}</small>
                                 {% endif %}
                             </div>
                         </td>
@@ -110,47 +130,41 @@
                             <code class="code-badge">{{ module.code }}</code>
                         </td>
                         <td>
-                            <div class="academic-info">
-                                <div class="department-name">{{ module.niveau.filiere.departement.nom }}</div>
-                                <div class="filiere-name">{{ module.niveau.filiere.nom }}</div>
-                                <div class="niveau-name">{{ module.niveau.nom }}</div>
+                            <div class="niveau-info">
+                                <span class="niveau-name">{{ module.niveau.nom }}</span>
+                                <small class="filiere-name">{{ module.niveau.filiere.nom|truncatechars:20 }}</small>
                             </div>
                         </td>
                         <td>
-                            <div class="coord-info">
-                                {% if module.coordinateur %}
-                                    <div class="user-avatar-sm">
-                                        {% if module.coordinateur.photo_profil %}
-                                            <img src="{{ module.coordinateur.photo_profil.url }}" alt="">
-                                        {% else %}
-                                            <i class="fas fa-user-tie"></i>
-                                        {% endif %}
-                                    </div>
+                            {% if module.coordinateur %}
+                                <div class="coord-info">
                                     <span class="coord-name">{{ module.coordinateur.get_full_name|truncatechars:20 }}</span>
-                                {% else %}
-                                    <span class="text-muted">Non assigné</span>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="volume-info">
-                                <span class="volume-badge">{{ module.volume_horaire_total }}h</span>
-                            </div>
+                                </div>
+                            {% else %}
+                                <span class="text-muted">Non assigné</span>
+                            {% endif %}
                         </td>
                         <td class="text-center">
-                            <span class="credits-badge">{{ module.credits_ects }}</span>
+                            <span class="count-badge count-matieres">
+                                {{ module.nombre_matieres }}
+                            </span>
                         </td>
                         <td class="text-center">
-                            <span class="count-badge">{{ module.nombre_matieres }}</span>
+                            <span class="credits-badge">
+                                {{ module.credits_ects|floatformat:1 }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="heures-badge">
+                                {{ module.total_heures|default:0 }}h
+                            </span>
                         </td>
                         <td>
-                            <div class="status-info">
-                                {% if module.actif %}
-                                    <i class="fas fa-check-circle text-success" title="Actif"></i>
-                                {% else %}
-                                    <i class="fas fa-times-circle text-danger" title="Inactif"></i>
-                                {% endif %}
-                            </div>
+                            {% if module.actif %}
+                                <i class="fas fa-check-circle text-success" title="Actif"></i>
+                            {% else %}
+                                <i class="fas fa-times-circle text-danger" title="Inactif"></i>
+                            {% endif %}
                         </td>
                         <td>
                             <div class="action-buttons-sm">
@@ -171,22 +185,9 @@
                                         <a href="{% url 'courses:module_edit' module.id %}">
                                             <i class="fas fa-edit"></i> Modifier
                                         </a>
-                                        <a href="#" onclick="assignCoordinator('{{ module.id }}')">
-                                            <i class="fas fa-user-tie"></i> Coordinateur
-                                        </a>
                                         <a href="#" onclick="viewMatieres('{{ module.id }}')">
-                                            <i class="fas fa-book"></i> Matières
+                                            <i class="fas fa-book-open"></i> Matières
                                         </a>
-                                        <div class="dropdown-divider"></div>
-                                        {% if module.actif %}
-                                            <a href="#" onclick="toggleModuleStatus('{{ module.id }}', false)" class="text-warning">
-                                                <i class="fas fa-pause"></i> Désactiver
-                                            </a>
-                                        {% else %}
-                                            <a href="#" onclick="toggleModuleStatus('{{ module.id }}', true)" class="text-success">
-                                                <i class="fas fa-play"></i> Activer
-                                            </a>
-                                        {% endif %}
                                         <div class="dropdown-divider"></div>
                                         <a href="#" onclick="deleteModule('{{ module.id }}')" class="text-danger">
                                             <i class="fas fa-trash"></i> Supprimer
@@ -198,7 +199,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="empty-state">
+                        <td colspan="10" class="empty-state">
                             <div class="empty-content">
                                 <i class="fas fa-cubes fa-2x text-muted"></i>
                                 <p class="mt-2">Aucun module trouvé</p>
@@ -214,15 +215,14 @@
         </div>
 
         <!-- Pagination -->
-        {% include 'components/pagination.html' with page_obj=modules %}
+        {% if modules %}
+            {% include 'components/pagination.html' with page_obj=page_obj %}
+        {% endif %}
     </div>
 </div>
 
 <style>
-.admin-modules {
-    padding: 15px;
-}
-
+.admin-modules { padding: 15px; }
 .page-header-compact {
     display: flex;
     justify-content: space-between;
@@ -233,7 +233,6 @@
     border-radius: 6px;
     box-shadow: var(--shadow-sm);
 }
-
 .breadcrumb-nav {
     font-size: 11px;
     color: var(--text-light);
@@ -242,28 +241,15 @@
     align-items: center;
     gap: 5px;
 }
-
-.breadcrumb-nav .current {
-    color: var(--primary-color);
-    font-weight: 500;
-}
-
+.breadcrumb-nav .current { color: var(--primary-color); font-weight: 500; }
 .header-content h1 {
     margin: 0 0 8px 0;
     font-size: 18px;
     font-weight: 600;
     color: var(--text-dark);
 }
-
-.header-stats {
-    display: flex;
-    gap: 8px;
-    margin-top: 5px;
-}
-
+.header-stats { display: flex; gap: 8px; margin-top: 5px; }
 .stat-badge {
-    display: inline-flex;
-    align-items: center;
     padding: 2px 8px;
     background: var(--light-gray);
     border-radius: 12px;
@@ -271,13 +257,8 @@
     color: var(--text-dark);
     font-weight: 500;
 }
-
-.header-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
+.stat-badge.actifs { background: #d4edda; color: #155724; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
 .filters-section {
     background: var(--white);
     padding: 12px;
@@ -286,14 +267,12 @@
     margin-bottom: 15px;
     border: 1px solid var(--border-color);
 }
-
 .filters-form {
     display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+    grid-template-columns: 2fr 1.5fr 1.5fr 1.5fr auto;
     gap: 12px;
     align-items: end;
 }
-
 .form-input-sm, .form-select-sm {
     padding: 6px 10px;
     border: 1px solid var(--border-color);
@@ -301,12 +280,20 @@
     font-size: var(--font-size-sm);
     height: 32px;
 }
-
-.filter-actions {
+.filter-actions { display: flex; gap: 5px; }
+.bulk-actions-bar {
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: 6px;
+    padding: 10px 15px;
+    margin-bottom: 15px;
     display: flex;
-    gap: 5px;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
 }
-
+.bulk-info { display: flex; align-items: center; gap: 8px; color: #155724; font-weight: 500; }
+.bulk-buttons { display: flex; gap: 8px; }
 .modules-table-container {
     background: var(--white);
     border-radius: var(--border-radius);
@@ -314,19 +301,12 @@
     border: 1px solid var(--border-color);
     overflow: hidden;
 }
-
-.table-wrapper {
-    overflow-x: hidden;
-    max-width: 100%;
-}
-
+.table-wrapper { overflow-x: auto; }
 .modules-table {
     width: 100%;
     border-collapse: collapse;
     min-width: 100%;
-    table-layout: auto;
 }
-
 .modules-table th {
     background: var(--light-gray);
     padding: 8px 6px;
@@ -337,141 +317,66 @@
     font-size: var(--font-size-xs);
     white-space: nowrap;
 }
-
 .modules-table td {
     padding: 8px 6px;
     border-bottom: 1px solid var(--gray);
     vertical-align: middle;
     font-size: var(--font-size-xs);
 }
-
-.module-info {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-}
-
+.module-info { display: flex; flex-direction: column; gap: 2px; }
 .module-name {
     font-weight: 500;
     color: var(--text-dark);
     font-size: var(--font-size-sm);
 }
-
 .module-desc {
     color: var(--text-light);
     font-size: 10px;
 }
-
 .code-badge {
     background: var(--light-gray);
-    padding: 2px 6px;
+    padding: 3px 8px;
     border-radius: 3px;
     font-family: monospace;
-    font-size: 10px;
-    color: var(--text-dark);
-    font-weight: 600;
-}
-
-.academic-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.department-name {
-    font-weight: 600;
-    color: var(--text-dark);
     font-size: 11px;
+    color: var(--text-dark);
 }
-
-.filiere-name {
-    color: var(--primary-color);
-    font-size: 10px;
-    font-weight: 500;
-}
-
+.niveau-info { display: flex; flex-direction: column; gap: 2px; }
 .niveau-name {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: var(--font-size-xs);
+}
+.filiere-name {
     color: var(--text-light);
     font-size: 10px;
 }
-
-.coord-info {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.user-avatar-sm {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--light-gray);
-    color: var(--text-light);
-    font-size: 10px;
-    flex-shrink: 0;
-}
-
-.user-avatar-sm img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.coord-name {
+.coord-info .coord-name {
     font-size: var(--font-size-xs);
     color: var(--text-dark);
 }
-
-.volume-info {
-    text-align: center;
-}
-
-.volume-badge {
-    background: var(--info-color);
-    color: white;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 600;
-    display: inline-block;
-}
-
-.credits-badge {
-    background: var(--warning-color);
-    color: white;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 600;
-    display: inline-block;
-}
-
 .count-badge {
-    background: var(--primary-color);
-    color: white;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 600;
-    display: inline-block;
-}
-
-.status-info {
-    display: flex;
+    display: inline-flex;
+    align-items: center;
     justify-content: center;
-    align-items: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
 }
-
-.action-buttons-sm {
-    display: flex;
-    align-items: center;
-    gap: 3px;
+.count-matieres { background: var(--info-color); color: white; }
+.credits-badge, .heures-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1f2937;
 }
-
+.action-buttons-sm { display: flex; align-items: center; gap: 3px; }
 .btn-icon-sm {
     width: 24px;
     height: 24px;
@@ -485,7 +390,6 @@
     transition: all 0.3s;
     text-decoration: none;
 }
-
 .btn-icon-sm.btn-primary { background: var(--primary-color); color: white; }
 .btn-icon-sm.btn-info { background: var(--info-color); color: white; }
 .btn-icon-sm.btn-outline {
@@ -493,12 +397,7 @@
     border: 1px solid var(--border-color);
     color: var(--text-light);
 }
-
-.btn-icon-sm:hover {
-    transform: scale(1.05);
-    box-shadow: var(--shadow-sm);
-}
-
+.btn-icon-sm:hover { opacity: 0.9; transform: translateY(-1px); }
 .btn-icon {
     width: 32px;
     height: 32px;
@@ -509,31 +408,37 @@
     align-items: center;
     justify-content: center;
     border-radius: 4px;
-    background: var(--light-gray);
-    color: var(--text-dark);
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+}
+.btn-icon:hover { background: var(--light-gray); }
+.btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
     transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
 }
-
-.btn-icon:hover {
-    background: var(--border-color);
+.btn-sm { padding: 6px 12px; font-size: 11px; }
+.btn-primary { background: var(--primary-color); color: white; }
+.btn-outline {
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #1f2937;
 }
-
-/* Dropdown compact */
+.btn-outline:hover { background: #f3f4f6; }
+.btn-warning { background: #f59e0b; color: white; }
+.btn-warning:hover { background: #d97706; }
+.dropdown-compact { position: relative; }
 .modules-table-container,
 .table-wrapper,
 .modules-table tr,
-.modules-table td {
-    overflow: visible !important;
-}
-
-.modules-table td {
-    height: auto !important;
-}
-
-.dropdown-compact {
-    position: relative;
-}
-
+.modules-table td { overflow: visible !important; }
 .dropdown-menu-compact {
     position: absolute;
     top: 100%;
@@ -544,155 +449,41 @@
     border-radius: 6px;
     box-shadow: var(--shadow-lg);
     display: none;
-    min-width: 160px;
+    min-width: 140px;
 }
-
 .dropdown-menu-compact a {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
+    gap: 6px;
+    padding: 6px 8px;
     text-decoration: none;
     color: var(--text-dark);
     font-size: 11px;
-    transition: background 0.2s;
 }
-
-.dropdown-menu-compact a:hover {
-    background: var(--light-gray);
-}
-
-.dropdown-menu-compact a i {
-    width: 14px;
-    text-align: center;
-}
-
+.dropdown-menu-compact a:hover { background: var(--light-gray); }
 .text-success { color: var(--success-color); }
 .text-danger { color: var(--danger-color); }
-.text-warning { color: var(--warning-color); }
 .text-muted { color: var(--text-light); }
-.text-info { color: var(--info-color); }
-
 .dropdown-divider {
     height: 1px;
     background: var(--border-color);
-    margin: 4px 0;
+    margin: 3px 0;
 }
-
 .empty-state {
     text-align: center;
     padding: 40px 20px;
 }
-
-.empty-content {
-    color: var(--text-light);
-}
-
+.empty-content { color: var(--text-light); }
+.text-center { text-align: center; }
 .mt-2 { margin-top: 8px; }
 
-/* Responsive */
 @media (max-width: 768px) {
-    .page-header-compact {
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .filters-form {
-        grid-template-columns: 1fr;
-        gap: 8px;
-    }
-
-    .modules-table {
-        min-width: 1000px;
-    }
-
-    .header-stats {
-        flex-direction: column;
-        gap: 4px;
-        align-items: flex-start;
-    }
+    .filters-form { grid-template-columns: 1fr; gap: 8px; }
+    .modules-table { min-width: 900px; }
 }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Gestion des dropdowns
-    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
-        toggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const dropdown = this.nextElementSibling;
-
-            // Fermer tous les autres
-            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
-                if (menu !== dropdown) menu.style.display = 'none';
-            });
-
-            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-        });
-    });
-
-    document.addEventListener('click', function() {
-        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
-            menu.style.display = 'none';
-        });
-    });
-});
-
-// Fonctions
-function exportModules() {
-    const params = new URLSearchParams(window.location.search);
-    window.location.href = `/courses/modules/export/?${params.toString()}`;
-}
-
-function deleteModule(moduleId) {
-    if (confirm('Êtes-vous sûr de vouloir supprimer ce module ? Cette action est irréversible.')) {
-        fetch(`/courses/module/${moduleId}/delete/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert(data.message || 'Erreur lors de la suppression');
-            }
-        })
-        .catch(error => {
-            alert('Erreur de connexion');
-        });
-    }
-}
-
-function toggleModuleStatus(moduleId, activate) {
-    if (confirm(`${activate ? 'Activer' : 'Désactiver'} ce module ?`)) {
-        fetch(`/courses/module/${moduleId}/toggle-status/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({active: activate})
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) location.reload();
-            else alert(data.message || 'Erreur');
-        });
-    }
-}
-
-function assignCoordinator(moduleId) {
-    window.location.href = `/courses/module/${moduleId}/assign-coordinator/`;
-}
-
-function viewMatieres(moduleId) {
-    window.location.href = `/courses/module/${moduleId}/matieres/`;
-}
-
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -706,6 +497,93 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAllModules');
+    const checkboxes = document.querySelectorAll('.module-checkbox');
+    const bulkBar = document.getElementById('bulkActionsBar');
+    const selectedCount = document.getElementById('selectedCount');
+
+    selectAll?.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+        updateBulkActions();
+    });
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    function updateBulkActions() {
+        const selected = document.querySelectorAll('.module-checkbox:checked').length;
+        selectedCount.textContent = selected;
+        bulkBar.style.display = selected > 0 ? 'flex' : 'none';
+
+        if (selectAll) {
+            selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+            selectAll.checked = selected === checkboxes.length;
+        }
+    }
+
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.style.display = 'none';
+            });
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        });
+    });
+
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    });
+});
+
+function deleteModule(moduleId) {
+    if (confirm('Supprimer ce module ? Cette action est irréversible.')) {
+        fetch(`/courses/modules/${moduleId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrftoken }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const row = document.getElementById(`module-row-${moduleId}`);
+                if (row) {
+                    row.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => row.remove(), 300);
+                }
+            } else {
+                alert(data.error || 'Erreur lors de la suppression');
+            }
+        });
+    }
+}
+
+function exportModules() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/courses/modules/export/?${params.toString()}`;
+}
+
+function viewMatieres(moduleId) {
+    window.location.href = `/dashboard/admin/matieres/?module=${moduleId}`;
+}
+
+function bulkExport() {
+    const selected = Array.from(document.querySelectorAll('.module-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins un module');
+        return;
+    }
+    const params = new URLSearchParams();
+    params.set('modules', selected.join(','));
+    window.location.href = `/courses/modules/export/?${params.toString()}`;
 }
 </script>
 {% endblock %}

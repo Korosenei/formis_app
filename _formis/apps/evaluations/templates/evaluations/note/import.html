@@ -1,0 +1,570 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Importer des notes - {{ evaluation.titre }}{% endblock %}
+
+{% block content %}
+<div class="import-notes-page">
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <a href="{% url 'evaluations:list_enseignant' %}">Évaluations</a>
+                <i class="fas fa-chevron-right"></i>
+                <a href="{% url 'evaluations:detail_enseignant' evaluation.id %}">{{ evaluation.titre }}</a>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Importer notes</span>
+            </div>
+            <h1>Importer des notes</h1>
+            <p class="subtitle">{{ evaluation.titre }} - {{ evaluation.matiere.nom }}</p>
+        </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="instructions-section">
+        <div class="instruction-card">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <h3>Télécharger le modèle</h3>
+                <p>Téléchargez le fichier CSV avec la liste des étudiants</p>
+                <a href="{% url 'evaluations:exporter_notes' evaluation.id %}?template=1"
+                   class="btn btn-primary">
+                    <i class="fas fa-download"></i> Télécharger le modèle CSV
+                </a>
+            </div>
+        </div>
+
+        <div class="instruction-card">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <h3>Remplir les notes</h3>
+                <p>Ouvrez le fichier CSV et remplissez les notes dans la colonne appropriée</p>
+                <div class="csv-example">
+                    <pre>matricule,nom,prenom,note,commentaire
+ET001,TRAORE,Amadou,15.5,"Bon travail"
+ET002,KONE,Fatoumata,17,"Excellent"
+ET003,OUEDRAOGO,Ibrahim,12.5,"Peut mieux faire"</pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="instruction-card">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <h3>Importer le fichier</h3>
+                <p>Uploadez votre fichier CSV complété</p>
+                <form method="post" enctype="multipart/form-data" id="importForm">
+                    {% csrf_token %}
+
+                    <div class="upload-zone" id="uploadZone">
+                        <div class="upload-icon">
+                            <i class="fas fa-file-csv fa-3x"></i>
+                        </div>
+                        <p class="upload-text">Glissez votre fichier CSV ici</p>
+                        <p class="upload-hint">ou cliquez pour sélectionner</p>
+                        <input type="file"
+                               name="fichier_csv"
+                               id="fileInput"
+                               accept=".csv"
+                               required
+                               style="display: none;">
+                    </div>
+
+                    <div id="fileInfo" class="file-info" style="display: none;">
+                        <div class="file-icon-large">
+                            <i class="fas fa-file-csv"></i>
+                        </div>
+                        <div class="file-details">
+                            <div class="file-name" id="fileName"></div>
+                            <div class="file-size" id="fileSize"></div>
+                        </div>
+                        <button type="button" class="btn-remove" onclick="removeFile()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="form-actions">
+                        <a href="{% url 'evaluations:detail_enseignant' evaluation.id %}"
+                           class="btn btn-outline">
+                            <i class="fas fa-arrow-left"></i> Annuler
+                        </a>
+                        <button type="submit" class="btn btn-success" id="submitBtn" disabled>
+                            <i class="fas fa-upload"></i> Importer les notes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Règles d'import -->
+    <div class="rules-section">
+        <h3><i class="fas fa-exclamation-circle"></i> Règles importantes</h3>
+        <ul class="rules-list">
+            <li>Le fichier doit être au format CSV (séparateur: virgule)</li>
+            <li>Les colonnes obligatoires sont: <code>matricule</code> et <code>note</code></li>
+            <li>Les notes doivent être entre 0 et {{ evaluation.note_maximale }}</li>
+            <li>Le matricule doit correspondre exactement à celui de l'étudiant</li>
+            <li>Les notes existantes seront remplacées</li>
+            <li>La colonne <code>commentaire</code> est optionnelle</li>
+        </ul>
+    </div>
+
+    <!-- Exemples d'erreurs courantes -->
+    <div class="errors-section">
+        <h3><i class="fas fa-info-circle"></i> Erreurs courantes à éviter</h3>
+        <div class="error-examples">
+            <div class="error-example">
+                <div class="error-icon bad">
+                    <i class="fas fa-times"></i>
+                </div>
+                <div class="error-content">
+                    <strong>Mauvais format</strong>
+                    <code>15,5</code>
+                    <p>Utilisez un point pour les décimales</p>
+                </div>
+            </div>
+
+            <div class="error-example">
+                <div class="error-icon good">
+                    <i class="fas fa-check"></i>
+                </div>
+                <div class="error-content">
+                    <strong>Bon format</strong>
+                    <code>15.5</code>
+                    <p>Point décimal correct</p>
+                </div>
+            </div>
+
+            <div class="error-example">
+                <div class="error-icon bad">
+                    <i class="fas fa-times"></i>
+                </div>
+                <div class="error-content">
+                    <strong>Note invalide</strong>
+                    <code>{{ evaluation.note_maximale|add:"5" }}</code>
+                    <p>Dépasse la note maximale ({{ evaluation.note_maximale }})</p>
+                </div>
+            </div>
+
+            <div class="error-example">
+                <div class="error-icon good">
+                    <i class="fas fa-check"></i>
+                </div>
+                <div class="error-content">
+                    <strong>Note valide</strong>
+                    <code>{{ evaluation.note_maximale }}</code>
+                    <p>Dans la plage autorisée</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.import-notes-page { padding: 15px; max-width: 1200px; margin: 0 auto; }
+
+.page-header {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+.breadcrumb-nav {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav a { color: #2563eb; text-decoration: none; }
+.breadcrumb-nav .current { color: #1f2937; font-weight: 500; }
+
+.header-content h1 {
+    margin: 0 0 5px 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.subtitle {
+    margin: 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.instructions-section {
+    display: grid;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.instruction-card {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.step-number {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.step-content { flex: 1; }
+
+.step-content h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.step-content p {
+    margin: 0 0 15px 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-success { background: #10b981; color: white; }
+.btn-success:hover { background: #059669; }
+.btn-success:disabled { background: #9ca3af; cursor: not-allowed; }
+.btn-outline { background: white; border: 1px solid #d1d5db; color: #374151; }
+.btn-outline:hover { background: #f9fafb; }
+
+.csv-example {
+    background: #1f2937;
+    color: #f9fafb;
+    padding: 15px;
+    border-radius: 6px;
+    overflow-x: auto;
+}
+
+.csv-example pre {
+    margin: 0;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.upload-zone {
+    border: 3px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 60px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 20px;
+}
+
+.upload-zone:hover {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.upload-zone.dragover {
+    border-color: #2563eb;
+    background: #dbeafe;
+}
+
+.upload-icon {
+    color: #9ca3af;
+    margin-bottom: 15px;
+}
+
+.upload-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 5px;
+}
+
+.upload-hint {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: #f0fdf4;
+    border: 2px solid #10b981;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.file-icon-large {
+    width: 60px;
+    height: 60px;
+    background: #10b981;
+    color: white;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+}
+
+.file-details { flex: 1; }
+
+.file-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 5px;
+}
+
+.file-size {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.btn-remove {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: #fee2e2;
+    color: #ef4444;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.3s;
+}
+
+.btn-remove:hover {
+    background: #fecaca;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.rules-section, .errors-section {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.rules-section h3, .errors-section h3 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.rules-list {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.rules-list li {
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #4b5563;
+    line-height: 1.6;
+}
+
+code {
+    padding: 2px 6px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #ef4444;
+}
+
+.error-examples {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.error-example {
+    display: flex;
+    gap: 12px;
+    padding: 15px;
+    background: #f9fafb;
+    border-radius: 6px;
+}
+
+.error-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.error-icon.bad {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
+.error-icon.good {
+    background: #d1fae5;
+    color: #10b981;
+}
+
+.error-content strong {
+    display: block;
+    font-size: 13px;
+    color: #1f2937;
+    margin-bottom: 5px;
+}
+
+.error-content code {
+    display: block;
+    margin: 5px 0;
+}
+
+.error-content p {
+    margin: 5px 0 0 0;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+@media (max-width: 768px) {
+    .error-examples {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Click to select file
+    uploadZone.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    // Drag & drop
+    uploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+        uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            handleFileSelect(files[0]);
+        }
+    });
+
+    // File input change
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleFileSelect(e.target.files[0]);
+        }
+    });
+
+    function handleFileSelect(file) {
+        // Vérifier l'extension
+        if (!file.name.endsWith('.csv')) {
+            alert('Veuillez sélectionner un fichier CSV');
+            fileInput.value = '';
+            return;
+        }
+
+        // Afficher les infos du fichier
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = formatBytes(file.size);
+
+        uploadZone.style.display = 'none';
+        fileInfo.style.display = 'flex';
+        submitBtn.disabled = false;
+    }
+});
+
+function removeFile() {
+    const fileInput = document.getElementById('fileInput');
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInfo = document.getElementById('fileInfo');
+    const submitBtn = document.getElementById('submitBtn');
+
+    fileInput.value = '';
+    uploadZone.style.display = 'block';
+    fileInfo.style.display = 'none';
+    submitBtn.disabled = true;
+}
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+// Validation avant soumission
+document.getElementById('importForm').addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Import en cours...';
+});
+</script>
+{% endblock %}

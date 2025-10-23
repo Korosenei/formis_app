@@ -1,0 +1,434 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Cahiers de Texte - Enseignant{% endblock %}
+
+{% block content %}
+<div class="teacher-cahiers">
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Enseignant</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Cahiers de texte</span>
+            </div>
+            <h1>Mes Cahiers de Texte</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ cahiers.paginator.count }} total</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <select name="classe" class="form-select-sm">
+                    <option value="">Toutes classes</option>
+                    {% for classe in classes %}
+                        <option value="{{ classe.id }}" {% if current_filters.classe == classe.id|stringformat:"s" %}selected{% endif %}>
+                            {{ classe.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <input type="date" name="date_debut" value="{{ current_filters.date_debut }}"
+                       class="form-input-sm" placeholder="Date début">
+            </div>
+            <div class="filter-group">
+                <input type="date" name="date_fin" value="{{ current_filters.date_fin }}"
+                       class="form-input-sm" placeholder="Date fin">
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:teacher_cahiers_texte' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="cahiers-list">
+        {% for cahier in cahiers %}
+        {% with hours_since=cahier.created_at|timesince %}
+        <div class="cahier-card" id="cahier-{{ cahier.id }}">
+            <div class="cahier-header">
+                <div class="cahier-date-info">
+                    <div class="date-badge">
+                        <i class="fas fa-calendar"></i>
+                        {{ cahier.cours.date_prevue|date:"d/m/Y" }}
+                    </div>
+                    <div class="time-badge">
+                        <i class="fas fa-clock"></i>
+                        {{ cahier.cours.heure_debut_prevue|time:"H:i" }} - {{ cahier.cours.heure_fin_prevue|time:"H:i" }}
+                    </div>
+                </div>
+                <div class="cahier-info">
+                    <h3>{{ cahier.cours.titre }}</h3>
+                    <div class="cahier-meta">
+                        <span class="meta-tag matiere">
+                            <i class="fas fa-book"></i>
+                            {{ cahier.cours.matiere.nom }}
+                        </span>
+                        <span class="meta-tag classe">
+                            <i class="fas fa-users"></i>
+                            {{ cahier.cours.classe.nom }}
+                        </span>
+                    </div>
+                </div>
+                {% if cahier.can_edit %}
+                <div class="edit-status editable">
+                    <i class="fas fa-edit"></i>
+                    <span>Modifiable</span>
+                </div>
+                {% else %}
+                <div class="edit-status locked">
+                    <i class="fas fa-lock"></i>
+                    <span>Verrouillé</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="cahier-body">
+                <div class="cahier-section">
+                    <h4><i class="fas fa-check-circle"></i> Travail fait en classe</h4>
+                    <p>{{ cahier.travail_fait }}</p>
+                </div>
+
+                {% if cahier.travail_donne %}
+                <div class="cahier-section highlight">
+                    <h4><i class="fas fa-tasks"></i> Travail donné aux étudiants</h4>
+                    <p>{{ cahier.travail_donne }}</p>
+                    {% if cahier.date_travail_pour %}
+                    <div class="deadline-info">
+                        <i class="fas fa-calendar-check"></i>
+                        À rendre pour le {{ cahier.date_travail_pour|date:"d/m/Y" }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if cahier.observations %}
+                <div class="cahier-section observations">
+                    <h4><i class="fas fa-comment-alt"></i> Observations</h4>
+                    <p>{{ cahier.observations }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="cahier-footer">
+                <div class="footer-info">
+                    <span class="saisie-info">
+                        <i class="fas fa-clock"></i>
+                        Saisi le {{ cahier.date_saisie|date:"d/m/Y à H:i" }}
+                    </span>
+                    {% if cahier.modifie_le != cahier.date_saisie %}
+                    <span class="modif-info">
+                        <i class="fas fa-history"></i>
+                        Modifié le {{ cahier.modifie_le|date:"d/m/Y à H:i" }}
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="footer-actions">
+                    <a href="{% url 'courses:cahier_texte_view' cahier.cours.id %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-eye"></i> Voir
+                    </a>
+                    {% if cahier.can_edit %}
+                    <a href="{% url 'courses:cahier_texte_edit' cahier.cours.id %}" class="btn btn-sm btn-info">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                    {% else %}
+                    <button class="btn btn-sm btn-outline" disabled title="Modification verrouillée après 24h">
+                        <i class="fas fa-lock"></i> Verrouillé
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endwith %}
+        {% empty %}
+        <div class="empty-state">
+            <i class="fas fa-book-open fa-3x"></i>
+            <h3>Aucun cahier de texte</h3>
+            <p>Vous n'avez pas encore rempli de cahier de texte</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% include 'components/pagination.html' with page_obj=cahiers %}
+</div>
+
+<style>
+.teacher-cahiers { padding: 15px; }
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.breadcrumb-nav {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.breadcrumb-nav .current { color: #2563eb; font-weight: 500; }
+.header-content h1 { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #1f2937; }
+.header-stats { display: flex; gap: 8px; margin-top: 5px; }
+.stat-badge {
+    padding: 2px 8px;
+    background: #f3f4f6;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+.filters-section {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+.filters-form {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+.form-select-sm, .form-input-sm {
+    padding: 6px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    height: 32px;
+}
+.filter-actions { display: flex; gap: 5px; }
+.cahiers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+.cahier-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    transition: transform 0.2s;
+}
+.cahier-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.cahier-header {
+    padding: 15px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+}
+.cahier-date-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.date-badge, .time-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.time-badge {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+.cahier-info {
+    flex: 1;
+    min-width: 0;
+}
+.cahier-info h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+.cahier-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.meta-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+.meta-tag.matiere { background: #e0e7ff; color: #3730a3; }
+.meta-tag.classe { background: #dbeafe; color: #1e40af; }
+.edit-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.edit-status.editable {
+    background: #d1fae5;
+    color: #065f46;
+}
+.edit-status.locked {
+    background: #fee2e2;
+    color: #991b1b;
+}
+.edit-status i { font-size: 16px; }
+.cahier-body { padding: 15px; }
+.cahier-section {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #f3f4f6;
+}
+.cahier-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+.cahier-section.highlight {
+    background: #fffbeb;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 3px solid #fbbf24;
+}
+.cahier-section.observations {
+    background: #f9fafb;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 3px solid #d1d5db;
+}
+.cahier-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.cahier-section h4 i {
+    color: #3b82f6;
+    font-size: 12px;
+}
+.cahier-section p {
+    margin: 0;
+    font-size: 13px;
+    color: #4b5563;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+.deadline-info {
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.cahier-footer {
+    padding: 12px 15px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fafbfc;
+}
+.footer-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.saisie-info, .modif-info {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #6b7280;
+}
+.modif-info {
+    color: #f59e0b;
+    font-weight: 500;
+}
+.footer-actions {
+    display: flex;
+    gap: 5px;
+}
+.btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-info { background: #3b82f6; color: white; }
+.btn-info:hover { background: #2563eb; }
+.btn-outline {
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #6b7280;
+}
+.btn-outline:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.empty-state i { color: #d1d5db; margin-bottom: 20px; }
+.empty-state h3 { margin: 0 0 10px 0; color: #1f2937; font-size: 18px; }
+.empty-state p { color: #6b7280; }
+@media (max-width: 768px) {
+    .filters-form { grid-template-columns: 1fr; gap: 8px; }
+    .cahier-header { flex-direction: column; }
+    .cahier-footer { flex-direction: column; gap: 10px; align-items: flex-start; }
+}
+</style>
+{% endblock %}

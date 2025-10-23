@@ -1,0 +1,477 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Gestion des Présences - Enseignant{% endblock %}
+
+{% block content %}
+<div class="teacher-presences">
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Enseignant</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Présences</span>
+            </div>
+            <h1>Gestion des Présences</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ page_obj.paginator.count }} cours</span>
+                <span class="stat-badge taux">Taux moyen: {{ taux_presence_moyen|floatformat:1 }}%</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <select name="classe" class="form-select-sm">
+                    <option value="">Toutes classes</option>
+                    {% for classe in classes %}
+                        <option value="{{ classe.id }}" {% if current_filters.classe == classe.id|stringformat:"s" %}selected{% endif %}>
+                            {{ classe.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="matiere" class="form-select-sm">
+                    <option value="">Toutes matières</option>
+                    {% for mat in matieres %}
+                        <option value="{{ mat.id }}" {% if current_filters.matiere == mat.id|stringformat:"s" %}selected{% endif %}>
+                            {{ mat.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <input type="date" name="date_debut" value="{{ current_filters.date_debut }}"
+                       class="form-input-sm" placeholder="Date début">
+            </div>
+            <div class="filter-group">
+                <input type="date" name="date_fin" value="{{ current_filters.date_fin }}"
+                       class="form-input-sm" placeholder="Date fin">
+            </div>
+            <div class="filter-group">
+                <select name="statut_presence" class="form-select-sm">
+                    <option value="">Toutes</option>
+                    <option value="prise" {% if current_filters.statut_presence == 'prise' %}selected{% endif %}>Présence prise</option>
+                    <option value="non_prise" {% if current_filters.statut_presence == 'non_prise' %}selected{% endif %}>À prendre</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:teacher_presences' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="presences-list">
+        {% for cours in presences %}
+        <div class="presence-card">
+            <div class="presence-header">
+                <div class="cours-info">
+                    <h3>{{ cours.titre }}</h3>
+                    <div class="cours-meta">
+                        <span class="meta-item">
+                            <i class="fas fa-calendar"></i>
+                            {{ cours.date_prevue|date:"d/m/Y" }}
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas fa-clock"></i>
+                            {{ cours.heure_debut_prevue|time:"H:i" }}
+                        </span>
+                        <span class="meta-item matiere">
+                            <i class="fas fa-book"></i>
+                            {{ cours.matiere.nom }}
+                        </span>
+                        <span class="meta-item classe">
+                            <i class="fas fa-users"></i>
+                            {{ cours.classe.nom }}
+                        </span>
+                    </div>
+                </div>
+                {% if cours.presence_prise %}
+                <div class="status-badge success">
+                    <i class="fas fa-check-circle"></i> Présence prise
+                </div>
+                {% else %}
+                <div class="status-badge warning">
+                    <i class="fas fa-exclamation-circle"></i> À prendre
+                </div>
+                {% endif %}
+            </div>
+
+            {% if cours.presence_prise %}
+            <div class="presence-body">
+                <div class="presence-stats">
+                    <div class="stat-item">
+                        <div class="stat-label">Présents</div>
+                        <div class="stat-value success">
+                            {{ cours.presences_count.PRESENT|default:0 }}
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Absents</div>
+                        <div class="stat-value danger">
+                            {{ cours.presences_count.ABSENT|default:0 }}
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Retards</div>
+                        <div class="stat-value warning">
+                            {{ cours.presences_count.LATE|default:0 }}
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Excusés</div>
+                        <div class="stat-value info">
+                            {{ cours.presences_count.EXCUSED|default:0 }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="taux-presence">
+                    <div class="taux-label">Taux de présence</div>
+                    <div class="taux-bar">
+                        <div class="taux-fill" style="width: {{ cours.taux_presence }}%"></div>
+                    </div>
+                    <div class="taux-value">{{ cours.taux_presence|floatformat:1 }}%</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="presence-footer">
+                {% if not cours.presence_prise %}
+                    <a href="{% url 'courses:presence_bulk_create' cours.id %}"
+                       class="btn btn-sm btn-primary">
+                        <i class="fas fa-user-check"></i> Prendre présence
+                    </a>
+                {% else %}
+                    <a href="{% url 'courses:presence_bulk_create' cours.id %}"
+                       class="btn btn-sm btn-info">
+                        <i class="fas fa-eye"></i> Voir les présences
+                    </a>
+                    <button class="btn btn-sm btn-secondary" onclick="exportPresence('{{ cours.id }}')">
+                        <i class="fas fa-file-excel"></i> Exporter
+                    </button>
+                {% endif %}
+                <a href="{% url 'courses:cours_detail' cours.id %}"
+                   class="btn btn-sm btn-outline">
+                    <i class="fas fa-info-circle"></i> Détails cours
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <i class="fas fa-user-check fa-3x"></i>
+            <h3>Aucun cours trouvé</h3>
+            <p>Les cours pour lesquels prendre les présences apparaîtront ici</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% include 'components/pagination.html' with page_obj=presences %}
+</div>
+
+<style>
+.teacher-presences { padding: 15px; }
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav .current { color: #2563eb; font-weight: 500; }
+
+.header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.header-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+    flex-wrap: wrap;
+}
+
+.stat-badge {
+    padding: 2px 8px;
+    background: #f3f4f6;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.stat-badge.taux {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.filters-section {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 1.2fr 1.2fr 1fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.form-select-sm, .form-input-sm {
+    padding: 6px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    height: 32px;
+}
+
+.filter-actions { display: flex; gap: 5px; }
+
+.btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-info { background: #3b82f6; color: white; }
+.btn-info:hover { background: #2563eb; }
+.btn-secondary { background: #6b7280; color: white; }
+.btn-secondary:hover { background: #4b5563; }
+.btn-outline { background: white; border: 1px solid #e5e7eb; color: #6b7280; }
+.btn-outline:hover { background: #f3f4f6; }
+
+.presences-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.presence-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.presence-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.presence-header {
+    padding: 15px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.cours-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.cours-info h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.cours-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.meta-item i {
+    width: 12px;
+    color: #9ca3af;
+}
+
+.meta-item.matiere {
+    color: #3730a3;
+    font-weight: 500;
+}
+
+.meta-item.classe {
+    color: #1e40af;
+    font-weight: 500;
+}
+
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.status-badge.success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.presence-body {
+    padding: 15px;
+}
+
+.presence-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 6px;
+}
+
+.stat-label {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.stat-value.success { color: #10b981; }
+.stat-value.danger { color: #ef4444; }
+.stat-value.warning { color: #f59e0b; }
+.stat-value.info { color: #3b82f6; }
+
+.taux-presence {
+    background: #f9fafb;
+    padding: 12px;
+    border-radius: 6px;
+}
+
+.taux-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.taux-bar {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.taux-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #059669);
+    transition: width 0.5s;
+}
+
+.taux-value {
+    text-align: right;
+    font-size: 14px;
+    font-weight: 600;
+    color: #10b981;
+}
+
+.presence-footer {
+    padding: 12px 15px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: #fafbfc;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.empty-state i { color: #d1d5db; margin-bottom: 20px; }
+.empty-state h3 { margin: 0 0 10px 0; color: #1f2937; font-size: 18px; }
+.empty-state p { margin: 0; color: #6b7280; font-size: 14px; }
+
+@media (max-width: 768px) {
+    .filters-form { grid-template-columns: 1fr; gap: 8px; }
+    .presence-stats { grid-template-columns: repeat(2, 1fr); }
+    .presence-header { flex-direction: column; }
+}
+</style>
+
+<script>
+function exportPresence(coursId) {
+    window.location.href = `/courses/cours/${coursId}/presences/export/`;
+}
+</script>
+{% endblock %}

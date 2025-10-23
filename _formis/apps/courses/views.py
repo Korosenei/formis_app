@@ -1,31 +1,33 @@
 # apps/courses/views.py
-
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.contrib import messages
-from django.http import JsonResponse, HttpResponse, Http404
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.contrib import messages
 from django.urls import reverse_lazy, reverse
-from django.db.models import Q, Count, Avg
-from django.utils import timezone
+from django.db.models import Q, Count, Sum, Avg
+from django.http import JsonResponse, HttpResponse, FileResponse, Http404
+
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-import json
 from datetime import datetime, timedelta
+from django.views.decorators.http import require_POST
+from django.utils import timezone
+import mimetypes
 
 from .models import (
-    Module, Matiere, MatiereModule, Cours, CahierTexte,
-    Ressource, Presence, EmploiDuTemps, CreneauHoraire
+    Module, Matiere, StatutCours, TypeCours, Cours, CahierTexte,
+    Ressource, Presence, EmploiDuTemps, CreneauEmploiDuTemps
 )
 from .forms import (
-    ModuleForm, MatiereForm, MatiereModuleForm, CoursForm, CoursUpdateForm,
+    ModuleForm, MatiereForm, CoursForm, CoursUpdateForm,
     CahierTexteForm, RessourceForm, PresenceForm, PresenceBulkForm,
-    EmploiDuTempsForm, CreneauHoraireForm, FiltreCoursForm,
-    MatiereModuleFormSet, RessourceFormSet, CreneauHoraireFormSet
+    EmploiDuTempsForm, CreneauEmploiDuTempsForm, FiltreCoursForm, RessourceFormSet
 )
+from apps.establishments.models import Etablissement, AnneeAcademique, Salle
+from apps.accounts.models import Utilisateur
+from apps.academic.models import Niveau, Filiere, Departement, Classe
 
 
 class EtablissementFilterMixin:
@@ -46,89 +48,243 @@ class EtablissementFilterMixin:
         kwargs['user'] = self.request.user
         return kwargs
 
-
-# ============== VUES MODULE ==============
-
-class ModuleListView(LoginRequiredMixin, EtablissementFilterMixin, ListView):
+# ============================================================================
+# VUES MODULE
+# ============================================================================
+class ModuleListView(LoginRequiredMixin, ListView):
     model = Module
     template_name = 'courses/module/list.html'
     context_object_name = 'modules'
     paginate_by = 20
 
-    def filter_by_etablissement(self, queryset):
-        return queryset.filter(
-            niveau__filiere__departement__etablissement=self.request.user.etablissement
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Module.objects.select_related(
+            'niveau__filiere__departement',
+            'coordinateur'
+        ).annotate(
+            nombre_matieres=Count('matieres')
         )
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
+        # Filtrage selon le rôle
+        if user.role == 'ADMIN':
+            queryset = queryset.filter(
+                niveau__filiere__etablissement=user.etablissement
+            )
+        elif user.role == 'CHEF_DEPARTEMENT':
+            queryset = queryset.filter(
+                niveau__filiere__departement=user.departement
+            )
+        elif user.role == 'ENSEIGNANT':
+            queryset = queryset.filter(
+                Q(coordinateur=user) |
+                Q(matieres__enseignant_responsable=user)
+            ).distinct()
+
+        # Filtres de recherche
         search = self.request.GET.get('search')
         if search:
             queryset = queryset.filter(
                 Q(nom__icontains=search) |
-                Q(code__icontains=search) |
-                Q(description__icontains=search)
+                Q(code__icontains=search)
             )
-        return queryset.select_related('niveau__filiere__departement', 'coordinateur')
 
-class ModuleDetailView(LoginRequiredMixin, EtablissementFilterMixin, DetailView):
+        departement_id = self.request.GET.get('departement')
+        if departement_id:
+            queryset = queryset.filter(niveau__filiere__departement_id=departement_id)
+
+        filiere_id = self.request.GET.get('filiere')
+        if filiere_id:
+            queryset = queryset.filter(niveau__filiere_id=filiere_id)
+
+        niveau_id = self.request.GET.get('niveau')
+        if niveau_id:
+            queryset = queryset.filter(niveau_id=niveau_id)
+
+        return queryset.order_by('niveau__ordre', 'nom')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+
+        if user.role == 'ADMIN':
+            context['departements'] = Departement.objects.filter(
+                etablissement=user.etablissement, est_actif=True
+            )
+            context['filieres'] = Filiere.objects.filter(
+                etablissement=user.etablissement, est_active=True
+            )
+        elif user.role == 'CHEF_DEPARTEMENT':
+            context['departements'] = [user.departement]
+            context['filieres'] = Filiere.objects.filter(
+                departement=user.departement, est_active=True
+            )
+
+        context['niveaux'] = Niveau.objects.filter(est_actif=True)
+        context['current_filters'] = {
+            'search': self.request.GET.get('search', ''),
+            'departement': self.request.GET.get('departement', ''),
+            'filiere': self.request.GET.get('filiere', ''),
+            'niveau': self.request.GET.get('niveau', ''),
+        }
+
+        return context
+
+class ModuleCreateView(LoginRequiredMixin, CreateView):
+    model = Module
+    form_class = ModuleForm
+    template_name = 'courses/module/form.html'
+
+    # Contrôle d'accès
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+            messages.error(request, "Vous ne pouvez pas créer de module. Vérifiez vos permissions.")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    # URL de succès après création
+    def get_success_url(self):
+        if self.request.user.role == 'ADMIN':
+            return reverse_lazy('dashboard:admin_modules')
+        else:
+            return reverse_lazy('dashboard:department_head_modules')
+
+    # URL pour le bouton annuler
+    def get_cancel_url(self):
+        return self.get_success_url()
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        self.object = form.save()
+        messages.success(self.request, "Module créé avec succès !")
+        return redirect(self.get_success_url())
+
+    # Contexte pour le template
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Ajouter un module'
+        context['submit_text'] = 'Créer'
+        context['cancel_url'] = self.get_cancel_url()
+        return context
+
+class ModuleUpdateView(LoginRequiredMixin, UpdateView):
+    model = Module
+    form_class = ModuleForm
+    template_name = 'courses/module/form.html'
+
+    # Contrôle d'accès
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+            messages.error(request, "Vous ne pouvez pas modifier de module. Vérifiez vos permissions.")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    # URL de succès après création
+    def get_success_url(self):
+        if self.request.user.role == 'ADMIN':
+            return reverse_lazy('dashboard:admin_modules')
+        else:
+            return reverse_lazy('dashboard:department_head_modules')
+
+    # URL pour le bouton annuler
+    def get_cancel_url(self):
+        return self.get_success_url()
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        messages.success(self.request, "Module modifié avec succès !")
+        return super().form_valid(form)
+
+class ModuleDetailView(LoginRequiredMixin, DetailView):
     model = Module
     template_name = 'courses/module/detail.html'
     context_object_name = 'module'
 
-    def filter_by_etablissement(self, queryset):
-        return queryset.filter(
-            niveau__filiere__departement__etablissement=self.request.user.etablissement
-        )
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Module.objects.select_related(
+            'niveau__filiere__departement',
+            'coordinateur'
+        ).prefetch_related('matieres__enseignant_responsable')
+
+        if user.role == 'ADMIN':
+            queryset = queryset.filter(
+                niveau__filiere__etablissement=user.etablissement
+            )
+        elif user.role == 'CHEF_DEPARTEMENT':
+            queryset = queryset.filter(
+                niveau__filiere__departement=user.departement
+            )
+
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['matieres'] = self.object.matieremodule_set.all().select_related('matiere', 'enseignant')
+        module = self.object
+
+        # Agrégation unique pour toutes les statistiques
+        agg = module.matieres.aggregate(
+            volume_horaire_cm=Sum('heures_cours_magistral'),
+            volume_horaire_td=Sum('heures_travaux_diriges'),
+            volume_horaire_tp=Sum('heures_travaux_pratiques'),
+            credits_total=Sum('credits_ects')
+        )
+
+        volume_cm = agg['volume_horaire_cm'] or 0
+        volume_td = agg['volume_horaire_td'] or 0
+        volume_tp = agg['volume_horaire_tp'] or 0
+        credits_total = agg['credits_total'] or 0
+
+        context['stats'] = {
+            'nombre_matieres': module.matieres.count(),
+            'volume_horaire_cm': volume_cm,
+            'volume_horaire_td': volume_td,
+            'volume_horaire_tp': volume_tp,
+            'volume_horaire_total': volume_cm + volume_td + volume_tp,
+            'credits_total': credits_total,
+        }
+
         return context
 
-class ModuleCreateView(LoginRequiredMixin, PermissionRequiredMixin, EtablissementFilterMixin, CreateView):
+class ModuleDeleteView(LoginRequiredMixin, DeleteView):
     model = Module
-    form_class = ModuleForm
-    template_name = 'courses/module/form.html'
-    permission_required = 'courses.add_module'
-    success_url = reverse_lazy('courses:module_list')
 
-    def form_valid(self, form):
-        messages.success(self.request, 'Module créé avec succès.')
-        return super().form_valid(form)
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+            messages.error(request, "Vous ne pouvez pas supprimer ce module. Vérifiez vos permissions.")
+            return self.get_error_redirect()
+        return super().dispatch(request, *args, **kwargs)
 
-class ModuleUpdateView(LoginRequiredMixin, PermissionRequiredMixin, EtablissementFilterMixin, UpdateView):
-    model = Module
-    form_class = ModuleForm
-    template_name = 'courses/module/form.html'
-    permission_required = 'courses.change_module'
+    # URL de succès après création
+    def get_success_url(self):
+        if self.request.user.role == 'ADMIN':
+            return reverse_lazy('dashboard:admin_modules')
+        else:
+            return reverse_lazy('dashboard:department_head_modules')
 
-    def filter_by_etablissement(self, queryset):
-        return queryset.filter(
-            niveau__filiere__departement__etablissement=self.request.user.etablissement
-        )
+    # URL pour le bouton annuler
+    def get_cancel_url(self):
+        return self.get_success_url()
 
-    def form_valid(self, form):
-        messages.success(self.request, 'Module modifié avec succès.')
-        return super().form_valid(form)
-
-class ModuleDeleteView(LoginRequiredMixin, PermissionRequiredMixin, EtablissementFilterMixin, DeleteView):
-    model = Module
-    template_name = 'courses/module/confirm_delete.html'
-    permission_required = 'courses.delete_module'
-    success_url = reverse_lazy('courses:module_list')
-
-    def filter_by_etablissement(self, queryset):
-        return queryset.filter(
-            niveau__filiere__departement__etablissement=self.request.user.etablissement
-        )
+    def get_error_redirect(self):
+        return self.get_cancel_url()
 
     def delete(self, request, *args, **kwargs):
-        messages.success(request, 'Module supprimé avec succès.')
+        messages.success(request, "Module supprimé avec succès !")
         return super().delete(request, *args, **kwargs)
 
 
-# ============== VUES MATIERE ==============
+# ============================================================================
+# VUES MATIERE
+# ============================================================================
 class MatiereListView(LoginRequiredMixin, ListView):
     model = Matiere
     template_name = 'courses/matiere/list.html'
@@ -136,50 +292,461 @@ class MatiereListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = Matiere.objects.all()
+        user = self.request.user
+        queryset = Matiere.objects.select_related(
+            'niveau__filiere__departement',
+            'module',
+            'enseignant_responsable'
+        )
+
+        # Filtrage selon le rôle
+        if user.role == 'ADMIN':
+            queryset = queryset.filter(
+                niveau__filiere__etablissement=user.etablissement
+            )
+        elif user.role == 'CHEF_DEPARTEMENT':
+            queryset = queryset.filter(
+                niveau__filiere__departement=user.departement
+            )
+        elif user.role == 'ENSEIGNANT':
+            queryset = queryset.filter(
+                enseignant_responsable=user
+            )
+
+        # Filtres de recherche
         search = self.request.GET.get('search')
         if search:
             queryset = queryset.filter(
                 Q(nom__icontains=search) |
-                Q(code__icontains=search) |
-                Q(description__icontains=search)
+                Q(code__icontains=search)
             )
-        return queryset.order_by('nom')
+
+        niveau_id = self.request.GET.get('niveau')
+        if niveau_id:
+            queryset = queryset.filter(niveau_id=niveau_id)
+
+        module_id = self.request.GET.get('module')
+        if module_id == 'sans_module':
+            queryset = queryset.filter(module__isnull=True)
+        elif module_id:
+            queryset = queryset.filter(module_id=module_id)
+
+        actif = self.request.GET.get('actif')
+        if actif:
+            queryset = queryset.filter(actif=actif == 'True')
+
+        return queryset.order_by('niveau__ordre', 'nom')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+
+        if user.role == 'ADMIN':
+            context['niveaux'] = Niveau.objects.filter(
+                filiere__etablissement=user.etablissement,
+                est_actif=True
+            ).select_related('filiere')
+            context['modules'] = Module.objects.filter(
+                niveau__filiere__etablissement=user.etablissement,
+                actif=True
+            )
+        elif user.role == 'CHEF_DEPARTEMENT':
+            context['niveaux'] = Niveau.objects.filter(
+                filiere__departement=user.departement,
+                est_actif=True
+            ).select_related('filiere')
+            context['modules'] = Module.objects.filter(
+                niveau__filiere__departement=user.departement,
+                actif=True
+            )
+
+        context['current_filters'] = {
+            'search': self.request.GET.get('search', ''),
+            'niveau': self.request.GET.get('niveau', ''),
+            'module': self.request.GET.get('module', ''),
+            'actif': self.request.GET.get('actif', ''),
+        }
+
+        return context
+
+class MatiereCreateView(LoginRequiredMixin, CreateView):
+    model = Matiere
+    form_class = MatiereForm
+    template_name = 'courses/matiere/form.html'
+
+    # Contrôle d'accès
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+            messages.error(request, "Vous ne pouvez pas créer de matière. Vérifiez vos permissions.")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    # URL de succès après création
+    def get_success_url(self):
+        if self.request.user.role == 'ADMIN':
+            return reverse_lazy('dashboard:admin_matieres')
+        else:
+            return reverse_lazy('dashboard:department_head_matieres')
+
+    # URL pour le bouton annuler
+    def get_cancel_url(self):
+        return self.get_success_url()
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        self.object = form.save()
+        messages.success(self.request, "Matière créée avec succès !")
+        return redirect(self.get_success_url())
+
+    # Contexte pour le template
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Ajouter une matière'
+        context['submit_text'] = 'Créer'
+        context['cancel_url'] = self.get_cancel_url()
+        return context
+
+class MatiereUpdateView(LoginRequiredMixin, UpdateView):
+    model = Matiere
+    form_class = MatiereForm
+    template_name = 'courses/matiere/form.html'
+
+    # Contrôle d'accès
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+            messages.error(request, "Vous ne pouvez pas créer de matière. Vérifiez vos permissions.")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    # URL de succès après création
+    def get_success_url(self):
+        if self.request.user.role == 'ADMIN':
+            return reverse_lazy('dashboard:admin_matieres')
+        else:
+            return reverse_lazy('dashboard:department_head_matieres')
+
+    # URL pour le bouton annuler
+    def get_cancel_url(self):
+        return self.get_success_url()
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        messages.success(self.request, "Matière modifiée avec succès !")
+        return super().form_valid(form)
 
 class MatiereDetailView(LoginRequiredMixin, DetailView):
     model = Matiere
     template_name = 'courses/matiere/detail.html'
     context_object_name = 'matiere'
 
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Matiere.objects.select_related(
+            'niveau__filiere__departement',
+            'module',
+            'enseignant_responsable'
+        )
+
+        if user.role == 'ADMIN':
+            queryset = queryset.filter(
+                niveau__filiere__etablissement=user.etablissement
+            )
+        elif user.role == 'CHEF_DEPARTEMENT':
+            queryset = queryset.filter(
+                niveau__filiere__departement=user.departement
+            )
+
+        return queryset
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['modules'] = self.object.matieremodule_set.all().select_related('module__niveau')
+        matiere = self.object
+
+        # Statistiques des cours
+        context['stats_cours'] = {
+            'total': Cours.objects.filter(matiere=matiere).count(),
+            'programmes': Cours.objects.filter(matiere=matiere, statut=StatutCours.PROGRAMME).count(),
+            'termines': Cours.objects.filter(matiere=matiere, statut=StatutCours.TERMINE).count(),
+        }
+
+        # Classes utilisant cette matière
+        context['classes'] = Classe.objects.filter(
+            cours__matiere=matiere
+        ).distinct()
+
         return context
 
-class MatiereCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+class MatiereDeleteView(LoginRequiredMixin, DeleteView):
     model = Matiere
-    form_class = MatiereForm
-    template_name = 'courses/matiere/form.html'
-    permission_required = 'courses.add_matiere'
-    success_url = reverse_lazy('courses:matiere_list')
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+            messages.error(request, "Vous ne pouvez pas supprimer ce module. Vérifiez vos permissions.")
+            return self.get_error_redirect()
+        return super().dispatch(request, *args, **kwargs)
+
+    # URL de succès après création
+    def get_success_url(self):
+        if self.request.user.role == 'ADMIN':
+            return reverse_lazy('dashboard:admin_matieres')
+        else:
+            return reverse_lazy('dashboard:department_head_matieres')
+
+    # URL pour le bouton annuler
+    def get_cancel_url(self):
+        return self.get_success_url()
+
+    def get_error_redirect(self):
+        return self.get_cancel_url()
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, "Matière supprimée avec succès !")
+        return super().delete(request, *args, **kwargs)
+
+
+# ============================================================================
+#  VUES EMPLOI DU TEMPS
+# ============================================================================
+class EmploiDuTempsListView(LoginRequiredMixin, ListView):
+    model = EmploiDuTemps
+    template_name = 'courses/emploi_du_temps/list.html'
+    context_object_name = 'emplois_du_temps'
+    paginate_by = 20
+
+    def filter_by_etablissement(self, queryset):
+        return queryset.filter(
+            classe__niveau__filiere__departement__etablissement=self.request.user.etablissement
+        )
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Filtrage par classe
+        classe = self.request.GET.get('classe')
+        if classe:
+            queryset = queryset.filter(classe_id=classe)
+
+        return queryset.select_related('classe', 'periode_academique').order_by('-created_at')
+
+class EmploiDuTempsDetailView(LoginRequiredMixin, DetailView):
+    model = EmploiDuTemps
+    template_name = 'courses/emploi_du_temps/detail.html'
+    context_object_name = 'emploi_du_temps'
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = EmploiDuTemps.objects.select_related(
+            'classe__niveau__filiere',
+            'enseignant',
+            'periode_academique'
+        ).prefetch_related(
+            'creneaux__cours__matiere',
+            'creneaux__cours__enseignant',
+            'creneaux__cours__salle'
+        )
+
+        if user.role == 'ADMIN':
+            queryset = queryset.filter(
+                Q(classe__etablissement=user.etablissement) |
+                Q(enseignant__etablissement=user.etablissement)
+            )
+        elif user.role == 'CHEF_DEPARTEMENT':
+            queryset = queryset.filter(
+                Q(classe__niveau__filiere__departement=user.departement) |
+                Q(enseignant__departement=user.departement)
+            )
+        elif user.role == 'ENSEIGNANT':
+            queryset = queryset.filter(enseignant=user, publie=True)
+        elif user.role == 'APPRENANT':
+            if hasattr(user, 'profil_apprenant'):
+                queryset = queryset.filter(
+                    classe=user.profil_apprenant.classe_actuelle,
+                    publie=True
+                )
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        edt = self.object
+
+        # Générer les jours de la semaine
+        start_date = edt.semaine_debut
+        days = []
+        for i in range(6):  # Lundi à Samedi
+            day_date = start_date + timedelta(days=i)
+            days.append({
+                'num': i,
+                'name': ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][i],
+                'date': day_date
+            })
+        context['days'] = days
+        context['hours'] = range(8, 19)
+
+        # Statistiques
+        creneaux = edt.creneaux.all()
+        total_minutes = 0
+        for creneau in creneaux:
+            start = datetime.combine(datetime.today(), creneau.heure_debut)
+            end = datetime.combine(datetime.today(), creneau.heure_fin)
+            total_minutes += (end - start).seconds / 60
+
+        context['total_heures'] = int(total_minutes / 60)
+        context['nombre_matieres'] = creneaux.values('cours__matiere').distinct().count()
+        context['nombre_enseignants'] = creneaux.values('cours__enseignant').distinct().count()
+
+        return context
+
+class EmploiDuTempsCreateView(LoginRequiredMixin, CreateView):
+    model = EmploiDuTemps
+    form_class = EmploiDuTempsForm
+    template_name = 'courses/emploi_du_temps/form.html'
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
 
     def form_valid(self, form):
-        messages.success(self.request, 'Matière créée avec succès.')
+        form.instance.cree_par = self.request.user
+        messages.success(self.request, "Emploi du temps créé avec succès !")
         return super().form_valid(form)
 
-class MatiereUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
-    model = Matiere
-    form_class = MatiereForm
-    template_name = 'courses/matiere/form.html'
-    permission_required = 'courses.change_matiere'
+    def get_success_url(self):
+        return reverse_lazy('courses:emploi_du_temps_detail', kwargs={'pk': self.object.pk})
+
+class EmploiDuTempsUpdateView(LoginRequiredMixin, UpdateView):
+    model = EmploiDuTemps
+    form_class = EmploiDuTempsForm
+    template_name = 'courses/emploi_du_temps/form.html'
 
     def form_valid(self, form):
-        messages.success(self.request, 'Matière modifiée avec succès.')
+        messages.success(self.request, 'Emploi du temps modifié avec succès.')
         return super().form_valid(form)
 
+class EmploiDuTempsDeleteView(LoginRequiredMixin, DeleteView):
+    model = EmploiDuTemps
+    success_url = reverse_lazy('courses:emploi_du_temps_list')
 
-# ============== VUES COURS ==============
-class CoursListView(LoginRequiredMixin, EtablissementFilterMixin, ListView):
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, "Emploi du temps supprimé avec succès !")
+        return super().delete(request, *args, **kwargs)
+
+@login_required
+def emploi_du_temps_publish(request, pk):
+    """Publier un emploi du temps"""
+    edt = get_object_or_404(EmploiDuTemps, pk=pk)
+
+    # Vérifier les permissions
+    user = request.user
+    if user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        return JsonResponse({'success': False, 'message': 'Permission refusée'})
+
+    if request.method == 'POST':
+        edt.publie = True
+        edt.save()
+        messages.success(request, "Emploi du temps publié avec succès !")
+        return JsonResponse({'success': True})
+
+    return JsonResponse({'success': False})
+
+@login_required
+def emploi_du_temps_generate(request):
+    """Générer automatiquement un emploi du temps"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Méthode non autorisée'})
+
+    user = request.user
+    if user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        return JsonResponse({'success': False, 'message': 'Permission refusée'})
+
+    try:
+        # Récupérer les paramètres
+        filter_type = request.POST.get('type')
+        classe_id = request.POST.get('classe_id')
+        enseignant_id = request.POST.get('enseignant_id')
+        periode_id = request.POST.get('periode_id')
+        semaine_debut = datetime.strptime(request.POST.get('semaine_debut'), '%Y-%m-%d').date()
+        nb_semaines = int(request.POST.get('nb_semaines', 1))
+
+        # Calculer la fin de semaine
+        semaine_fin = semaine_debut + timedelta(days=(nb_semaines * 7) - 1)
+
+        # Créer l'emploi du temps
+        if filter_type == 'classe':
+            classe = get_object_or_404(Classe, pk=classe_id)
+            nom = f"EDT {classe.nom} - Semaine du {semaine_debut.strftime('%d/%m/%Y')}"
+            edt = EmploiDuTemps.objects.create(
+                classe=classe,
+                periode_academique_id=periode_id,
+                nom=nom,
+                semaine_debut=semaine_debut,
+                semaine_fin=semaine_fin,
+                cree_par=user
+            )
+            # Récupérer les cours de la classe
+            cours_list = Cours.objects.filter(
+                classe=classe,
+                periode_academique_id=periode_id,
+                date_prevue__range=[semaine_debut, semaine_fin],
+                actif=True
+            ).select_related('matiere')
+        else:
+            enseignant = get_object_or_404(Utilisateur, pk=enseignant_id)
+            nom = f"EDT {enseignant.get_full_name()} - Semaine du {semaine_debut.strftime('%d/%m/%Y')}"
+            edt = EmploiDuTemps.objects.create(
+                enseignant=enseignant,
+                periode_academique_id=periode_id,
+                nom=nom,
+                semaine_debut=semaine_debut,
+                semaine_fin=semaine_fin,
+                cree_par=user
+            )
+            # Récupérer les cours de l'enseignant
+            cours_list = Cours.objects.filter(
+                enseignant=enseignant,
+                periode_academique_id=periode_id,
+                date_prevue__range=[semaine_debut, semaine_fin],
+                actif=True
+            ).select_related('matiere')
+
+        # Créer les créneaux
+        for cours in cours_list:
+            jour_semaine = cours.date_prevue.weekday()  # 0 = Lundi
+            if jour_semaine < 6:  # Pas le dimanche
+                CreneauEmploiDuTemps.objects.create(
+                    emploi_du_temps=edt,
+                    cours=cours,
+                    jour_semaine=jour_semaine,
+                    heure_debut=cours.heure_debut_prevue,
+                    heure_fin=cours.heure_fin_prevue
+                )
+
+        return JsonResponse({
+            'success': True,
+            'edt_id': str(edt.id),
+            'message': f'Emploi du temps généré avec {edt.creneaux.count()} cours'
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erreur lors de la génération : {str(e)}'
+        })
+
+
+# ============================================================================
+# VUES COURS
+# ============================================================================
+class CoursListView(LoginRequiredMixin, ListView):
     model = Cours
     template_name = 'courses/cours/list.html'
     context_object_name = 'cours'
@@ -231,144 +798,272 @@ class CoursListView(LoginRequiredMixin, EtablissementFilterMixin, ListView):
         )
         return context
 
-class CoursDetailView(LoginRequiredMixin, EtablissementFilterMixin, DetailView):
+class CoursCreateView(LoginRequiredMixin, CreateView):
+    model = Cours
+    form_class = CoursForm
+    template_name = 'courses/cours/form.html'
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        messages.success(self.request, "Cours créé avec succès !")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('courses:cours_detail', kwargs={'pk': self.object.pk})
+
+class CoursUpdateView(LoginRequiredMixin, UpdateView):
+    model = Cours
+    form_class = CoursForm
+    template_name = 'courses/cours/form.html'
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        messages.success(self.request, "Cours modifié avec succès !")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('courses:cours_detail', kwargs={'pk': self.object.pk})
+
+class CoursDetailView(LoginRequiredMixin, DetailView):
     model = Cours
     template_name = 'courses/cours/detail.html'
     context_object_name = 'cours'
 
-    def filter_by_etablissement(self, queryset):
-        return queryset.filter(
-            classe__niveau__filiere__departement__etablissement=self.request.user.etablissement
-        )
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Cours.objects.select_related(
+            'matiere__module',
+            'classe__niveau__filiere',
+            'enseignant',
+            'periode_academique',
+            'salle'
+        ).prefetch_related('ressources')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['ressources'] = self.object.ressources.all()
-        context['presences'] = self.object.presences.all().select_related('etudiant')
+        if user.role == 'ADMIN':
+            queryset = queryset.filter(classe__etablissement=user.etablissement)
+        elif user.role == 'CHEF_DEPARTEMENT':
+            queryset = queryset.filter(matiere__niveau__filiere__departement=user.departement)
+        elif user.role == 'ENSEIGNANT':
+            queryset = queryset.filter(enseignant=user)
 
-        # Vérifier si l'utilisateur peut modifier ce cours
-        context['can_edit'] = (
-                self.request.user == self.object.enseignant or
-                self.request.user.is_superuser or
-                self.request.user.has_perm('courses.change_cours')
-        )
+        return queryset
 
-        # Cahier de texte
-        try:
-            context['cahier_texte'] = self.object.cahier_texte
-        except CahierTexte.DoesNotExist:
-            context['cahier_texte'] = None
-
-        return context
-
-class CoursCreateView(LoginRequiredMixin, PermissionRequiredMixin, EtablissementFilterMixin, CreateView):
+class CoursDeleteView(LoginRequiredMixin, DeleteView):
     model = Cours
-    form_class = CoursForm
-    template_name = 'courses/cours/form.html'
-    permission_required = 'courses.add_cours'
 
-    def get_initial(self):
-        initial = super().get_initial()
-        # Si c'est un enseignant, pré-remplir avec ses informations
-        if self.request.user.role == 'ENSEIGNANT':
-            initial['enseignant'] = self.request.user
-        return initial
+    # Contrôle d'accès
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+            messages.error(request, "Vous ne pouvez pas supprimer. Vérifiez vos permissions.")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
 
-    def form_valid(self, form):
-        messages.success(self.request, 'Cours créé avec succès.')
-        return super().form_valid(form)
+    def get_success_url(self):
+        if self.request.user.role == 'ADMIN':
+            return reverse_lazy('dashboard:admin_courses')
+        else:
+            return reverse_lazy('dashboard:department_head_courses')
 
-class CoursUpdateView(LoginRequiredMixin, PermissionRequiredMixin, EtablissementFilterMixin, UpdateView):
-    model = Cours
-    form_class = CoursUpdateForm
-    template_name = 'courses/cours/form.html'
-    permission_required = 'courses.change_cours'
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, "Cours supprimé avec succès !")
+        return super().delete(request, *args, **kwargs)
 
-    def filter_by_etablissement(self, queryset):
-        return queryset.filter(
-            classe__niveau__filiere__departement__etablissement=self.request.user.etablissement
-        )
-
-    def get_object(self, queryset=None):
-        obj = super().get_object(queryset)
-        # Vérifier que l'enseignant ne peut modifier que ses propres cours
-        if (self.request.user.role == 'ENSEIGNANT' and
-                self.request.user != obj.enseignant and
-                not self.request.user.is_superuser):
-            raise Http404("Vous ne pouvez modifier que vos propres cours.")
-        return obj
-
-    def form_valid(self, form):
-        messages.success(self.request, 'Cours modifié avec succès.')
-        return super().form_valid(form)
-
-
-# ============== VUES CAHIER DE TEXTE ==============
 @login_required
-def cahier_texte_create_or_update(request, cours_id):
-    """Vue pour créer ou modifier un cahier de texte"""
-    cours = get_object_or_404(Cours, id=cours_id)
+def cours_start(request, pk):
+    """Démarrer un cours"""
+    cours = get_object_or_404(Cours, pk=pk)
 
-    # Vérifier les permissions
-    if (request.user.role == 'ENSEIGNANT' and
-            request.user != cours.enseignant and
-            not request.user.is_superuser):
-        raise Http404("Vous ne pouvez modifier que vos propres cours.")
-
-    try:
-        cahier_texte = cours.cahier_texte
-    except CahierTexte.DoesNotExist:
-        cahier_texte = None
+    if request.user != cours.enseignant:
+        return JsonResponse({'success': False, 'message': 'Permission refusée'})
 
     if request.method == 'POST':
-        form = CahierTexteForm(
-            request.POST,
-            instance=cahier_texte,
-            cours=cours,
-            user=request.user
-        )
-        if form.is_valid():
-            cahier_texte = form.save(commit=False)
-            cahier_texte.cours = cours
-            cahier_texte.rempli_par = request.user
-            cahier_texte.save()
-            messages.success(request, 'Cahier de texte enregistré avec succès.')
-            return redirect('courses:cours_detail', pk=cours.id)
-    else:
-        form = CahierTexteForm(
-            instance=cahier_texte,
-            cours=cours,
-            user=request.user
-        )
+        cours.statut = StatutCours.EN_COURS
+        cours.date_effective = timezone.now().date()
+        cours.heure_debut_effective = timezone.now().time()
+        cours.save()
 
-    return render(request, 'courses/cahier_texte/form.html', {
-        'form': form,
-        'cours': cours,
-        'cahier_texte': cahier_texte
+        return JsonResponse({'success': True, 'message': 'Cours démarré'})
+
+    return JsonResponse({'success': False})
+
+@login_required
+def cours_end(request, pk):
+    """Terminer un cours"""
+    cours = get_object_or_404(Cours, pk=pk)
+
+    if request.user != cours.enseignant:
+        return JsonResponse({'success': False, 'message': 'Permission refusée'})
+
+    if request.method == 'POST':
+        cours.statut = StatutCours.TERMINE
+        cours.heure_fin_effective = timezone.now().time()
+        cours.save()
+
+        return JsonResponse({'success': True, 'message': 'Cours terminé'})
+
+    return JsonResponse({'success': False})
+
+@login_required
+def streaming_view(request, pk):
+    """Vue pour afficher le streaming d'un cours"""
+    cours = get_object_or_404(Cours, pk=pk)
+
+    # Vérifier les permissions d'accès au streaming
+    if not cours.cours_en_ligne or not cours.url_streaming:
+        messages.error(request, "Le streaming n'est pas disponible pour ce cours.")
+        return redirect('courses:cours_detail', pk=cours.pk)
+
+    # Vérifier l'accès selon le rôle
+    has_access = False
+    user = request.user
+
+    if user.role == 'ENSEIGNANT' and user == cours.enseignant:
+        has_access = True
+    elif user.role == 'APPRENANT':
+        # Vérifier si l'étudiant est dans la classe
+        if hasattr(user, 'profil_apprenant'):
+            has_access = user.profil_apprenant.classe_actuelle == cours.classe
+    elif user.role in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        has_access = True
+
+    if not has_access:
+        messages.error(request, "Vous n'avez pas accès au streaming de ce cours.")
+        return redirect('courses:cours_detail', pk=cours.pk)
+
+    return render(request, 'courses/streaming/view.html', {
+        'cours': cours
     })
 
-class CahierTexteListView(LoginRequiredMixin, EtablissementFilterMixin, ListView):
-    model = CahierTexte
-    template_name = 'courses/cahier_texte/list.html'
-    context_object_name = 'cahiers'
-    paginate_by = 20
 
-    def filter_by_etablissement(self, queryset):
-        return queryset.filter(
-            cours__classe__niveau__filiere__departement__etablissement=self.request.user.etablissement
-        )
+# ============================================================================
+# VUES CAHIER DE TEXTE
+# ============================================================================
+@login_required
+def cahier_texte_view(request, cours_id):
+    """Afficher le cahier de texte d'un cours"""
+    cours = get_object_or_404(Cours, pk=cours_id)
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
+    # Vérifier les permissions
+    user = request.user
+    has_access = False
 
-        # Filtrage par enseignant
-        if self.request.user.role == 'ENSEIGNANT':
-            queryset = queryset.filter(rempli_par=self.request.user)
+    if user.role == 'ENSEIGNANT' and user == cours.enseignant:
+        has_access = True
+    elif user.role == 'APPRENANT':
+        if hasattr(user, 'profil_apprenant'):
+            has_access = user.profil_apprenant.classe_actuelle == cours.classe
+    elif user.role in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        has_access = True
 
-        return queryset.select_related('cours__classe', 'cours__matiere_module__matiere', 'rempli_par')
+    if not has_access:
+        messages.error(request, "Vous n'avez pas accès à ce cahier de texte.")
+        return redirect('courses:cours_list')
+
+    # Récupérer ou créer le cahier de texte
+    cahier = None
+    if hasattr(cours, 'cahier_texte'):
+        cahier = cours.cahier_texte
+
+    return render(request, 'courses/cahier_texte/detail.html', {
+        'cours': cours,
+        'cahier': cahier
+    })
+
+@login_required
+def cahier_texte_create_or_update(request, cours_id):
+    """Créer ou mettre à jour le cahier de texte"""
+    cours = get_object_or_404(Cours, pk=cours_id)
+
+    # Seul l'enseignant peut créer/modifier
+    if request.user != cours.enseignant:
+        messages.error(request, "Seul l'enseignant peut modifier le cahier de texte.")
+        return redirect('courses:cours_detail', pk=cours.pk)
+
+    # Récupérer ou créer
+    cahier = None
+    if hasattr(cours, 'cahier_texte'):
+        cahier = cours.cahier_texte
+
+    if request.method == 'POST':
+        travail_fait = request.POST.get('travail_fait')
+        travail_donne = request.POST.get('travail_donne')
+        date_travail_pour = request.POST.get('date_travail_pour')
+        observations = request.POST.get('observations')
+
+        if cahier:
+            # Mettre à jour
+            cahier.travail_fait = travail_fait
+            cahier.travail_donne = travail_donne
+            cahier.observations = observations
+            if date_travail_pour:
+                cahier.date_travail_pour = date_travail_pour
+            cahier.save()
+            messages.success(request, "Cahier de texte mis à jour avec succès.")
+        else:
+            # Créer
+            cahier = CahierTexte.objects.create(
+                cours=cours,
+                travail_fait=travail_fait,
+                travail_donne=travail_donne,
+                observations=observations,
+                date_travail_pour=date_travail_pour if date_travail_pour else None,
+                rempli_par=request.user
+            )
+            messages.success(request, "Cahier de texte créé avec succès.")
+
+        return redirect('courses:cahier_texte_view', cours_id=cours.pk)
+
+    return render(request, 'courses/cahier_texte/form.html', {
+        'cours': cours,
+        'cahier': cahier
+    })
+
+@login_required
+def cahier_texte_list(request):
+    """Liste des cahiers de texte"""
+    user = request.user
+
+    if user.role == 'ENSEIGNANT':
+        # Cours de l'enseignant ayant un cahier de texte
+        cours_list = Cours.objects.filter(
+            enseignant=user,
+            cahier_texte__isnull=False
+        ).select_related('cahier_texte', 'matiere', 'classe').order_by('-date_prevue')
+
+    elif user.role == 'APPRENANT':
+        if hasattr(user, 'profil_apprenant') and user.profil_apprenant.classe_actuelle:
+            # Cours de la classe ayant un cahier de texte
+            cours_list = Cours.objects.filter(
+                classe=user.profil_apprenant.classe_actuelle,
+                cahier_texte__isnull=False
+            ).select_related('cahier_texte', 'matiere', 'enseignant').order_by('-date_prevue')
+        else:
+            cours_list = Cours.objects.none()
+
+    elif user.role in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        # Tous les cours avec cahier de texte
+        cours_list = Cours.objects.filter(
+            cahier_texte__isnull=False
+        ).select_related('cahier_texte', 'matiere', 'classe', 'enseignant').order_by('-date_prevue')
+    else:
+        cours_list = Cours.objects.none()
+
+    return render(request, 'courses/cahier_texte/list.html', {
+        'cours_list': cours_list
+    })
 
 
-# ============== VUES PRESENCE ==============
+# ============================================================================
+# VUES PRESENCE
+# ============================================================================
 @login_required
 def presence_bulk_create(request, cours_id):
     """Vue pour la prise de présence en lot"""
@@ -452,222 +1147,387 @@ class PresenceListView(LoginRequiredMixin, EtablissementFilterMixin, ListView):
         return queryset.select_related('cours', 'etudiant').order_by('-cours__date_prevue')
 
 
-# ============== VUES RESSOURCE ==============
-class RessourceCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
-    model = Ressource
-    form_class = RessourceForm
-    template_name = 'courses/ressource/form.html'
-    permission_required = 'courses.add_ressource'
+# ============================================================================
+# VUES RESSOURCES
+# ============================================================================
+@login_required
+def ressource_create(request, cours_id):
+    """Créer une nouvelle ressource (enseignant)"""
+    cours = get_object_or_404(Cours, pk=cours_id)
 
-    def get_initial(self):
-        initial = super().get_initial()
-        cours_id = self.kwargs.get('cours_id')
-        if cours_id:
-            initial['cours'] = cours_id
-        return initial
+    if request.user != cours.enseignant and request.user.role not in ['ADMIN']:
+        messages.error(request, "Vous n'êtes pas autorisé à ajouter des ressources.")
+        return redirect('courses:cours_detail', pk=cours.pk)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        cours_id = self.kwargs.get('cours_id')
-        if cours_id:
-            context['cours'] = get_object_or_404(Cours, id=cours_id)
-        return context
+    if request.method == 'POST':
+        titre = request.POST.get('titre')
+        description = request.POST.get('description')
+        type_ressource = request.POST.get('type_ressource')
+        fichier = request.FILES.get('fichier')
+        url = request.POST.get('url')
+        obligatoire = request.POST.get('obligatoire') == 'on'
+        telechargeable = request.POST.get('telechargeable') == 'on'
+        public = request.POST.get('public') == 'on'
+        disponible_a_partir_de = request.POST.get('disponible_a_partir_de')
+        disponible_jusqua = request.POST.get('disponible_jusqua')
 
-    def form_valid(self, form):
-        messages.success(self.request, 'Ressource ajoutée avec succès.')
-        return super().form_valid(form)
+        ressource = Ressource.objects.create(
+            cours=cours,
+            titre=titre,
+            description=description,
+            type_ressource=type_ressource,
+            fichier=fichier,
+            url=url,
+            obligatoire=obligatoire,
+            telechargeable=telechargeable,
+            public=public,
+            disponible_a_partir_de=disponible_a_partir_de if disponible_a_partir_de else None,
+            disponible_jusqua=disponible_jusqua if disponible_jusqua else None
+        )
 
-    def get_success_url(self):
-        return reverse('courses:cours_detail', kwargs={'pk': self.object.cours.pk})
+        messages.success(request, "Ressource ajoutée avec succès.")
+        return redirect('courses:cours_detail', pk=cours.pk)
 
-class RessourceUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
-    model = Ressource
-    form_class = RessourceForm
-    template_name = 'courses/ressource/form.html'
-    permission_required = 'courses.change_ressource'
+    return render(request, 'courses/ressource/form.html', {
+        'cours': cours
+    })
 
-    def form_valid(self, form):
-        messages.success(self.request, 'Ressource modifiée avec succès.')
-        return super().form_valid(form)
+@login_required
+def ressource_update(request, pk):
+    """Modifier une ressource"""
+    ressource = get_object_or_404(Ressource, pk=pk)
+    cours = ressource.cours
 
-    def get_success_url(self):
-        return reverse('courses:cours_detail', kwargs={'pk': self.object.cours.pk})
+    if request.user != cours.enseignant and request.user.role not in ['ADMIN']:
+        messages.error(request, "Vous n'êtes pas autorisé à modifier cette ressource.")
+        return redirect('courses:cours_detail', pk=cours.pk)
 
+    if request.method == 'POST':
+        ressource.titre = request.POST.get('titre')
+        ressource.description = request.POST.get('description')
+        ressource.type_ressource = request.POST.get('type_ressource')
+
+        if request.FILES.get('fichier'):
+            ressource.fichier = request.FILES.get('fichier')
+
+        ressource.url = request.POST.get('url')
+        ressource.obligatoire = request.POST.get('obligatoire') == 'on'
+        ressource.telechargeable = request.POST.get('telechargeable') == 'on'
+        ressource.public = request.POST.get('public') == 'on'
+
+        disponible_a_partir_de = request.POST.get('disponible_a_partir_de')
+        disponible_jusqua = request.POST.get('disponible_jusqua')
+
+        ressource.disponible_a_partir_de = disponible_a_partir_de if disponible_a_partir_de else None
+        ressource.disponible_jusqua = disponible_jusqua if disponible_jusqua else None
+
+        ressource.save()
+
+        messages.success(request, "Ressource modifiée avec succès.")
+        return redirect('courses:cours_detail', pk=cours.pk)
+
+    return render(request, 'courses/ressource/form.html', {
+        'cours': cours,
+        'ressource': ressource
+    })
+
+@login_required
+def ressource_delete(request, pk):
+    """Supprimer une ressource"""
+    ressource = get_object_or_404(Ressource, pk=pk)
+    cours = ressource.cours
+
+    if request.user != cours.enseignant and request.user.role not in ['ADMIN']:
+        messages.error(request, "Vous n'êtes pas autorisé à supprimer cette ressource.")
+        return redirect('courses:cours_detail', pk=cours.pk)
+
+    if request.method == 'POST':
+        ressource.delete()
+        messages.success(request, "Ressource supprimée avec succès.")
+        return redirect('courses:cours_detail', pk=cours.pk)
+
+    return render(request, 'courses/ressource/confirm_delete.html', {
+        'ressource': ressource,
+        'cours': cours
+    })
+
+@login_required
+def ressource_view(request, pk):
+    """Afficher une ressource dans le lecteur intégré"""
+    ressource = get_object_or_404(Ressource, pk=pk)
+    cours = ressource.cours
+
+    # Vérifier les permissions
+    has_access = False
+    user = request.user
+
+    if user.role == 'ENSEIGNANT' and user == cours.enseignant:
+        has_access = True
+    elif user.role == 'APPRENANT':
+        if hasattr(user, 'profil_apprenant'):
+            has_access = user.profil_apprenant.classe_actuelle == cours.classe
+    elif user.role in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        has_access = True
+
+    # Vérifier si la ressource est publique
+    if ressource.public:
+        has_access = True
+
+    # Vérifier les dates de disponibilité
+    now = timezone.now()
+    if ressource.disponible_a_partir_de and now < ressource.disponible_a_partir_de:
+        has_access = False
+        messages.warning(request,
+                         f"Cette ressource sera disponible à partir du {ressource.disponible_a_partir_de.strftime('%d/%m/%Y à %H:%M')}")
+
+    if ressource.disponible_jusqua and now > ressource.disponible_jusqua:
+        has_access = False
+        messages.warning(request, "Cette ressource n'est plus disponible.")
+
+    if not has_access:
+        messages.error(request, "Vous n'avez pas accès à cette ressource.")
+        return redirect('courses:cours_detail', pk=cours.pk)
+
+    return render(request, 'courses/ressource/view.html', {
+        'ressource': ressource,
+        'cours': cours
+    })
 
 @login_required
 def ressource_download(request, pk):
-    """Vue pour télécharger une ressource"""
+    """Télécharger une ressource"""
     ressource = get_object_or_404(Ressource, pk=pk)
+    cours = ressource.cours
 
-    # Vérifier les permissions d'accès
-    if not ressource.public:
-        # Vérifier si l'utilisateur appartient à la classe du cours
-        if request.user.role == 'APPRENANT':
-            if not request.user.inscriptions.filter(classe=ressource.cours.classe).exists():
-                raise Http404("Vous n'avez pas accès à cette ressource.")
-        elif request.user.role == 'ENSEIGNANT':
-            if request.user != ressource.cours.enseignant:
-                raise Http404("Vous n'avez pas accès à cette ressource.")
+    # Vérifier les permissions
+    has_access = False
+    user = request.user
 
-    # Vérifier la disponibilité
-    now = timezone.now()
-    if ressource.disponible_a_partir_de and now < ressource.disponible_a_partir_de:
-        messages.error(request, "Cette ressource n'est pas encore disponible.")
-        return redirect('courses:cours_detail', pk=ressource.cours.pk)
+    if user.role == 'ENSEIGNANT' and user == cours.enseignant:
+        has_access = True
+    elif user.role == 'APPRENANT':
+        if hasattr(user, 'profil_apprenant'):
+            has_access = user.profil_apprenant.classe_actuelle == cours.classe
+    elif user.role in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        has_access = True
 
-    if ressource.disponible_jusqua and now > ressource.disponible_jusqua:
-        messages.error(request, "Cette ressource n'est plus disponible.")
-        return redirect('courses:cours_detail', pk=ressource.cours.pk)
+    if ressource.public:
+        has_access = True
 
-    # Incrémenter les statistiques
-    if ressource.telechargeable:
-        ressource.nombre_telechargements += 1
-    else:
-        ressource.nombre_vues += 1
-    ressource.save(update_fields=['nombre_telechargements', 'nombre_vues'])
+    if not has_access or not ressource.telechargeable:
+        messages.error(request, "Vous ne pouvez pas télécharger cette ressource.")
+        return redirect('courses:cours_detail', pk=cours.pk)
 
+    # Incrémenter le compteur de téléchargements
+    ressource.nombre_telechargements += 1
+    ressource.save(update_fields=['nombre_telechargements'])
+
+    # Télécharger le fichier
     if ressource.fichier:
-        response = HttpResponse(
-            ressource.fichier.read(),
-            content_type='application/octet-stream'
-        )
+        response = FileResponse(ressource.fichier.open('rb'))
         response['Content-Disposition'] = f'attachment; filename="{ressource.fichier.name}"'
         return response
     elif ressource.url:
         return redirect(ressource.url)
     else:
-        raise Http404("Aucun fichier ou URL disponible.")
+        messages.error(request, "Fichier introuvable.")
+        return redirect('courses:cours_detail', pk=cours.pk)
+
+@require_POST
+@login_required
+def ressource_increment_views(request, pk):
+    """Incrémenter le compteur de vues d'une ressource"""
+    ressource = get_object_or_404(Ressource, pk=pk)
+    ressource.nombre_vues += 1
+    ressource.save(update_fields=['nombre_vues'])
+    return JsonResponse({'success': True, 'views': ressource.nombre_vues})
+
+@login_required
+def ressource_list(request, cours_id):
+    """Liste des ressources d'un cours"""
+    cours = get_object_or_404(Cours, pk=cours_id)
+
+    # Vérifier les permissions
+    user = request.user
+    has_access = False
+
+    if user.role == 'ENSEIGNANT' and user == cours.enseignant:
+        has_access = True
+        # L'enseignant voit toutes les ressources
+        ressources = cours.ressources.all()
+    elif user.role == 'APPRENANT':
+        if hasattr(user, 'profil_apprenant') and user.profil_apprenant.classe_actuelle == cours.classe:
+            has_access = True
+            # Les étudiants ne voient que les ressources disponibles
+            now = timezone.now()
+            ressources = cours.ressources.filter(
+                disponible_a_partir_de__lte=now,
+                disponible_jusqua__gte=now
+            ) | cours.ressources.filter(
+                disponible_a_partir_de__isnull=True,
+                disponible_jusqua__isnull=True
+            )
+    elif user.role in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        has_access = True
+        ressources = cours.ressources.all()
+
+    if not has_access:
+        messages.error(request, "Accès refusé.")
+        return redirect('courses:cours_list')
+
+    return render(request, 'courses/ressource/list.html', {
+        'cours': cours,
+        'ressources': ressources
+    })
 
 
-# ============== VUES EMPLOI DU TEMPS ==============
-class EmploiDuTempsListView(LoginRequiredMixin, EtablissementFilterMixin, ListView):
-    model = EmploiDuTemps
-    template_name = 'courses/emploi_du_temps/list.html'
-    context_object_name = 'emplois_du_temps'
-    paginate_by = 20
+# ============================================================================
+# VUES AJAX ET API
+# ============================================================================
+@login_required
+def ajax_get_modules_by_niveau(request):
+    """Récupérer les modules d'un niveau donné"""
+    niveau_id = request.GET.get('niveau_id')
+    if not niveau_id:
+        return JsonResponse({'modules': []})
 
-    def filter_by_etablissement(self, queryset):
-        return queryset.filter(
-            classe__niveau__filiere__departement__etablissement=self.request.user.etablissement
+    modules = Module.objects.filter(
+        niveau_id=niveau_id,
+        actif=True
+    ).values('id', 'nom', 'code')
+
+    return JsonResponse({'modules': list(modules)})
+
+@login_required
+def ajax_get_matieres_by_niveau(request):
+    """Récupérer les matières d'un niveau donné"""
+    niveau_id = request.GET.get('niveau_id')
+    if not niveau_id:
+        return JsonResponse({'matieres': []})
+
+    matieres = Matiere.objects.filter(
+        niveau_id=niveau_id,
+        actif=True
+    ).values('id', 'nom', 'code', 'couleur')
+
+    return JsonResponse({'matieres': list(matieres)})
+
+@login_required
+def ajax_get_classes_by_niveau(request):
+    """Récupérer les classes d'un niveau donné"""
+    niveau_id = request.GET.get('niveau_id')
+    if not niveau_id:
+        return JsonResponse({'classes': []})
+
+    classes = Classe.objects.filter(
+        niveau_id=niveau_id,
+        est_active=True
+    ).values('id', 'nom', 'code')
+
+    return JsonResponse({'classes': list(classes)})
+
+@login_required
+def ajax_get_salles_disponibles(request):
+    """Vérifier les salles disponibles pour un créneau"""
+    date = request.GET.get('date')
+    heure_debut = request.GET.get('heure_debut')
+    heure_fin = request.GET.get('heure_fin')
+
+    if not all([date, heure_debut, heure_fin]):
+        return JsonResponse({'salles': []})
+
+    # Récupérer les salles occupées
+    cours_conflits = Cours.objects.filter(
+        date_prevue=date,
+        heure_debut_prevue__lt=heure_fin,
+        heure_fin_prevue__gt=heure_debut,
+        salle__isnull=False
+    ).values_list('salle_id', flat=True)
+
+    # Salles disponibles
+    user = request.user
+    if user.role == 'ADMIN':
+        salles = Salle.objects.filter(
+            etablissement=user.etablissement,
+            est_disponible=True
+        ).exclude(id__in=cours_conflits)
+    else:
+        salles = Salle.objects.filter(
+            est_disponible=True
+        ).exclude(id__in=cours_conflits)
+
+    salles_data = list(salles.values('id', 'nom', 'code', 'capacite'))
+
+    return JsonResponse({'salles': salles_data})
+
+@login_required
+def ajax_check_conflit_cours(request):
+    """Vérifier s'il y a des conflits pour un cours"""
+    classe_id = request.GET.get('classe_id')
+    enseignant_id = request.GET.get('enseignant_id')
+    salle_id = request.GET.get('salle_id')
+    date = request.GET.get('date')
+    heure_debut = request.GET.get('heure_debut')
+    heure_fin = request.GET.get('heure_fin')
+    cours_id = request.GET.get('cours_id')  # Pour exclure le cours en cours de modification
+
+    conflits = []
+
+    # Vérifier conflit classe
+    if classe_id:
+        cours_classe = Cours.objects.filter(
+            classe_id=classe_id,
+            date_prevue=date,
+            heure_debut_prevue__lt=heure_fin,
+            heure_fin_prevue__gt=heure_debut
         )
+        if cours_id:
+            cours_classe = cours_classe.exclude(id=cours_id)
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
+        if cours_classe.exists():
+            conflits.append({
+                'type': 'classe',
+                'message': 'La classe a déjà un cours à ce créneau'
+            })
 
-        # Filtrage par classe
-        classe = self.request.GET.get('classe')
-        if classe:
-            queryset = queryset.filter(classe_id=classe)
-
-        return queryset.select_related('classe', 'periode_academique').order_by('-created_at')
-
-class EmploiDuTempsDetailView(LoginRequiredMixin, EtablissementFilterMixin, DetailView):
-    model = EmploiDuTemps
-    template_name = 'courses/emploi_du_temps/detail.html'
-    context_object_name = 'emploi_du_temps'
-
-    def filter_by_etablissement(self, queryset):
-        return queryset.filter(
-            classe__niveau__filiere__departement__etablissement=self.request.user.etablissement
+    # Vérifier conflit enseignant
+    if enseignant_id:
+        cours_enseignant = Cours.objects.filter(
+            enseignant_id=enseignant_id,
+            date_prevue=date,
+            heure_debut_prevue__lt=heure_fin,
+            heure_fin_prevue__gt=heure_debut
         )
+        if cours_id:
+            cours_enseignant = cours_enseignant.exclude(id=cours_id)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+        if cours_enseignant.exists():
+            conflits.append({
+                'type': 'enseignant',
+                'message': "L'enseignant a déjà un cours à ce créneau"
+            })
 
-        # Organiser les créneaux par jour de la semaine
-        creneaux = self.object.creneaux.all().select_related(
-            'matiere_module__matiere', 'enseignant', 'salle'
-        ).order_by('jour', 'heure_debut')
-
-        # Grouper par jour
-        creneaux_par_jour = {}
-        for creneau in creneaux:
-            jour = creneau.jour
-            if jour not in creneaux_par_jour:
-                creneaux_par_jour[jour] = []
-            creneaux_par_jour[jour].append(creneau)
-
-        context['creneaux_par_jour'] = creneaux_par_jour
-        context['jours_semaine'] = CreneauHoraire.JOURS_SEMAINE
-
-        return context
-
-class EmploiDuTempsCreateView(LoginRequiredMixin, PermissionRequiredMixin, EtablissementFilterMixin, CreateView):
-    model = EmploiDuTemps
-    form_class = EmploiDuTempsForm
-    template_name = 'courses/emploi_du_temps/form.html'
-    permission_required = 'courses.add_emploidutemps'
-
-    def form_valid(self, form):
-        form.instance.cree_par = self.request.user
-        messages.success(self.request, 'Emploi du temps créé avec succès.')
-        return super().form_valid(form)
-
-class EmploiDuTempsUpdateView(LoginRequiredMixin, PermissionRequiredMixin, EtablissementFilterMixin, UpdateView):
-    model = EmploiDuTemps
-    form_class = EmploiDuTempsForm
-    template_name = 'courses/emploi_du_temps/form.html'
-    permission_required = 'courses.change_emploidutemps'
-
-    def filter_by_etablissement(self, queryset):
-        return queryset.filter(
-            classe__niveau__filiere__departement__etablissement=self.request.user.etablissement
+    # Vérifier conflit salle
+    if salle_id:
+        cours_salle = Cours.objects.filter(
+            salle_id=salle_id,
+            date_prevue=date,
+            heure_debut_prevue__lt=heure_fin,
+            heure_fin_prevue__gt=heure_debut
         )
+        if cours_id:
+            cours_salle = cours_salle.exclude(id=cours_id)
 
-    def form_valid(self, form):
-        messages.success(self.request, 'Emploi du temps modifié avec succès.')
-        return super().form_valid(form)
+        if cours_salle.exists():
+            conflits.append({
+                'type': 'salle',
+                'message': 'La salle est déjà occupée à ce créneau'
+            })
 
-
-# ============== VUES CRENEAU HORAIRE ==============
-class CreneauHoraireCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
-    model = CreneauHoraire
-    form_class = CreneauHoraireForm
-    template_name = 'courses/creneau/form.html'
-    permission_required = 'courses.add_creneauhoraire'
-
-    def get_initial(self):
-        initial = super().get_initial()
-        emploi_du_temps_id = self.kwargs.get('emploi_du_temps_id')
-        if emploi_du_temps_id:
-            initial['emploi_du_temps'] = emploi_du_temps_id
-        return initial
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        emploi_du_temps_id = self.kwargs.get('emploi_du_temps_id')
-        if emploi_du_temps_id:
-            context['emploi_du_temps'] = get_object_or_404(EmploiDuTemps, id=emploi_du_temps_id)
-        return context
-
-    def form_valid(self, form):
-        messages.success(self.request, 'Créneau horaire créé avec succès.')
-        return super().form_valid(form)
-
-    def get_success_url(self):
-        return reverse('courses:emploi_du_temps_detail', kwargs={'pk': self.object.emploi_du_temps.pk})
-
-
-# ============== VUES AJAX ET API ==============
-
-@csrf_exempt
-def ajax_get_matiere_modules(request):
-    """Récupère les matières-modules d'un niveau via AJAX"""
-    if request.method == 'GET':
-        niveau_id = request.GET.get('niveau_id')
-        if niveau_id:
-            matiere_modules = MatiereModule.objects.filter(
-                module__niveau_id=niveau_id
-            ).select_related('matiere', 'module')
-
-            data = [{
-                'id': mm.id,
-                'text': f"{mm.matiere.nom} ({mm.module.nom})"
-            } for mm in matiere_modules]
-
-            return JsonResponse({'results': data})
-
-    return JsonResponse({'results': []})
+    return JsonResponse({
+        'has_conflit': len(conflits) > 0,
+        'conflits': conflits
+    })
 
 @csrf_exempt
 def ajax_get_classes(request):
@@ -688,122 +1548,158 @@ def ajax_get_classes(request):
 
     return JsonResponse({'results': []})
 
+
+# ============================================================================
+# VUES D'EXPORT
+# ============================================================================
 @login_required
-def streaming_view(request, cours_id):
-    """Vue pour afficher le streaming d'un cours"""
-    cours = get_object_or_404(Cours, id=cours_id)
+def export_modules(request):
+    """Exporter la liste des modules en CSV"""
+    import csv
+    from django.utils.encoding import smart_str
 
-    # Vérifier les permissions d'accès au streaming
-    if not cours.cours_en_ligne or not cours.streaming_actif:
-        messages.error(request, "Le streaming n'est pas disponible pour ce cours.")
-        return redirect('courses:cours_detail', pk=cours.pk)
+    user = request.user
 
-    # Vérifier l'accès selon le rôle
-    has_access = False
-    if request.user.role == 'ENSEIGNANT' and request.user == cours.enseignant:
-        has_access = True
-    elif request.user.role == 'APPRENANT':
-        # Vérifier si l'étudiant est inscrit à la classe
-        has_access = request.user.inscriptions.filter(classe=cours.classe).exists()
-    elif request.user.is_superuser:
-        has_access = True
+    # Récupérer les modules selon le rôle
+    if user.role == 'ADMIN':
+        modules = Module.objects.filter(
+            niveau__filiere__etablissement=user.etablissement
+        ).select_related('niveau__filiere__departement', 'coordinateur')
+    elif user.role == 'CHEF_DEPARTEMENT':
+        modules = Module.objects.filter(
+            niveau__filiere__departement=user.departement
+        ).select_related('niveau__filiere__departement', 'coordinateur')
+    else:
+        return HttpResponse("Permission refusée", status=403)
 
-    if not has_access:
-        messages.error(request, "Vous n'avez pas accès au streaming de ce cours.")
-        return redirect('courses:cours_detail', pk=cours.pk)
+    # Créer la réponse CSV
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="modules.csv"'
+    response.write('\ufeff')  # BOM UTF-8
 
-    return render(request, 'courses/streaming/view.html', {
-        'cours': cours
-    })
+    writer = csv.writer(response)
+    writer.writerow([
+        'Code', 'Nom', 'Département', 'Filière', 'Niveau',
+        'Coordinateur', 'Volume horaire', 'Crédits ECTS', 'Statut'
+    ])
 
+    for module in modules:
+        writer.writerow([
+            smart_str(module.code),
+            smart_str(module.nom),
+            smart_str(module.niveau.filiere.departement.nom if module.niveau.filiere.departement else ''),
+            smart_str(module.niveau.filiere.nom),
+            smart_str(module.niveau.nom),
+            smart_str(module.coordinateur.get_full_name() if module.coordinateur else ''),
+            module.volume_horaire_total,
+            module.credits_ects,
+            'Actif' if module.actif else 'Inactif'
+        ])
 
-# ============== DASHBOARD ET STATISTIQUES ==============
-
-@login_required
-def dashboard_enseignant(request):
-    """Dashboard pour les enseignants"""
-    if request.user.role != 'ENSEIGNANT':
-        return redirect('accounts:dashboard')
-
-    # Cours du jour
-    aujourd_hui = timezone.now().date()
-    cours_aujourd_hui = Cours.objects.filter(
-        enseignant=request.user,
-        date_prevue=aujourd_hui
-    ).select_related('classe', 'matiere_module__matiere').order_by('heure_debut_prevue')
-
-    # Cours de la semaine
-    debut_semaine = aujourd_hui - timedelta(days=aujourd_hui.weekday())
-    fin_semaine = debut_semaine + timedelta(days=6)
-    cours_semaine = Cours.objects.filter(
-        enseignant=request.user,
-        date_prevue__range=[debut_semaine, fin_semaine]
-    ).count()
-
-    # Présences à valider
-    presences_a_valider = Presence.objects.filter(
-        cours__enseignant=request.user,
-        valide=False,
-        statut__in=['EXCUSED', 'JUSTIFIED']
-    ).count()
-
-    # Cahiers de texte non remplis
-    cours_sans_cahier = Cours.objects.filter(
-        enseignant=request.user,
-        date_prevue__lt=aujourd_hui,
-        cahier_texte__isnull=True
-    ).count()
-
-    context = {
-        'cours_aujourd_hui': cours_aujourd_hui,
-        'cours_semaine': cours_semaine,
-        'presences_a_valider': presences_a_valider,
-        'cours_sans_cahier': cours_sans_cahier,
-    }
-
-    return render(request, 'courses/dashboard/enseignant.html', context)
-
+    return response
 
 @login_required
-def dashboard_etudiant(request):
-    """Dashboard pour les étudiants"""
-    if request.user.role != 'APPRENANT':
-        return redirect('accounts:dashboard')
+def export_matieres(request):
+    """Exporter la liste des matières en CSV"""
+    import csv
+    from django.utils.encoding import smart_str
 
-    # Récupérer les classes de l'étudiant
-    classes = request.user.inscriptions.all().values_list('classe', flat=True)
+    user = request.user
 
-    # Cours du jour
-    aujourd_hui = timezone.now().date()
-    cours_aujourd_hui = Cours.objects.filter(
-        classe__in=classes,
-        date_prevue=aujourd_hui
-    ).select_related('matiere_module__matiere', 'enseignant').order_by('heure_debut_prevue')
+    # Récupérer les matières selon le rôle
+    if user.role == 'ADMIN':
+        matieres = Matiere.objects.filter(
+            niveau__filiere__etablissement=user.etablissement
+        ).select_related('niveau__filiere', 'module', 'enseignant_responsable')
+    elif user.role == 'CHEF_DEPARTEMENT':
+        matieres = Matiere.objects.filter(
+            niveau__filiere__departement=user.departement
+        ).select_related('niveau__filiere', 'module', 'enseignant_responsable')
+    else:
+        return HttpResponse("Permission refusée", status=403)
 
-    # Emplois du temps actuels
-    emplois_du_temps = EmploiDuTemps.objects.filter(
-        classe__in=classes,
-        actuel=True,
-        publie=True
-    )
+    # Créer la réponse CSV
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="matieres.csv"'
+    response.write('\ufeff')  # BOM UTF-8
 
-    # Ressources récentes
-    ressources_recentes = Ressource.objects.filter(
-        cours__classe__in=classes,
-        public=True
-    ).order_by('-created_at')[:5]
+    writer = csv.writer(response)
+    writer.writerow([
+        'Code', 'Nom', 'Filière', 'Niveau', 'Module',
+        'Enseignant responsable', 'CM', 'TD', 'TP', 'Volume total',
+        'Coefficient', 'Crédits ECTS', 'Statut'
+    ])
 
-    # Statistiques de présence de l'étudiant
-    total_cours = Presence.objects.filter(etudiant=request.user).count()
-    presences = Presence.objects.filter(etudiant=request.user, statut='PRESENT').count()
-    taux_presence = (presences / total_cours * 100) if total_cours > 0 else 0
+    for matiere in matieres:
+        writer.writerow([
+            smart_str(matiere.code),
+            smart_str(matiere.nom),
+            smart_str(matiere.niveau.filiere.nom),
+            smart_str(matiere.niveau.nom),
+            smart_str(matiere.module.nom if matiere.module else ''),
+            smart_str(matiere.enseignant_responsable.get_full_name() if matiere.enseignant_responsable else ''),
+            matiere.heures_cours_magistral,
+            matiere.heures_travaux_diriges,
+            matiere.heures_travaux_pratiques,
+            matiere.volume_horaire_total,
+            matiere.coefficient,
+            matiere.credits_ects,
+            'Active' if matiere.actif else 'Inactive'
+        ])
 
-    context = {
-        'cours_aujourd_hui': cours_aujourd_hui,
-        'emplois_du_temps': emplois_du_temps,
-        'ressources_recentes': ressources_recentes,
-        'taux_presence': taux_presence,
-        'total_cours': total_cours,
-    }
+    return response
 
-    return render(request, 'courses/dashboard/etudiant.html', context)
+@login_required
+def export_cours(request):
+    """Exporter la liste des cours en CSV"""
+    import csv
+    from django.utils.encoding import smart_str
+
+    user = request.user
+
+    # Récupérer les cours selon le rôle
+    if user.role == 'ADMIN':
+        cours_list = Cours.objects.filter(
+            classe__etablissement=user.etablissement
+        ).select_related('matiere', 'classe', 'enseignant', 'salle')
+    elif user.role == 'CHEF_DEPARTEMENT':
+        cours_list = Cours.objects.filter(
+            matiere__niveau__filiere__departement=user.departement
+        ).select_related('matiere', 'classe', 'enseignant', 'salle')
+    elif user.role == 'ENSEIGNANT':
+        cours_list = Cours.objects.filter(
+            enseignant=user
+        ).select_related('matiere', 'classe', 'salle')
+    else:
+        return HttpResponse("Permission refusée", status=403)
+
+    # Créer la réponse CSV
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="cours.csv"'
+    response.write('\ufeff')  # BOM UTF-8
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Date', 'Heure début', 'Heure fin', 'Matière', 'Type',
+        'Classe', 'Enseignant', 'Salle', 'Statut'
+    ])
+
+    for cours in cours_list:
+        writer.writerow([
+            cours.date_prevue.strftime('%d/%m/%Y'),
+            cours.heure_debut_prevue.strftime('%H:%M'),
+            cours.heure_fin_prevue.strftime('%H:%M'),
+            smart_str(cours.matiere.nom),
+            smart_str(cours.get_type_cours_display()),
+            smart_str(cours.classe.nom),
+            smart_str(cours.enseignant.get_full_name()),
+            smart_str(cours.salle.code if cours.salle else ''),
+            smart_str(cours.get_statut_display())
+        ])
+
+    return response
+    kwargs
+
+    def form_valid(self, form):
+        messages.success(self.request, "Module créé avec succès !")
+        return super().form_valid(form)

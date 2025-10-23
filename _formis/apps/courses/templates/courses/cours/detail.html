@@ -1,1 +1,729 @@
-{% extends 'base/dashboard_base.html' %} 
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{{ cours.titre }} - Détails{% endblock %}
+
+{% block content %}
+<div class="cours-detail">
+    <!-- Header -->
+    <div class="detail-header">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <a href="{% url 'dashboard:admin' %}">Dashboard</a>
+                <i class="fas fa-chevron-right"></i>
+                <a href="{{ cancel_url }}">Cours</a>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">{{ cours.titre }}</span>
+            </div>
+            <div class="header-title">
+                <div class="title-with-color">
+                    <div class="cours-color" style="background-color: {{ cours.matiere.couleur }}"></div>
+                    <h1>{{ cours.titre }}</h1>
+                </div>
+                <div class="header-badges">
+                    <span class="type-badge {{ cours.type_cours|lower }}">{{ cours.get_type_cours_display }}</span>
+                    <span class="status-badge {{ cours.statut|lower }}">{{ cours.get_statut_display }}</span>
+                    {% if cours.cours_en_ligne %}
+                        <span class="online-badge"><i class="fas fa-video"></i> En ligne</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="header-actions">
+            {% if user == cours.enseignant %}
+                {% if cours.statut == 'PROGRAMME' %}
+                    <button class="btn btn-sm btn-success" onclick="startCours('{{ cours.id }}')">
+                        <i class="fas fa-play"></i> Démarrer
+                    </button>
+                {% elif cours.statut == 'EN_COURS' %}
+                    <button class="btn btn-sm btn-warning" onclick="endCours('{{ cours.id }}')">
+                        <i class="fas fa-stop"></i> Terminer
+                    </button>
+                {% endif %}
+            {% endif %}
+            <a href="{% url 'courses:cours_edit' cours.id %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-edit"></i> Modifier
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e3f2fd;">
+                <i class="fas fa-calendar" style="color: #1976d2;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ cours.date_prevue|date:"d/m/Y" }}</div>
+                <div class="stat-label">Date prévue</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e8f5e9;">
+                <i class="fas fa-clock" style="color: #2e7d32;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ cours.duree_prevue }} min</div>
+                <div class="stat-label">Durée</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #fff3e0;">
+                <i class="fas fa-folder-open" style="color: #e65100;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ cours.ressources.count }}</div>
+                <div class="stat-label">Ressources</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="detail-grid">
+        <!-- Informations générales -->
+        <div class="detail-section">
+            <div class="section-header">
+                <h3><i class="fas fa-info-circle"></i> Informations générales</h3>
+            </div>
+            <div class="section-content">
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-book"></i> Matière</span>
+                    <span class="info-value">{{ cours.matiere.nom }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-users"></i> Classe</span>
+                    <span class="info-value">{{ cours.classe.nom }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-chalkboard-teacher"></i> Enseignant</span>
+                    <span class="info-value">{{ cours.enseignant.get_full_name }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-calendar-alt"></i> Période</span>
+                    <span class="info-value">{{ cours.periode_academique.nom }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Horaires et lieu -->
+        <div class="detail-section">
+            <div class="section-header">
+                <h3><i class="fas fa-map-marker-alt"></i> Horaires et lieu</h3>
+            </div>
+            <div class="section-content">
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-clock"></i> Horaire prévu</span>
+                    <span class="info-value">
+                        {{ cours.heure_debut_prevue|time:"H:i" }} - {{ cours.heure_fin_prevue|time:"H:i" }}
+                    </span>
+                </div>
+                {% if cours.date_effective %}
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-calendar-check"></i> Date effective</span>
+                    <span class="info-value">{{ cours.date_effective|date:"d/m/Y" }}</span>
+                </div>
+                {% endif %}
+                {% if cours.salle %}
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-door-open"></i> Salle</span>
+                    <span class="info-value">
+                        {{ cours.salle.code }} - {{ cours.salle.nom }}
+                        {% if cours.salle.capacite %}
+                            ({{ cours.salle.capacite }} places)
+                        {% endif %}
+                    </span>
+                </div>
+                {% endif %}
+                {% if cours.cours_en_ligne and cours.url_streaming %}
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-video"></i> Lien streaming</span>
+                    <span class="info-value">
+                        <a href="{% url 'courses:cours_streaming' cours.id %}" target="_blank" class="btn-link-sm">
+                            <i class="fas fa-external-link-alt"></i> Rejoindre
+                        </a>
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Description et objectifs -->
+    {% if cours.description or cours.objectifs %}
+    <div class="detail-section">
+        <div class="section-header">
+            <h3><i class="fas fa-book-open"></i> Contenu pédagogique</h3>
+        </div>
+        <div class="section-content">
+            {% if cours.description %}
+            <div class="content-block">
+                <h4>Description</h4>
+                <p>{{ cours.description }}</p>
+            </div>
+            {% endif %}
+            {% if cours.objectifs %}
+            <div class="content-block">
+                <h4>Objectifs</h4>
+                <p>{{ cours.objectifs }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Cahier de texte -->
+    {% if cours.cahier_texte %}
+    <div class="detail-section">
+        <div class="section-header">
+            <h3><i class="fas fa-pen"></i> Cahier de texte</h3>
+            <a href="{% url 'courses:cahier_texte_view' cours.id %}" class="btn-link">Voir détail</a>
+        </div>
+        <div class="section-content">
+            <div class="content-block">
+                <h4>Travail fait</h4>
+                <p>{{ cours.cahier_texte.travail_fait|truncatechars:200 }}</p>
+            </div>
+            {% if cours.cahier_texte.travail_donne %}
+            <div class="content-block">
+                <h4>Travail donné</h4>
+                <p>{{ cours.cahier_texte.travail_donne|truncatechars:200 }}</p>
+                {% if cours.cahier_texte.date_travail_pour %}
+                <small class="text-muted">Pour le {{ cours.cahier_texte.date_travail_pour|date:"d/m/Y" }}</small>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    {% if user == cours.enseignant %}
+    <div class="detail-section empty-section">
+        <div class="section-content">
+            <div class="empty-state-small">
+                <i class="fas fa-pen fa-2x"></i>
+                <p>Aucun cahier de texte rempli</p>
+                <a href="{% url 'courses:cahier_texte_edit' cours.id %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-plus"></i> Remplir le cahier de texte
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Ressources -->
+    <div class="detail-section">
+        <div class="section-header">
+            <h3><i class="fas fa-folder-open"></i> Ressources ({{ cours.ressources.count }})</h3>
+            {% if user == cours.enseignant %}
+            <a href="{% url 'courses:ressource_create' cours.id %}" class="btn-link">
+                <i class="fas fa-plus"></i> Ajouter
+            </a>
+            {% endif %}
+        </div>
+        {% if cours.ressources.exists %}
+        <div class="ressources-list">
+            {% for ressource in cours.ressources.all %}
+            <div class="ressource-item">
+                <div class="ressource-icon {{ ressource.type_ressource|lower }}">
+                    {% if ressource.type_ressource == 'PDF' %}<i class="fas fa-file-pdf"></i>
+                    {% elif ressource.type_ressource == 'VIDEO' %}<i class="fas fa-video"></i>
+                    {% elif ressource.type_ressource == 'DOC' %}<i class="fas fa-file-word"></i>
+                    {% elif ressource.type_ressource == 'LINK' %}<i class="fas fa-link"></i>
+                    {% else %}<i class="fas fa-file"></i>{% endif %}
+                </div>
+                <div class="ressource-info">
+                    <h4>{{ ressource.titre }}</h4>
+                    <div class="ressource-meta">
+                        <span><i class="fas fa-eye"></i> {{ ressource.nombre_vues }}</span>
+                        <span><i class="fas fa-download"></i> {{ ressource.nombre_telechargements }}</span>
+                        {% if ressource.obligatoire %}
+                            <span class="badge-obligatoire">Obligatoire</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="ressource-actions">
+                    <a href="{% url 'courses:ressource_view' ressource.id %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-eye"></i> Voir
+                    </a>
+                    {% if ressource.telechargeable %}
+                    <a href="{% url 'courses:ressource_download' ressource.id %}" class="btn btn-sm btn-success">
+                        <i class="fas fa-download"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="section-content">
+            <div class="empty-state-small">
+                <i class="fas fa-folder-open fa-2x"></i>
+                <p>Aucune ressource disponible</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.cours-detail {
+    padding: 15px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.breadcrumb-nav {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav a {
+    color: #6b7280;
+    text-decoration: none;
+}
+
+.breadcrumb-nav a:hover {
+    color: #2563eb;
+}
+
+.breadcrumb-nav .current {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.header-title {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.title-with-color {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cours-color {
+    width: 6px;
+    height: 32px;
+    border-radius: 3px;
+}
+
+.header-title h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.header-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.type-badge, .status-badge, .online-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.type-badge.cm { background: #dbeafe; color: #1e40af; }
+.type-badge.td { background: #d1fae5; color: #065f46; }
+.type-badge.tp { background: #fed7aa; color: #92400e; }
+.type-badge.evaluation { background: #fce7f3; color: #9f1239; }
+
+.status-badge.programme { background: #e0e7ff; color: #3730a3; }
+.status-badge.en_cours { background: #fef3c7; color: #92400e; }
+.status-badge.termine { background: #d1fae5; color: #065f46; }
+.status-badge.annule { background: #fee2e2; color: #991b1b; }
+
+.online-badge {
+    background: #e0e7ff;
+    color: #4338ca;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.detail-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.detail-section.empty-section {
+    grid-column: 1 / -1;
+}
+
+.section-header {
+    padding: 15px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-link, .btn-link-sm {
+    font-size: 13px;
+    color: #2563eb;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-link:hover, .btn-link-sm:hover {
+    text-decoration: underline;
+}
+
+.section-content {
+    padding: 15px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.info-label i {
+    width: 14px;
+    color: #9ca3af;
+}
+
+.info-value {
+    font-size: 13px;
+    color: #1f2937;
+    text-align: right;
+}
+
+.content-block {
+    margin-bottom: 15px;
+}
+
+.content-block:last-child {
+    margin-bottom: 0;
+}
+
+.content-block h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.content-block p {
+    margin: 0;
+    font-size: 13px;
+    color: #4b5563;
+    line-height: 1.6;
+}
+
+.text-muted {
+    color: #6b7280;
+    font-size: 12px;
+    font-style: italic;
+}
+
+.empty-state-small {
+    text-align: center;
+    padding: 30px 20px;
+}
+
+.empty-state-small i {
+    color: #d1d5db;
+    margin-bottom: 10px;
+}
+
+.empty-state-small p {
+    margin: 0 0 15px 0;
+    color: #6b7280;
+}
+
+.ressources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+}
+
+.ressource-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+}
+
+.ressource-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.ressource-icon.pdf { background: #ef4444; }
+.ressource-icon.video { background: #8b5cf6; }
+.ressource-icon.doc { background: #3b82f6; }
+.ressource-icon.link { background: #10b981; }
+.ressource-icon.image { background: #f59e0b; }
+
+.ressource-info {
+    flex: 1;
+}
+
+.ressource-info h4 {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.ressource-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.ressource-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.badge-obligatoire {
+    padding: 2px 6px;
+    background: #fee2e2;
+    color: #991b1b;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.ressource-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 11px;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+}
+
+@media (max-width: 768px) {
+    .detail-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ressource-item {
+        flex-wrap: wrap;
+    }
+}
+</style>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function startCours(coursId) {
+    if (confirm('Démarrer ce cours maintenant ?')) {
+        fetch(`/courses/cours/${coursId}/start/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || 'Erreur');
+            }
+        })
+        .catch(() => alert('Erreur de connexion'));
+    }
+}
+
+function endCours(coursId) {
+    if (confirm('Terminer ce cours ?')) {
+        fetch(`/courses/cours/${coursId}/end/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || 'Erreur');
+            }
+        })
+        .catch(() => alert('Erreur de connexion'));
+    }
+}
+</script>
+{% endblock %}

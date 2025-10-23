@@ -1,0 +1,316 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{% if evaluation %}Modifier{% else %}Créer{% endif %} une Évaluation{% endblock %}
+
+{% block content %}
+<div class="evaluation-form-container">
+    <div class="form-header">
+        <div class="breadcrumb-nav">
+            <a href="{% url 'evaluations:list_enseignant' %}">Évaluations</a>
+            <i class="fas fa-chevron-right"></i>
+            <span class="current">{% if evaluation %}Modifier{% else %}Nouvelle{% endif %}</span>
+        </div>
+        <h1>{% if evaluation %}Modifier l'évaluation{% else %}Créer une nouvelle évaluation{% endif %}</h1>
+    </div>
+
+    <div class="form-card">
+        <form method="post" enctype="multipart/form-data" id="evaluationForm">
+            {% csrf_token %}
+
+            <!-- Informations générales -->
+            <div class="form-section">
+                <h3><i class="fas fa-info-circle"></i> Informations générales</h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="required">Matière</label>
+                        <select name="matiere" id="matiereSelect" class="form-select" required>
+                            <option value="">Sélectionner une matière</option>
+                            {% for matiere in matieres %}
+                                <option value="{{ matiere.id }}"
+                                        data-coefficient="{{ matiere.coefficient }}"
+                                        data-restant="{{ matiere.coefficient_restant }}"
+                                        {% if evaluation and evaluation.matiere.id == matiere.id %}selected{% endif %}>
+                                    {{ matiere.nom }} (Coef: {{ matiere.coefficient }}, Restant: {{ matiere.coefficient_restant }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div id="coefficientInfo" class="form-text" style="display: none;">
+                            Coefficient disponible: <strong id="coeffRestant">0</strong>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="required">Type d'évaluation</label>
+                        <select name="type_evaluation" class="form-select" required>
+                            {% for key, label in types_evaluation %}
+                                <option value="{{ key }}" {% if evaluation and evaluation.type_evaluation == key %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="required">Titre</label>
+                    <input type="text" name="titre" class="form-control"
+                           value="{% if evaluation %}{{ evaluation.titre }}{% endif %}"
+                           placeholder="Ex: Devoir de contrôle n°1" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" class="form-control" rows="3"
+                              placeholder="Décrivez les chapitres ou sujets concernés">{% if evaluation %}{{ evaluation.description }}{% endif %}</textarea>
+                </div>
+            </div>
+
+            <!-- Notation -->
+            <div class="form-section">
+                <h3><i class="fas fa-calculator"></i> Notation</h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="required">Coefficient</label>
+                        <input type="number" name="coefficient" id="coefficientInput"
+                               class="form-control" step="0.5" min="0.5"
+                               value="{% if evaluation %}{{ evaluation.coefficient }}{% else %}1.0{% endif %}"
+                               required>
+                        <small class="form-text">Doit respecter le coefficient total de la matière</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="required">Note maximale</label>
+                        <input type="number" name="note_maximale" class="form-control"
+                               step="0.5" min="1"
+                               value="{% if evaluation %}{{ evaluation.note_maximale }}{% else %}20{% endif %}"
+                               required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Planification -->
+            <div class="form-section">
+                <h3><i class="fas fa-calendar-alt"></i> Planification</h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="required">Date et heure de début</label>
+                        <input type="datetime-local" name="date_debut" class="form-control"
+                               value="{% if evaluation %}{{ evaluation.date_debut|date:'Y-m-d\TH:i' }}{% endif %}"
+                               required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="required">Date et heure de fin</label>
+                        <input type="datetime-local" name="date_fin" class="form-control"
+                               value="{% if evaluation %}{{ evaluation.date_fin|date:'Y-m-d\TH:i' }}{% endif %}"
+                               required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Durée (minutes)</label>
+                        <input type="number" name="duree_minutes" class="form-control"
+                               value="{% if evaluation %}{{ evaluation.duree_minutes }}{% endif %}"
+                               placeholder="Ex: 120">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Classes concernées -->
+            <div class="form-section">
+                <h3><i class="fas fa-users"></i> Classes concernées</h3>
+
+                <div class="classes-grid">
+                    {% for classe in classes %}
+                        <div class="checkbox-card">
+                            <input type="checkbox" name="classes" value="{{ classe.id }}"
+                                   id="classe_{{ classe.id }}"
+                                   {% if evaluation and classe in evaluation.classes.all %}checked{% endif %}>
+                            <label for="classe_{{ classe.id }}">
+                                <strong>{{ classe.nom }}</strong>
+                                <small>{{ classe.niveau.nom }}</small>
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Fichiers -->
+            <div class="form-section">
+                <h3><i class="fas fa-file-upload"></i> Documents</h3>
+
+                <div class="form-group">
+                    <label>Fichier d'évaluation (sujet)</label>
+                    <input type="file" name="fichier_evaluation" class="form-control"
+                           accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png">
+                    {% if evaluation and evaluation.fichier_evaluation %}
+                        <div class="current-file">
+                            <i class="fas fa-file-pdf"></i>
+                            <a href="{% url 'evaluations:voir_fichier' 'evaluation' evaluation.id %}" target="_blank">
+                                Voir le fichier actuel
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Paramètres -->
+            <div class="form-section">
+                <h3><i class="fas fa-cog"></i> Paramètres</h3>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" name="correction_visible_immediatement"
+                               id="correctionVisible"
+                               {% if evaluation and evaluation.correction_visible_immediatement %}checked{% endif %}>
+                        <label for="correctionVisible">
+                            Correction visible immédiatement après l'évaluation
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" name="autorise_retard" id="autoriseRetard"
+                               {% if evaluation and evaluation.autorise_retard %}checked{% endif %}>
+                        <label for="autoriseRetard">
+                            Autoriser les soumissions en retard
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="penaliteGroup" style="display: none;">
+                    <label>Pénalité de retard (%)</label>
+                    <input type="number" name="penalite_retard" class="form-control"
+                           step="5" min="0" max="100"
+                           value="{% if evaluation %}{{ evaluation.penalite_retard }}{% else %}0{% endif %}">
+                </div>
+
+                <div class="form-group">
+                    <label class="required">Statut</label>
+                    <select name="statut" class="form-select" required>
+                        <option value="BROUILLON" {% if not evaluation or evaluation.statut == 'BROUILLON' %}selected{% endif %}>Brouillon</option>
+                        <option value="PROGRAMMEE" {% if evaluation and evaluation.statut == 'PROGRAMMEE' %}selected{% endif %}>Programmée</option>
+                        <option value="EN_COURS" {% if evaluation and evaluation.statut == 'EN_COURS' %}selected{% endif %}>En cours</option>
+                        <option value="TERMINEE" {% if evaluation and evaluation.statut == 'TERMINEE' %}selected{% endif %}>Terminée</option>
+                        <option value="ANNULEE" {% if evaluation and evaluation.statut == 'ANNULEE' %}selected{% endif %}>Annulée</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="form-actions">
+                <a href="{% url 'evaluations:list_enseignant' %}" class="btn btn-outline">
+                    <i class="fas fa-times"></i> Annuler
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> {% if evaluation %}Enregistrer{% else %}Créer l'évaluation{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.evaluation-form-container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+.form-header { margin-bottom: 20px; }
+.breadcrumb-nav { font-size: 12px; color: #6b7280; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+.breadcrumb-nav a { color: #2563eb; text-decoration: none; }
+.breadcrumb-nav .current { color: #1f2937; font-weight: 500; }
+.form-header h1 { margin: 0; font-size: 22px; font-weight: 600; color: #1f2937; }
+.form-card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 30px; }
+.form-section { margin-bottom: 30px; padding-bottom: 30px; border-bottom: 1px solid #e5e7eb; }
+.form-section:last-of-type { border-bottom: none; }
+.form-section h3 { font-size: 16px; font-weight: 600; color: #1f2937; margin: 0 0 20px 0; display: flex; align-items: center; gap: 8px; }
+.form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; font-weight: 500; color: #374151; margin-bottom: 6px; font-size: 14px; }
+.form-group label.required::after { content: "*"; color: #ef4444; margin-left: 4px; }
+.form-control, .form-select { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+.form-control:focus, .form-select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+textarea.form-control { min-height: 80px; resize: vertical; }
+.form-text { display: block; margin-top: 4px; font-size: 12px; color: #6b7280; }
+.classes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.checkbox-card { border: 2px solid #e5e7eb; border-radius: 8px; padding: 12px; transition: all 0.2s; cursor: pointer; }
+.checkbox-card:hover { border-color: #2563eb; background: #f3f4f6; }
+.checkbox-card input[type="checkbox"] { margin-right: 8px; }
+.checkbox-card input[type="checkbox"]:checked + label { color: #2563eb; font-weight: 600; }
+.checkbox-card label { cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.checkbox-card strong { font-size: 14px; }
+.checkbox-card small { font-size: 12px; color: #6b7280; }
+.checkbox-group { display: flex; align-items: center; gap: 8px; padding: 10px; background: #f9fafb; border-radius: 6px; }
+.checkbox-group input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+.checkbox-group label { margin: 0; cursor: pointer; font-weight: normal; }
+.current-file { margin-top: 8px; padding: 8px; background: #f3f4f6; border-radius: 6px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.current-file a { color: #2563eb; text-decoration: none; }
+.form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+.btn { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s; text-decoration: none; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-outline { background: white; border: 1px solid #d1d5db; color: #374151; }
+.btn-outline:hover { background: #f3f4f6; }
+
+@media (max-width: 768px) {
+    .form-card { padding: 20px; }
+    .form-row { grid-template-columns: 1fr; }
+    .classes-grid { grid-template-columns: 1fr; }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const matiereSelect = document.getElementById('matiereSelect');
+    const coefficientInput = document.getElementById('coefficientInput');
+    const coefficientInfo = document.getElementById('coefficientInfo');
+    const coeffRestant = document.getElementById('coeffRestant');
+    const autoriseRetard = document.getElementById('autoriseRetard');
+    const penaliteGroup = document.getElementById('penaliteGroup');
+
+    // Gestion du coefficient
+    matiereSelect.addEventListener('change', function() {
+        const option = this.options[this.selectedIndex];
+        const restant = option.dataset.restant;
+
+        if (restant !== undefined) {
+            coeffRestant.textContent = restant;
+            coefficientInfo.style.display = 'block';
+            coefficientInput.max = restant;
+
+            if (parseFloat(coefficientInput.value) > parseFloat(restant)) {
+                coefficientInput.value = restant;
+            }
+        } else {
+            coefficientInfo.style.display = 'none';
+        }
+    });
+
+    // Trigger au chargement
+    if (matiereSelect.value) {
+        matiereSelect.dispatchEvent(new Event('change'));
+    }
+
+    // Vérification du coefficient à la saisie
+    coefficientInput.addEventListener('change', function() {
+        const max = parseFloat(this.max);
+        const val = parseFloat(this.value);
+
+        if (max && val > max) {
+            alert(`Le coefficient ne peut pas dépasser ${max}`);
+            this.value = max;
+        }
+    });
+
+    // Gestion pénalité retard
+    autoriseRetard.addEventListener('change', function() {
+        penaliteGroup.style.display = this.checked ? 'block' : 'none';
+    });
+
+    if (autoriseRetard.checked) {
+        penaliteGroup.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}

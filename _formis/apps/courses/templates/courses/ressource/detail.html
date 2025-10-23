@@ -1,0 +1,610 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{{ ressource.titre }} - Ressource{% endblock %}
+
+{% block content %}
+<div class="ressource-detail">
+    <!-- Header -->
+    <div class="detail-header">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <a href="{% url 'dashboard:admin' %}">Dashboard</a>
+                <i class="fas fa-chevron-right"></i>
+                <a href="{% url 'courses:cours_detail' ressource.cours.id %}">{{ ressource.cours.titre|truncatechars:30 }}</a>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">{{ ressource.titre }}</span>
+            </div>
+            <div class="header-title">
+                <div class="title-with-icon">
+                    <div class="ressource-icon {{ ressource.type_ressource|lower }}">
+                        {% if ressource.type_ressource == 'PDF' %}<i class="fas fa-file-pdf"></i>
+                        {% elif ressource.type_ressource == 'VIDEO' %}<i class="fas fa-video"></i>
+                        {% elif ressource.type_ressource == 'DOC' %}<i class="fas fa-file-word"></i>
+                        {% elif ressource.type_ressource == 'PPT' %}<i class="fas fa-file-powerpoint"></i>
+                        {% elif ressource.type_ressource == 'AUDIO' %}<i class="fas fa-file-audio"></i>
+                        {% elif ressource.type_ressource == 'IMAGE' %}<i class="fas fa-file-image"></i>
+                        {% elif ressource.type_ressource == 'LINK' %}<i class="fas fa-link"></i>
+                        {% else %}<i class="fas fa-file"></i>{% endif %}
+                    </div>
+                    <div>
+                        <h1>{{ ressource.titre }}</h1>
+                        <p class="subtitle">{{ ressource.get_type_ressource_display }}</p>
+                    </div>
+                </div>
+                <div class="header-badges">
+                    {% if ressource.obligatoire %}
+                        <span class="badge-obligatoire"><i class="fas fa-exclamation-circle"></i> Obligatoire</span>
+                    {% endif %}
+                    {% if ressource.public %}
+                        <span class="badge-public"><i class="fas fa-globe"></i> Public</span>
+                    {% endif %}
+                    {% if ressource.telechargeable %}
+                        <span class="badge-download"><i class="fas fa-download"></i> Téléchargeable</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="header-actions">
+            {% if user == ressource.cours.enseignant or user.role == 'ADMIN' %}
+                <a href="{% url 'courses:ressource_edit' ressource.id %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-edit"></i> Modifier
+                </a>
+            {% endif %}
+            {% if ressource.telechargeable and (ressource.fichier or ressource.url) %}
+                <a href="{% url 'courses:ressource_download' ressource.id %}" class="btn btn-sm btn-success">
+                    <i class="fas fa-download"></i> Télécharger
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e3f2fd;">
+                <i class="fas fa-eye" style="color: #1976d2;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ ressource.nombre_vues }}</div>
+                <div class="stat-label">Vues</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e8f5e9;">
+                <i class="fas fa-download" style="color: #2e7d32;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ ressource.nombre_telechargements }}</div>
+                <div class="stat-label">Téléchargements</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #fff3e0;">
+                <i class="fas fa-hdd" style="color: #e65100;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ ressource.get_taille_fichier_display }}</div>
+                <div class="stat-label">Taille</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="detail-grid">
+        <!-- Informations générales -->
+        <div class="detail-section">
+            <div class="section-header">
+                <h3><i class="fas fa-info-circle"></i> Informations</h3>
+            </div>
+            <div class="section-content">
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-book"></i> Cours</span>
+                    <span class="info-value">{{ ressource.cours.titre }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-tag"></i> Type</span>
+                    <span class="info-value">{{ ressource.get_type_ressource_display }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-calendar-plus"></i> Ajouté le</span>
+                    <span class="info-value">{{ ressource.created_at|date:"d/m/Y à H:i" }}</span>
+                </div>
+                {% if ressource.updated_at != ressource.created_at %}
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-clock"></i> Modifié le</span>
+                    <span class="info-value">{{ ressource.updated_at|date:"d/m/Y à H:i" }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Disponibilité -->
+        <div class="detail-section">
+            <div class="section-header">
+                <h3><i class="fas fa-calendar-alt"></i> Disponibilité</h3>
+            </div>
+            <div class="section-content">
+                {% if ressource.disponible_a_partir_de %}
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-calendar-check"></i> Disponible dès</span>
+                    <span class="info-value">{{ ressource.disponible_a_partir_de|date:"d/m/Y à H:i" }}</span>
+                </div>
+                {% else %}
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-calendar-check"></i> Disponible</span>
+                    <span class="info-value">Immédiatement</span>
+                </div>
+                {% endif %}
+
+                {% if ressource.disponible_jusqua %}
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-calendar-times"></i> Jusqu'au</span>
+                    <span class="info-value">{{ ressource.disponible_jusqua|date:"d/m/Y à H:i" }}</span>
+                </div>
+                {% else %}
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-infinity"></i> Durée</span>
+                    <span class="info-value">Illimitée</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Description -->
+    {% if ressource.description %}
+    <div class="detail-section">
+        <div class="section-header">
+            <h3><i class="fas fa-align-left"></i> Description</h3>
+        </div>
+        <div class="section-content">
+            <p class="description-text">{{ ressource.description }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Viewer / Preview -->
+    <div class="detail-section viewer-section">
+        <div class="section-header">
+            <h3><i class="fas fa-eye"></i> Aperçu</h3>
+        </div>
+        <div class="section-content">
+            {% if ressource.type_ressource == 'LINK' and ressource.url %}
+                <div class="link-preview">
+                    <i class="fas fa-external-link-alt fa-3x"></i>
+                    <h4>Lien externe</h4>
+                    <a href="{{ ressource.url }}" target="_blank" class="btn btn-primary">
+                        <i class="fas fa-link"></i> Ouvrir le lien
+                    </a>
+                </div>
+            {% elif ressource.fichier %}
+                <div class="file-viewer">
+                    {% if ressource.type_ressource == 'PDF' %}
+                        <iframe src="{{ ressource.fichier.url }}" class="pdf-viewer"></iframe>
+                    {% elif ressource.type_ressource == 'IMAGE' %}
+                        <img src="{{ ressource.fichier.url }}" alt="{{ ressource.titre }}" class="image-viewer">
+                    {% elif ressource.type_ressource == 'VIDEO' %}
+                        <video controls class="video-viewer">
+                            <source src="{{ ressource.fichier.url }}" type="video/mp4">
+                            Votre navigateur ne supporte pas la lecture de vidéos.
+                        </video>
+                    {% elif ressource.type_ressource == 'AUDIO' %}
+                        <audio controls class="audio-viewer">
+                            <source src="{{ ressource.fichier.url }}">
+                            Votre navigateur ne supporte pas la lecture audio.
+                        </audio>
+                    {% else %}
+                        <div class="file-preview">
+                            <i class="fas fa-file fa-3x"></i>
+                            <h4>{{ ressource.fichier.name|basename }}</h4>
+                            <p>{{ ressource.get_taille_fichier_display }}</p>
+                            {% if ressource.telechargeable %}
+                            <a href="{% url 'courses:ressource_download' ressource.id %}" class="btn btn-primary">
+                                <i class="fas fa-download"></i> Télécharger
+                            </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="no-content">
+                    <i class="fas fa-ban fa-3x"></i>
+                    <p>Aucun contenu disponible</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.ressource-detail {
+    padding: 15px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.breadcrumb-nav {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav a {
+    color: #6b7280;
+    text-decoration: none;
+}
+
+.breadcrumb-nav a:hover {
+    color: #2563eb;
+}
+
+.breadcrumb-nav .current {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.header-title {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.title-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.ressource-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.ressource-icon.pdf { background: #ef4444; }
+.ressource-icon.video { background: #8b5cf6; }
+.ressource-icon.doc { background: #3b82f6; }
+.ressource-icon.ppt { background: #f97316; }
+.ressource-icon.audio { background: #10b981; }
+.ressource-icon.image { background: #f59e0b; }
+.ressource-icon.link { background: #06b6d4; }
+.ressource-icon.other { background: #6b7280; }
+
+.header-title h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.subtitle {
+    margin: 4px 0 0 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.header-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.badge-obligatoire,
+.badge-public,
+.badge-download {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.badge-obligatoire {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-public {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-download {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.detail-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.detail-section.viewer-section {
+    grid-column: 1 / -1;
+}
+
+.section-header {
+    padding: 15px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9fafb;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-content {
+    padding: 15px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.info-label i {
+    width: 14px;
+    color: #9ca3af;
+}
+
+.info-value {
+    font-size: 13px;
+    color: #1f2937;
+    text-align: right;
+}
+
+.description-text {
+    margin: 0;
+    font-size: 14px;
+    color: #4b5563;
+    line-height: 1.6;
+}
+
+.file-viewer {
+    width: 100%;
+    min-height: 600px;
+    background: #f3f4f6;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.pdf-viewer {
+    width: 100%;
+    height: 800px;
+    border: none;
+}
+
+.image-viewer {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 6px;
+}
+
+.video-viewer {
+    width: 100%;
+    max-height: 600px;
+    border-radius: 6px;
+}
+
+.audio-viewer {
+    width: 100%;
+    margin: 20px 0;
+}
+
+.link-preview,
+.file-preview,
+.no-content {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.link-preview i,
+.file-preview i,
+.no-content i {
+    color: #d1d5db;
+    margin-bottom: 20px;
+}
+
+.link-preview h4,
+.file-preview h4 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+    color: #1f2937;
+}
+
+.file-preview p {
+    margin: 0 0 20px 0;
+    color: #6b7280;
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+    .detail-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .title-with-icon {
+        flex-direction: row;
+    }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pdf-viewer {
+        height: 400px;
+    }
+}
+</style>
+
+<script>
+// Incrémenter le compteur de vues
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('{% url "courses:ressource_increment_views" ressource.id %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    });
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

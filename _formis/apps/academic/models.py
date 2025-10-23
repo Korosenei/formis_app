@@ -340,4 +340,3 @@ class Programme(BaseModel):
 
     def __str__(self):
         return f"Programme {self.filiere.nom}"
-

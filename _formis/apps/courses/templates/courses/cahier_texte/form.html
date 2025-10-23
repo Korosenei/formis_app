@@ -1,74 +1,379 @@
-{% extends 'base/dashboard_base.html' %} 
+{% extends 'base/dashboard_base.html' %}
 {% load static %}
 
-{% block title %}
-{% if cahier_texte %}Modifier le cahier de texte{% else %}Nouveau cahier de texte{% endif %}
-{% endblock %}
+{% block page_title %}Cahier de Texte - {{ cours.titre }}{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="mb-0">
-                        <i class="fas fa-book me-2"></i>
-                        Cahier de texte - {{ cours.titre }}
-                    </h4>
-                    <small class="text-muted">{{ cours.classe.nom }} - {{ cours.date_prevue|date:"d/m/Y" }}</small>
-                </div>
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
-                        
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">{{ form.travail_fait.label }}</label>
-                            {{ form.travail_fait }}
-                            {% if form.travail_fait.errors %}
-                            <div class="text-danger">{{ form.travail_fait.errors }}</div>
-                            {% endif %}
-                            <div class="form-text">Décrivez le travail réalisé pendant cette séance</div>
-                        </div>
+<div class="form-container">
+    <!-- Header -->
+    <div class="form-header">
+        <div class="breadcrumb-nav">
+            <a href="{% url 'dashboard:admin' %}">Dashboard</a>
+            <i class="fas fa-chevron-right"></i>
+            <a href="{% url 'courses:cours_detail' cours.id %}">{{ cours.titre|truncatechars:30 }}</a>
+            <i class="fas fa-chevron-right"></i>
+            <span class="current">Cahier de texte</span>
+        </div>
+        <h1>Cahier de Texte</h1>
+        <p class="cours-info">
+            {{ cours.matiere.nom }} - {{ cours.classe.nom }} -
+            {{ cours.date_prevue|date:"d/m/Y" }} {{ cours.heure_debut_prevue|time:"H:i" }}
+        </p>
+    </div>
 
-                        <div class="mb-4">
-                            <label class="form-label">{{ form.travail_donne.label }}</label>
-                            {{ form.travail_donne }}
-                            {% if form.travail_donne.errors %}
-                            <div class="text-danger">{{ form.travail_donne.errors }}</div>
-                            {% endif %}
-                            <div class="form-text">Travail à faire pour la prochaine séance</div>
-                        </div>
+    <!-- Formulaire -->
+    <div class="form-card">
+        <form method="POST" class="modern-form" id="cahierTexteForm">
+            {% csrf_token %}
 
-                        <div class="mb-4">
-                            <label class="form-label">{{ form.date_travail_pour.label }}</label>
-                            {{ form.date_travail_pour }}
-                            {% if form.date_travail_pour.errors %}
-                            <div class="text-danger">{{ form.date_travail_pour.errors }}</div>
-                            {% endif %}
-                            <div class="form-text">Date limite pour le travail donné</div>
-                        </div>
+            <!-- Section Travail fait -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-check-circle"></i>
+                    Travail fait en classe
+                </h3>
 
-                        <div class="mb-4">
-                            <label class="form-label">{{ form.observations.label }}</label>
-                            {{ form.observations }}
-                            {% if form.observations.errors %}
-                            <div class="text-danger">{{ form.observations.errors }}</div>
-                            {% endif %}
-                            <div class="form-text">Observations particulières sur la séance</div>
-                        </div>
-
-                        <div class="text-end">
-                            <a href="{% url 'courses:cours_detail' cours.pk %}" class="btn btn-secondary me-2">
-                                <i class="fas fa-times me-1"></i>Annuler
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-1"></i>Enregistrer
-                            </button>
-                        </div>
-                    </form>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="id_travail_fait" class="required">
+                            Contenu abordé et activités réalisées
+                        </label>
+                        <textarea name="travail_fait" id="id_travail_fait"
+                                  class="form-control" rows="6" required>{{ cahier.travail_fait|default:'' }}</textarea>
+                        <small class="form-text">
+                            Décrivez le travail effectué pendant le cours (notions abordées, exercices réalisés, etc.)
+                        </small>
+                    </div>
                 </div>
             </div>
-        </div>
+
+            <!-- Section Travail donné -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-tasks"></i>
+                    Travail donné aux étudiants
+                </h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="id_travail_donne">
+                            Devoirs, exercices et travaux à faire
+                        </label>
+                        <textarea name="travail_donne" id="id_travail_donne"
+                                  class="form-control" rows="6">{{ cahier.travail_donne|default:'' }}</textarea>
+                        <small class="form-text">
+                            Indiquez les devoirs, exercices ou lectures à faire pour le prochain cours
+                        </small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="id_date_travail_pour">
+                            Travail à faire pour le
+                        </label>
+                        <input type="date" name="date_travail_pour"
+                               id="id_date_travail_pour"
+                               class="form-control"
+                               value="{% if cahier and cahier.date_travail_pour %}{{ cahier.date_travail_pour|date:'Y-m-d' }}{% endif %}">
+                        <small class="form-text">
+                            Date limite pour rendre le travail demandé
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Observations -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-comment-alt"></i>
+                    Observations et remarques
+                </h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="id_observations">
+                            Observations sur le cours
+                        </label>
+                        <textarea name="observations" id="id_observations"
+                                  class="form-control" rows="4">{{ cahier.observations|default:'' }}</textarea>
+                        <small class="form-text">
+                            Remarques sur le déroulement du cours, la participation des étudiants, les difficultés rencontrées, etc.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="form-actions">
+                <a href="{% url 'courses:cours_detail' cours.id %}" class="btn btn-outline">
+                    <i class="fas fa-times"></i> Annuler
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Enregistrer
+                </button>
+            </div>
+        </form>
     </div>
 </div>
+
+<style>
+.form-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.form-header {
+    margin-bottom: 20px;
+}
+
+.breadcrumb-nav {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.breadcrumb-nav a {
+    color: #6b7280;
+    text-decoration: none;
+}
+
+.breadcrumb-nav a:hover {
+    color: #2563eb;
+}
+
+.breadcrumb-nav .current {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.form-header h1 {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.cours-info {
+    margin: 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.form-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 30px;
+}
+
+.modern-form {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.form-section {
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 25px;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-title i {
+    color: #2563eb;
+    font-size: 18px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-row:last-child {
+    margin-bottom: 0;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1f2937;
+    margin-bottom: 8px;
+}
+
+.form-group label.required::after {
+    content: " *";
+    color: #ef4444;
+}
+
+.form-control,
+.form-group input[type="date"],
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.3s;
+    font-family: inherit;
+}
+
+.form-group textarea {
+    resize: vertical;
+}
+
+.form-control:focus,
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-text {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.btn {
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    border: none;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.btn-outline {
+    background: white;
+    color: #1f2937;
+    border: 1px solid #d1d5db;
+}
+
+.btn-outline:hover {
+    background: #f3f4f6;
+}
+
+@media (max-width: 768px) {
+    .form-container {
+        padding: 15px;
+    }
+
+    .form-card {
+        padding: 20px;
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('cahierTexteForm');
+
+    // Validation
+    form.addEventListener('submit', function(e) {
+        const travailFait = document.getElementById('id_travail_fait').value.trim();
+
+        if (!travailFait) {
+            e.preventDefault();
+            alert('Le champ "Travail fait en classe" est obligatoire');
+            return false;
+        }
+
+        // Validation de la date si travail donné
+        const travailDonne = document.getElementById('id_travail_donne').value.trim();
+        const dateTravail = document.getElementById('id_date_travail_pour').value;
+
+        if (travailDonne && !dateTravail) {
+            const confirm = window.confirm(
+                'Vous avez indiqué un travail à faire mais pas de date limite. Continuer ?'
+            );
+            if (!confirm) {
+                e.preventDefault();
+                return false;
+            }
+        }
+    });
+
+    // Auto-save (optionnel)
+    let saveTimeout;
+    const textareas = document.querySelectorAll('textarea');
+
+    textareas.forEach(textarea => {
+        textarea.addEventListener('input', function() {
+            clearTimeout(saveTimeout);
+            // Afficher un indicateur "Modification non sauvegardée"
+            const indicator = document.createElement('span');
+            indicator.className = 'unsaved-indicator';
+            indicator.textContent = 'Non sauvegardé';
+            indicator.style.cssText = 'color: #f59e0b; font-size: 12px; margin-left: 10px;';
+
+            const existingIndicator = this.parentElement.querySelector('.unsaved-indicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+
+            this.parentElement.querySelector('label').appendChild(indicator);
+        });
+    });
+});
+</script>
 {% endblock %}

@@ -5,10 +5,12 @@ from django.forms import inlineformset_factory
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import (
-    Module, Matiere, MatiereModule, Cours, CahierTexte,
-    Ressource, Presence, EmploiDuTemps, CreneauHoraire,
+    Module, Matiere, Cours, CahierTexte,
+    Ressource, Presence, EmploiDuTemps, CreneauEmploiDuTemps,
     StatutCours, TypeCours
 )
+from apps.academic.models import Niveau, Classe, PeriodeAcademique
+from apps.accounts.models import Utilisateur
 
 
 class FilteredModelChoiceField(forms.ModelChoiceField):
@@ -29,111 +31,123 @@ class FilteredModelChoiceField(forms.ModelChoiceField):
 class ModuleForm(forms.ModelForm):
     class Meta:
         model = Module
-        fields = [
-            'nom', 'code', 'description', 'niveau',
-            'coordinateur', 'volume_horaire_total', 'credits_ects',
-            'prerequis', 'actif'
-        ]
+        fields = ['niveau', 'nom', 'code', 'description', 'coordinateur', 'actif']
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
-            'prerequis': forms.CheckboxSelectMultiple(),
+            'nom': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom du module'}),
+            'code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Code'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'niveau': forms.Select(attrs={'class': 'form-select'}),
+            'coordinateur': forms.Select(attrs={'class': 'form-select'}),
+            'actif': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        if user and hasattr(user, 'etablissement'):
-            # Filtrer les niveaux selon l'établissement
-            self.fields['niveau'].queryset = self.fields['niveau'].queryset.filter(
-                filiere__departement__etablissement=user.etablissement
-            )
+        if user:
+            # Filtrer les niveaux selon le rôle
+            if user.role == 'ADMIN':
+                self.fields['niveau'].queryset = Niveau.objects.filter(
+                    filiere__etablissement=user.etablissement,
+                    est_actif=True
+                ).select_related('filiere')
 
-            # Filtrer les coordinateurs (enseignants de l'établissement)
-            self.fields['coordinateur'].queryset = self.fields['coordinateur'].queryset.filter(
-                etablissement=user.etablissement,
-                role='ENSEIGNANT'
-            )
+                self.fields['coordinateur'].queryset = Utilisateur.objects.filter(
+                    etablissement=user.etablissement,
+                    role='ENSEIGNANT',
+                    est_actif=True
+                )
 
-        # Widget pour les prérequis avec filtrage
-        if self.instance.pk:
-            self.fields['prerequis'].queryset = Module.objects.filter(
-                niveau=self.instance.niveau
-            ).exclude(pk=self.instance.pk)
+            elif user.role == 'CHEF_DEPARTEMENT':
+                self.fields['niveau'].queryset = Niveau.objects.filter(
+                    filiere__departement=user.departement,
+                    est_actif=True
+                ).select_related('filiere')
 
-    def clean(self):
-        cleaned_data = super().clean()
-        niveau = cleaned_data.get('niveau')
-        code = cleaned_data.get('code')
-
-        # Vérifier l'unicité du code dans le niveau
-        if niveau and code:
-            existing = Module.objects.filter(niveau=niveau, code=code)
-            if self.instance.pk:
-                existing = existing.exclude(pk=self.instance.pk)
-            if existing.exists():
-                raise ValidationError("Ce code existe déjà pour ce niveau.")
-
-        return cleaned_data
+                self.fields['coordinateur'].queryset = Utilisateur.objects.filter(
+                    departement=user.departement,
+                    role='ENSEIGNANT',
+                    est_actif=True
+                )
 
 class MatiereForm(forms.ModelForm):
     class Meta:
         model = Matiere
         fields = [
-            'nom', 'code', 'description', 'couleur',
-            'heures_theorie', 'heures_pratique', 'heures_td',
-            'coefficient', 'actif'
+            'niveau', 'module', 'nom', 'code', 'description',
+            'enseignant_responsable', 'heures_cours_magistral',
+            'heures_travaux_diriges', 'heures_travaux_pratiques',
+            'coefficient', 'credits_ects', 'couleur', 'actif'
         ]
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
-            'couleur': forms.TextInput(attrs={'type': 'color'}),
+            'nom': forms.TextInput(attrs={'class': 'form-control'}),
+            'code': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'niveau': forms.Select(attrs={'class': 'form-select'}),
+            'module': forms.Select(attrs={'class': 'form-select'}),
+            'enseignant_responsable': forms.Select(attrs={'class': 'form-select'}),
+            'heures_cours_magistral': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'heures_travaux_diriges': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'heures_travaux_pratiques': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'coefficient': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5', 'min': '0.5'}),
+            'credits_ects': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5', 'min': 0}),
+            'couleur': forms.TextInput(attrs={'class': 'form-control', 'type': 'color'}),
+            'actif': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
-
-    def clean_code(self):
-        code = self.cleaned_data.get('code')
-        if code:
-            existing = Matiere.objects.filter(code=code)
-            if self.instance.pk:
-                existing = existing.exclude(pk=self.instance.pk)
-            if existing.exists():
-                raise ValidationError("Ce code de matière existe déjà.")
-        return code
-
-class MatiereModuleForm(forms.ModelForm):
-    class Meta:
-        model = MatiereModule
-        fields = [
-            'matiere', 'module', 'heures_theorie', 'heures_pratique',
-            'heures_td', 'coefficient', 'enseignant'
-        ]
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        if user and hasattr(user, 'etablissement'):
-            # Filtrer les modules selon l'établissement
-            self.fields['module'].queryset = Module.objects.filter(
-                niveau__filiere__departement__etablissement=user.etablissement
-            )
+        # Gestion des niveaux selon rôle
+        if user:
+            if user.role == 'ADMIN':
+                self.fields['niveau'].queryset = Niveau.objects.filter(
+                    filiere__etablissement=user.etablissement,
+                    est_actif=True
+                ).select_related('filiere')
 
-            # Filtrer les enseignants
-            self.fields['enseignant'].queryset = self.fields['enseignant'].queryset.filter(
-                etablissement=user.etablissement,
-                role='ENSEIGNANT'
+                self.fields['enseignant_responsable'].queryset = Utilisateur.objects.filter(
+                    etablissement=user.etablissement,
+                    role='ENSEIGNANT',
+                    est_actif=True
+                )
+
+            elif user.role == 'CHEF_DEPARTEMENT':
+                self.fields['niveau'].queryset = Niveau.objects.filter(
+                    filiere__departement=user.departement,
+                    est_actif=True
+                ).select_related('filiere')
+
+                self.fields['enseignant_responsable'].queryset = Utilisateur.objects.filter(
+                    departement=user.departement,
+                    role='ENSEIGNANT',
+                    est_actif=True
+                )
+
+        # Module optionnel
+        self.fields['module'].required = False
+        self.fields['module'].empty_label = "Aucun module"
+        self.fields['module'].queryset = Module.objects.none()
+
+        # Si UpdateView, remplir les modules correspondant au niveau existant
+        if self.instance.pk and getattr(self.instance, 'niveau_id', None):
+            self.fields['module'].queryset = Module.objects.filter(
+                niveau_id=self.instance.niveau_id,
+                actif=True
             )
 
     def clean(self):
         cleaned_data = super().clean()
-        matiere = cleaned_data.get('matiere')
+        niveau = cleaned_data.get('niveau')
         module = cleaned_data.get('module')
 
-        if matiere and module:
-            existing = MatiereModule.objects.filter(matiere=matiere, module=module)
-            if self.instance.pk:
-                existing = existing.exclude(pk=self.instance.pk)
-            if existing.exists():
-                raise ValidationError("Cette matière est déjà associée à ce module.")
+        # Vérifier que le module correspond au niveau sélectionné
+        if module and niveau and module.niveau != niveau:
+            raise forms.ValidationError(
+                "Le module sélectionné n'appartient pas au niveau choisi."
+            )
 
         return cleaned_data
 
@@ -141,62 +155,149 @@ class CoursForm(forms.ModelForm):
     class Meta:
         model = Cours
         fields = [
-            'titre', 'description', 'classe', 'matiere_module', 'enseignant',
-            'periode_academique', 'type_cours', 'statut', 'date_prevue',
-            'heure_debut_prevue', 'heure_fin_prevue', 'salle', 'objectifs',
-            'contenu', 'prerequis', 'cours_en_ligne', 'url_streaming',
-            'ressources_utilisees', 'actif'
+            'matiere', 'classe', 'enseignant', 'periode_academique',
+            'titre', 'description', 'type_cours', 'date_prevue',
+            'heure_debut_prevue', 'heure_fin_prevue', 'salle',
+            'objectifs', 'cours_en_ligne', 'url_streaming'
         ]
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
-            'date_prevue': forms.DateInput(attrs={'type': 'date'}),
-            'heure_debut_prevue': forms.TimeInput(attrs={'type': 'time'}),
-            'heure_fin_prevue': forms.TimeInput(attrs={'type': 'time'}),
-            'objectifs': forms.Textarea(attrs={'rows': 3}),
-            'contenu': forms.Textarea(attrs={'rows': 4}),
-            'prerequis': forms.Textarea(attrs={'rows': 2}),
-            'ressources_utilisees': forms.Textarea(attrs={'rows': 3}),
-            'url_streaming': forms.URLInput(),
+            'matiere': forms.Select(attrs={'class': 'form-select'}),
+            'classe': forms.Select(attrs={'class': 'form-select'}),
+            'enseignant': forms.Select(attrs={'class': 'form-select'}),
+            'periode_academique': forms.Select(attrs={'class': 'form-select'}),
+            'titre': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'type_cours': forms.Select(attrs={'class': 'form-select'}),
+            'date_prevue': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'heure_debut_prevue': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
+            'heure_fin_prevue': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
+            'salle': forms.Select(attrs={'class': 'form-select'}),
+            'objectifs': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'cours_en_ligne': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'url_streaming': forms.URLInput(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        if user and hasattr(user, 'etablissement'):
-            self.fields['classe'].queryset = self.fields['classe'].queryset.filter(
-                etablissement=user.etablissement
-            )
-            # # self.fields['enseignant'].queryset = self.fields['enseignant'].queryset.filter(
-            # #     etablissement=user.etablissement,
-            # #     role='ENSEIGNANT'
-            # # )
-            # # self.fields['periode_academique'].queryset = self.fields['periode_academique'].queryset.filter(
-            # #     etablissement=user.etablissement
-            # # )
-            # # self.fields['salle'].queryset = self.fields['salle'].queryset.filter(
-            # #     batiment__etablissement=user.etablissement
-            # # )
+        if user:
+            if user.role == 'ADMIN':
+                self.fields['matiere'].queryset = Matiere.objects.filter(
+                    niveau__filiere__etablissement=user.etablissement,
+                    actif=True
+                ).select_related('niveau')
 
-        # Ajouter du JavaScript pour le filtrage dynamique
-        self.fields['classe'].widget.attrs.update({
-            'onchange': 'filterMatiereModule(this.value)'
-        })
+                self.fields['classe'].queryset = Classe.objects.filter(
+                    etablissement=user.etablissement,
+                    est_active=True
+                ).select_related('niveau')
+
+                self.fields['enseignant'].queryset = Utilisateur.objects.filter(
+                    etablissement=user.etablissement,
+                    role='ENSEIGNANT',
+                    est_actif=True
+                )
+
+                self.fields['periode_academique'].queryset = PeriodeAcademique.objects.filter(
+                    etablissement=user.etablissement,
+                    est_active=True
+                )
+
+            elif user.role == 'CHEF_DEPARTEMENT':
+                self.fields['matiere'].queryset = Matiere.objects.filter(
+                    niveau__filiere__departement=user.departement,
+                    actif=True
+                ).select_related('niveau')
+
+                self.fields['classe'].queryset = Classe.objects.filter(
+                    niveau__filiere__departement=user.departement,
+                    est_active=True
+                ).select_related('niveau')
+
+                self.fields['enseignant'].queryset = Utilisateur.objects.filter(
+                    departement=user.departement,
+                    role='ENSEIGNANT',
+                    est_actif=True
+                )
+
+                self.fields['periode_academique'].queryset = PeriodeAcademique.objects.filter(
+                    etablissement=user.etablissement,
+                    est_active=True
+                )
+
+class EmploiDuTempsForm(forms.ModelForm):
+    class Meta:
+        model = EmploiDuTemps
+        fields = [
+            'classe', 'enseignant', 'periode_academique',
+            'nom', 'semaine_debut', 'semaine_fin',
+            'publie', 'actuel'
+        ]
+        widgets = {
+            'classe': forms.Select(attrs={'class': 'form-select'}),
+            'enseignant': forms.Select(attrs={'class': 'form-select'}),
+            'periode_academique': forms.Select(attrs={'class': 'form-select'}),
+            'nom': forms.TextInput(attrs={'class': 'form-control'}),
+            'semaine_debut': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'semaine_fin': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'publie': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'actuel': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        # Soit classe, soit enseignant (pas les deux)
+        self.fields['classe'].required = False
+        self.fields['enseignant'].required = False
+
+        if user:
+            if user.role == 'ADMIN':
+                self.fields['classe'].queryset = Classe.objects.filter(
+                    etablissement=user.etablissement,
+                    est_active=True
+                )
+                self.fields['enseignant'].queryset = Utilisateur.objects.filter(
+                    etablissement=user.etablissement,
+                    role='ENSEIGNANT',
+                    est_actif=True
+                )
+                self.fields['periode_academique'].queryset = PeriodeAcademique.objects.filter(
+                    etablissement=user.etablissement,
+                    est_active=True
+                )
+
+            elif user.role == 'CHEF_DEPARTEMENT':
+                self.fields['classe'].queryset = Classe.objects.filter(
+                    niveau__filiere__departement=user.departement,
+                    est_active=True
+                )
+                self.fields['enseignant'].queryset = Utilisateur.objects.filter(
+                    departement=user.departement,
+                    role='ENSEIGNANT',
+                    est_actif=True
+                )
+                self.fields['periode_academique'].queryset = PeriodeAcademique.objects.filter(
+                    etablissement=user.etablissement,
+                    est_active=True
+                )
 
     def clean(self):
         cleaned_data = super().clean()
-        heure_debut = cleaned_data.get('heure_debut_prevue')
-        heure_fin = cleaned_data.get('heure_fin_prevue')
-        cours_en_ligne = cleaned_data.get('cours_en_ligne')
-        url_streaming = cleaned_data.get('url_streaming')
+        classe = cleaned_data.get('classe')
+        enseignant = cleaned_data.get('enseignant')
 
-        # Vérifier que l'heure de fin est après l'heure de début
-        if heure_debut and heure_fin and heure_fin <= heure_debut:
-            raise ValidationError("L'heure de fin doit être après l'heure de début.")
+        if not classe and not enseignant:
+            raise forms.ValidationError(
+                "Vous devez sélectionner soit une classe, soit un enseignant."
+            )
 
-        # Vérifier l'URL de streaming si cours en ligne
-        if cours_en_ligne and not url_streaming:
-            raise ValidationError("L'URL de streaming est obligatoire pour un cours en ligne.")
+        if classe and enseignant:
+            raise forms.ValidationError(
+                "Vous ne pouvez pas sélectionner à la fois une classe et un enseignant."
+            )
 
         return cleaned_data
 
@@ -207,16 +308,13 @@ class CoursUpdateForm(CoursForm):
     class Meta(CoursForm.Meta):
         fields = CoursForm.Meta.fields + [
             'date_effective', 'heure_debut_effective', 'heure_fin_effective',
-            'streaming_actif', 'notes_enseignant', 'retours_etudiants'
+            'presence_prise'
         ]
         widgets = dict(CoursForm.Meta.widgets, **{
             'date_effective': forms.DateInput(attrs={'type': 'date'}),
             'heure_debut_effective': forms.TimeInput(attrs={'type': 'time'}),
             'heure_fin_effective': forms.TimeInput(attrs={'type': 'time'}),
-            'notes_enseignant': forms.Textarea(attrs={'rows': 3}),
-            'retours_etudiants': forms.Textarea(attrs={'rows': 3}),
         })
-
 
 class CahierTexteForm(forms.ModelForm):
     class Meta:
@@ -256,7 +354,6 @@ class CahierTexteForm(forms.ModelForm):
             instance.save()
         return instance
 
-
 class RessourceForm(forms.ModelForm):
     class Meta:
         model = Ressource
@@ -288,23 +385,64 @@ class RessourceForm(forms.ModelForm):
                 classe__niveau__filiere__departement__etablissement=user.etablissement
             )
 
+    def clean(self):
+        cleaned_data = super().clean()
+        fichier = cleaned_data.get('fichier')
+        url = cleaned_data.get('url')
+        type_ressource = cleaned_data.get('type_ressource')
 
-def clean(self):
-    cleaned_data = super().clean()
-    statut = cleaned_data.get('statut')
-    heure_arrivee = cleaned_data.get('heure_arrivee')
-    motif_absence = cleaned_data.get('motif_absence')
+        # Au moins un fichier ou une URL doit être fourni
+        if not fichier and not url:
+            raise ValidationError("Vous devez fournir soit un fichier, soit une URL.")
 
-    # Si retard, heure d'arrivée obligatoire
-    if statut == 'LATE' and not heure_arrivee:
-        raise ValidationError("L'heure d'arrivée est obligatoire pour un retard.")
+        # Si c'est un lien web, l'URL est obligatoire
+        if type_ressource == 'LINK' and not url:
+            raise ValidationError("Une URL est obligatoire pour un lien web.")
 
-    # Si absence, motif recommandé
-    if statut in ['ABSENT', 'EXCUSED', 'JUSTIFIED'] and not motif_absence:
-        self.add_error('motif_absence', "Un motif d'absence est recommandé.")
+        return cleaned_data
 
-    return cleaned_data
+class PresenceForm(forms.ModelForm):
+    class Meta:
+        model = Presence
+        fields = [
+            'cours', 'etudiant', 'statut', 'heure_arrivee',
+            'motif_absence', 'document_justificatif', 'valide', 'notes_enseignant'
+        ]
+        widgets = {
+            'heure_arrivee': forms.TimeInput(attrs={'type': 'time'}),
+            'motif_absence': forms.Textarea(attrs={'rows': 3}),
+            'notes_enseignant': forms.Textarea(attrs={'rows': 2}),
+        }
 
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        cours = kwargs.pop('cours', None)
+        super().__init__(*args, **kwargs)
+
+        if cours:
+            self.fields['cours'].initial = cours
+            self.fields['cours'].widget = forms.HiddenInput()
+            # Filtrer les étudiants de la classe du cours
+            self.fields['etudiant'].queryset = self.fields['etudiant'].queryset.filter(
+                classe_inscrite=cours.classe,
+                role='ETUDIANT'
+            ).distinct()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        statut = cleaned_data.get('statut')
+        heure_arrivee = cleaned_data.get('heure_arrivee')
+        motif_absence = cleaned_data.get('motif_absence')
+
+        # Si retard, heure d'arrivée obligatoire
+        if statut == 'LATE' and not heure_arrivee:
+            raise ValidationError("L'heure d'arrivée est obligatoire pour un retard.")
+
+        # Si absence, motif recommandé
+        if statut in ['ABSENT', 'EXCUSED', 'JUSTIFIED'] and not motif_absence:
+            self.add_error('motif_absence', "Un motif d'absence est recommandé.")
+
+        return cleaned_data
 
 class PresenceBulkForm(forms.Form):
     """Formulaire pour la prise de présence en lot"""
@@ -314,16 +452,19 @@ class PresenceBulkForm(forms.Form):
         super().__init__(*args, **kwargs)
 
         if cours:
-            etudiants = cours.classe.get_etudiants()
+            # Récupérer les étudiants de la classe
+            etudiants = cours.classe.etudiants.all()
             for etudiant in etudiants:
                 # Récupérer la présence existante si elle existe
                 try:
                     presence = Presence.objects.get(cours=cours, etudiant=etudiant)
                     initial_statut = presence.statut
                     initial_heure = presence.heure_arrivee
+                    initial_motif = presence.motif_absence
                 except Presence.DoesNotExist:
                     initial_statut = 'PRESENT'
                     initial_heure = None
+                    initial_motif = ''
 
                 # Champ statut pour chaque étudiant
                 self.fields[f'statut_{etudiant.id}'] = forms.ChoiceField(
@@ -346,64 +487,24 @@ class PresenceBulkForm(forms.Form):
                 # Champ motif d'absence
                 self.fields[f'motif_{etudiant.id}'] = forms.CharField(
                     required=False,
+                    initial=initial_motif,
                     widget=forms.Textarea(attrs={
                         'rows': 2,
-                        'class': 'form-control'
+                        'class': 'form-control',
+                        'placeholder': 'Motif d\'absence...'
                     })
                 )
 
-
-class EmploiDuTempsForm(forms.ModelForm):
+class CreneauEmploiDuTempsForm(forms.ModelForm):
     class Meta:
-        model = EmploiDuTemps
+        model = CreneauEmploiDuTemps
         fields = [
-            'nom', 'description', 'classe', 'periode_academique',
-            'valide_a_partir_du', 'valide_jusqua', 'publie', 'actuel'
-        ]
-        widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
-            'valide_a_partir_du': forms.DateInput(attrs={'type': 'date'}),
-            'valide_jusqua': forms.DateInput(attrs={'type': 'date'}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
-
-        if user and hasattr(user, 'etablissement'):
-            self.fields['classe'].queryset = self.fields['classe'].queryset.filter(
-                niveau__filiere__departement__etablissement=user.etablissement
-            )
-            self.fields['periode_academique'].queryset = self.fields['periode_academique'].queryset.filter(
-                etablissement=user.etablissement
-            )
-
-    def clean(self):
-        cleaned_data = super().clean()
-        date_debut = cleaned_data.get('valide_a_partir_du')
-        date_fin = cleaned_data.get('valide_jusqua')
-
-        if date_debut and date_fin and date_fin <= date_debut:
-            raise ValidationError("La date de fin doit être après la date de début.")
-
-        return cleaned_data
-
-
-class CreneauHoraireForm(forms.ModelForm):
-    class Meta:
-        model = CreneauHoraire
-        fields = [
-            'emploi_du_temps', 'jour', 'heure_debut', 'heure_fin',
-            'matiere_module', 'enseignant', 'salle', 'type_cours',
-            'recurrent', 'dates_exception'
+            'emploi_du_temps', 'cours', 'jour_semaine',
+            'heure_debut', 'heure_fin'
         ]
         widgets = {
             'heure_debut': forms.TimeInput(attrs={'type': 'time'}),
             'heure_fin': forms.TimeInput(attrs={'type': 'time'}),
-            'dates_exception': forms.Textarea(attrs={
-                'rows': 2,
-                'placeholder': 'Format: YYYY-MM-DD, séparées par des virgules'
-            }),
         }
 
     def __init__(self, *args, **kwargs):
@@ -415,18 +516,19 @@ class CreneauHoraireForm(forms.ModelForm):
             self.fields['emploi_du_temps'].initial = emploi_du_temps
             self.fields['emploi_du_temps'].widget = forms.HiddenInput()
 
-            # Filtrer les matières-modules selon la classe de l'emploi du temps
-            self.fields['matiere_module'].queryset = MatiereModule.objects.filter(
-                module__niveau=emploi_du_temps.classe.niveau
-            )
+            # Filtrer les cours selon la cible de l'emploi du temps
+            if emploi_du_temps.classe:
+                self.fields['cours'].queryset = Cours.objects.filter(
+                    classe=emploi_du_temps.classe
+                )
+            elif emploi_du_temps.enseignant:
+                self.fields['cours'].queryset = Cours.objects.filter(
+                    enseignant=emploi_du_temps.enseignant
+                )
 
         if user and hasattr(user, 'etablissement'):
-            self.fields['enseignant'].queryset = self.fields['enseignant'].queryset.filter(
-                etablissement=user.etablissement,
-                role='ENSEIGNANT'
-            )
-            self.fields['salle'].queryset = self.fields['salle'].queryset.filter(
-                batiment__etablissement=user.etablissement
+            self.fields['cours'].queryset = self.fields['cours'].queryset.filter(
+                classe__niveau__filiere__departement__etablissement=user.etablissement
             )
 
     def clean(self):
@@ -434,19 +536,18 @@ class CreneauHoraireForm(forms.ModelForm):
         heure_debut = cleaned_data.get('heure_debut')
         heure_fin = cleaned_data.get('heure_fin')
         emploi_du_temps = cleaned_data.get('emploi_du_temps')
-        jour = cleaned_data.get('jour')
-        enseignant = cleaned_data.get('enseignant')
-        salle = cleaned_data.get('salle')
+        jour_semaine = cleaned_data.get('jour_semaine')
+        cours = cleaned_data.get('cours')
 
         # Vérifier que l'heure de fin est après l'heure de début
         if heure_debut and heure_fin and heure_fin <= heure_debut:
             raise ValidationError("L'heure de fin doit être après l'heure de début.")
 
-        # Vérifier les conflits d'horaires pour la même classe
-        if emploi_du_temps and jour and heure_debut and heure_fin:
-            conflits = CreneauHoraire.objects.filter(
+        # Vérifier les conflits d'horaires
+        if emploi_du_temps and jour_semaine and heure_debut and heure_fin:
+            conflits = CreneauEmploiDuTemps.objects.filter(
                 emploi_du_temps=emploi_du_temps,
-                jour=jour,
+                jour_semaine=jour_semaine,
                 heure_debut__lt=heure_fin,
                 heure_fin__gt=heure_debut
             )
@@ -454,38 +555,16 @@ class CreneauHoraireForm(forms.ModelForm):
                 conflits = conflits.exclude(pk=self.instance.pk)
 
             if conflits.exists():
-                raise ValidationError("Il y a un conflit d'horaires avec un autre créneau de cette classe.")
+                raise ValidationError("Il y a un conflit d'horaires avec un autre créneau.")
 
-        # Vérifier la disponibilité de l'enseignant
-        if enseignant and jour and heure_debut and heure_fin:
-            conflits_enseignant = CreneauHoraire.objects.filter(
-                enseignant=enseignant,
-                jour=jour,
-                heure_debut__lt=heure_fin,
-                heure_fin__gt=heure_debut
-            )
-            if self.instance.pk:
-                conflits_enseignant = conflits_enseignant.exclude(pk=self.instance.pk)
-
-            if conflits_enseignant.exists():
-                raise ValidationError("L'enseignant n'est pas disponible à cet horaire.")
-
-        # Vérifier la disponibilité de la salle
-        if salle and jour and heure_debut and heure_fin:
-            conflits_salle = CreneauHoraire.objects.filter(
-                salle=salle,
-                jour=jour,
-                heure_debut__lt=heure_fin,
-                heure_fin__gt=heure_debut
-            )
-            if self.instance.pk:
-                conflits_salle = conflits_salle.exclude(pk=self.instance.pk)
-
-            if conflits_salle.exists():
-                raise ValidationError("La salle n'est pas disponible à cet horaire.")
+        # Vérifier que le cours correspond à la cible de l'emploi du temps
+        if cours and emploi_du_temps:
+            if emploi_du_temps.classe and cours.classe != emploi_du_temps.classe:
+                raise ValidationError("Le cours sélectionné ne correspond pas à la classe de l'emploi du temps.")
+            elif emploi_du_temps.enseignant and cours.enseignant != emploi_du_temps.enseignant:
+                raise ValidationError("Le cours sélectionné ne correspond pas à l'enseignant de l'emploi du temps.")
 
         return cleaned_data
-
 
 class FiltreCoursForm(forms.Form):
     """Formulaire de filtrage pour les cours"""
@@ -525,6 +604,12 @@ class FiltreCoursForm(forms.Form):
         empty_label="Tous les enseignants",
         widget=forms.Select(attrs={'class': 'form-control'})
     )
+    matiere = forms.ModelChoiceField(
+        queryset=None,
+        required=False,
+        empty_label="Toutes les matières",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
     type_cours = forms.ChoiceField(
         choices=[('', 'Tous les types')] + TypeCours.choices,
         required=False,
@@ -548,7 +633,7 @@ class FiltreCoursForm(forms.Form):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # Initialiser les querysets vides
+        # Initialiser les querysets
         from apps.establishments.models import Etablissement
         from apps.academic.models import Departement, Filiere, Niveau, Classe
         from apps.accounts.models import Utilisateur
@@ -574,6 +659,9 @@ class FiltreCoursForm(forms.Form):
                 etablissement=user.etablissement,
                 role='ENSEIGNANT'
             )
+            self.fields['matiere'].queryset = Matiere.objects.filter(
+                niveau__filiere__departement__etablissement=user.etablissement
+            )
         else:
             # Pour un super utilisateur, afficher tous les éléments
             self.fields['etablissement'].queryset = Etablissement.objects.all()
@@ -584,68 +672,18 @@ class FiltreCoursForm(forms.Form):
             self.fields['enseignant'].queryset = Utilisateur.objects.filter(
                 role='ENSEIGNANT'
             )
+            self.fields['matiere'].queryset = Matiere.objects.all()
 
 
 # Formsets pour les relations inline
-MatiereModuleFormSet = inlineformset_factory(
-    Module, MatiereModule, form=MatiereModuleForm,
-    fields=['matiere', 'heures_theorie', 'heures_pratique', 'heures_td', 'coefficient', 'enseignant'],
-    extra=1, can_delete=True
-)
-
 RessourceFormSet = inlineformset_factory(
     Cours, Ressource, form=RessourceForm,
     fields=['titre', 'description', 'type_ressource', 'fichier', 'url', 'obligatoire'],
     extra=1, can_delete=True
 )
 
-CreneauHoraireFormSet = inlineformset_factory(
-    EmploiDuTemps, CreneauHoraire, form=CreneauHoraireForm,
-    fields=['jour', 'heure_debut', 'heure_fin', 'matiere_module', 'enseignant', 'salle', 'type_cours'],
+CreneauEmploiDuTempsFormSet = inlineformset_factory(
+    EmploiDuTemps, CreneauEmploiDuTemps, form=CreneauEmploiDuTempsForm,
+    fields=['cours', 'jour_semaine', 'heure_debut', 'heure_fin'],
     extra=1, can_delete=True
 )
-
-
-def clean(self):
-    cleaned_data = super().clean()
-    fichier = cleaned_data.get('fichier')
-    url = cleaned_data.get('url')
-    type_ressource = cleaned_data.get('type_ressource')
-
-    # Au moins un fichier ou une URL doit être fourni
-    if not fichier and not url:
-        raise ValidationError("Vous devez fournir soit un fichier, soit une URL.")
-
-    # Si c'est un lien web, l'URL est obligatoire
-    if type_ressource == 'LINK' and not url:
-        raise ValidationError("Une URL est obligatoire pour un lien web.")
-
-    return cleaned_data
-
-
-class PresenceForm(forms.ModelForm):
-    class Meta:
-        model = Presence
-        fields = [
-            'cours', 'etudiant', 'statut', 'heure_arrivee',
-            'motif_absence', 'document_justificatif', 'notes_enseignant'
-        ]
-        widgets = {
-            'heure_arrivee': forms.TimeInput(attrs={'type': 'time'}),
-            'motif_absence': forms.Textarea(attrs={'rows': 3}),
-            'notes_enseignant': forms.Textarea(attrs={'rows': 2}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
-        cours = kwargs.pop('cours', None)
-        super().__init__(*args, **kwargs)
-
-        if cours:
-            self.fields['cours'].initial = cours
-            self.fields['cours'].widget = forms.HiddenInput()
-            # Filtrer les étudiants de la classe du cours
-            self.fields['etudiant'].queryset = self.fields['etudiant'].queryset.filter(
-                inscriptions__classe=cours.classe,
-                role='APPRENANT'
-            )

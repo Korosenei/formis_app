@@ -1,0 +1,383 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Mon Emploi du Temps - Enseignant{% endblock %}
+
+{% block content %}
+<div class="teacher-edt">
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Enseignant</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Emploi du temps</span>
+            </div>
+            <h1>Mon Emploi du Temps</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary btn-sm" onclick="printEDT()">
+                <i class="fas fa-print"></i> Imprimer
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="exportEDT()">
+                <i class="fas fa-download"></i> Exporter
+            </button>
+        </div>
+    </div>
+
+    <!-- Sélecteur de semaine -->
+    <div class="week-selector">
+        <button class="btn-icon" onclick="previousWeek()">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="week-info">
+            <span class="week-label">Semaine du</span>
+            <span class="week-date">{{ semaine_debut|date:"d/m/Y" }} au {{ semaine_fin|date:"d/m/Y" }}</span>
+        </div>
+        <button class="btn-icon" onclick="nextWeek()">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+        <button class="btn btn-sm btn-outline" onclick="currentWeek()">
+            <i class="fas fa-calendar-day"></i> Aujourd'hui
+        </button>
+    </div>
+
+    <!-- Emploi du temps -->
+    <div class="edt-container">
+        <div class="edt-grid">
+            <div class="edt-header time-header"></div>
+            {% for jour in jours %}
+            <div class="edt-header">
+                <div class="jour-nom">{{ jour.nom }}</div>
+                <div class="jour-date">{{ jour.date|date:"d/m" }}</div>
+            </div>
+            {% endfor %}
+
+            {% for heure in horaires %}
+            <div class="time-slot">{{ heure }}</div>
+            {% for jour in jours %}
+            <div class="cours-slot" data-jour="{{ jour.index }}" data-heure="{{ heure }}">
+                {% for cours in jour.cours %}
+                    {% if cours.heure_debut == heure %}
+                    <div class="cours-block" style="background: {{ cours.matiere.couleur }}20; border-left: 3px solid {{ cours.matiere.couleur }}">
+                        <div class="cours-title">{{ cours.titre|truncatechars:30 }}</div>
+                        <div class="cours-details">
+                            <span class="cours-classe">{{ cours.classe.nom }}</span>
+                            <span class="cours-salle">
+                                <i class="fas fa-door-open"></i>
+                                {% if cours.salle %}{{ cours.salle.nom }}{% else %}-{% endif %}
+                            </span>
+                        </div>
+                        <div class="cours-time">
+                            {{ cours.heure_debut_prevue|time:"H:i" }} - {{ cours.heure_fin_prevue|time:"H:i" }}
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Résumé de la semaine -->
+    <div class="week-summary">
+        <h3><i class="fas fa-chart-bar"></i> Résumé de la semaine</h3>
+        <div class="summary-stats">
+            <div class="summary-item">
+                <div class="summary-label">Total cours</div>
+                <div class="summary-value">{{ total_cours }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Heures enseignement</div>
+                <div class="summary-value">{{ total_heures }}h</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Classes différentes</div>
+                <div class="summary-value">{{ total_classes }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Matières</div>
+                <div class="summary-value">{{ total_matieres }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.teacher-edt { padding: 15px; }
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav .current { color: #2563eb; font-weight: 500; }
+
+.header-content h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.header-actions { display: flex; gap: 8px; }
+
+.btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-secondary { background: #6b7280; color: white; }
+.btn-secondary:hover { background: #4b5563; }
+.btn-outline { background: white; border: 1px solid #e5e7eb; color: #6b7280; }
+.btn-outline:hover { background: #f3f4f6; }
+
+.btn-icon {
+    width: 36px;
+    height: 36px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+}
+
+.btn-icon:hover { background: #f3f4f6; }
+
+.week-selector {
+    background: white;
+    padding: 15px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.week-info {
+    flex: 1;
+    text-align: center;
+}
+
+.week-label {
+    font-size: 12px;
+    color: #6b7280;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.week-date {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.edt-container {
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow-x: auto;
+    margin-bottom: 15px;
+    padding: 15px;
+}
+
+.edt-grid {
+    display: grid;
+    grid-template-columns: 80px repeat(6, 1fr);
+    gap: 1px;
+    background: #e5e7eb;
+    min-width: 1000px;
+}
+
+.edt-header {
+    background: #f9fafb;
+    padding: 12px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.edt-header.time-header {
+    background: white;
+}
+
+.jour-nom {
+    font-size: 14px;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.jour-date {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.time-slot {
+    background: #f9fafb;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.cours-slot {
+    background: white;
+    padding: 4px;
+    min-height: 80px;
+    position: relative;
+}
+
+.cours-block {
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    transition: transform 0.2s;
+}
+
+.cours-block:hover {
+    transform: scale(1.02);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.cours-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.cours-details {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 4px;
+}
+
+.cours-classe, .cours-salle {
+    font-size: 11px;
+    color: #4b5563;
+}
+
+.cours-salle i {
+    width: 12px;
+}
+
+.cours-time {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.week-summary {
+    background: white;
+    padding: 15px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.week-summary h3 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+}
+
+.summary-item {
+    text-align: center;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 6px;
+}
+
+.summary-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.summary-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2563eb;
+}
+
+@media (max-width: 768px) {
+    .summary-stats { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+
+<script>
+let currentWeekStart = new Date('{{ semaine_debut|date:"Y-m-d" }}');
+
+function previousWeek() {
+    currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+    updateWeek();
+}
+
+function nextWeek() {
+    currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+    updateWeek();
+}
+
+function currentWeek() {
+    window.location.href = '{% url "dashboard:teacher_emplois_du_temps" %}';
+}
+
+function updateWeek() {
+    const year = currentWeekStart.getFullYear();
+    const month = currentWeekStart.getMonth() + 1;
+    const day = currentWeekStart.getDate();
+    window.location.href = `{% url "dashboard:teacher_emplois_du_temps" %}?date=${year}-${month}-${day}`;
+}
+
+function printEDT() {
+    window.print();
+}
+
+function exportEDT() {
+    window.location.href = `/courses/emplois-du-temps/teacher/export/`;
+}
+</script>
+{% endblock %}

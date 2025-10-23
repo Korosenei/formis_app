@@ -1,0 +1,519 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Mes Évaluations - Enseignant{% endblock %}
+
+{% block content %}
+<div class="teacher-evaluations">
+    <!-- Header -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Enseignant</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Évaluations</span>
+            </div>
+            <h1>Mes Évaluations</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ evaluations.paginator.count }} total</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'evaluations:evaluation_create' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Créer
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="Rechercher..."
+                       value="{{ current_filters.search }}" class="form-input-sm">
+            </div>
+            <div class="filter-group">
+                <select name="type_evaluation" class="form-select-sm">
+                    <option value="">Tous types</option>
+                    {% for key, label in types_evaluation %}
+                        <option value="{{ key }}" {% if current_filters.type_evaluation == key %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="statut" class="form-select-sm">
+                    <option value="">Tous statuts</option>
+                    {% for key, label in statuts %}
+                        <option value="{{ key }}" {% if current_filters.statut == key %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="matiere" class="form-select-sm">
+                    <option value="">Toutes matières</option>
+                    {% for mat in matieres %}
+                        <option value="{{ mat.id }}" {% if current_filters.matiere == mat.id|stringformat:"s" %}selected{% endif %}>
+                            {{ mat.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:teacher_evaluations' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Liste des évaluations -->
+    <div class="evaluations-grid">
+        {% for eval in evaluations %}
+        <div class="eval-card">
+            <div class="eval-header">
+                <div class="eval-title-section">
+                    <h3>{{ eval.titre|truncatechars:50 }}</h3>
+                    <div class="eval-meta">
+                        <span class="meta-tag type-{{ eval.type_evaluation|lower }}">
+                            {{ eval.get_type_evaluation_display }}
+                        </span>
+                        <span class="meta-tag matiere">
+                            {{ eval.matiere.nom }}
+                        </span>
+                    </div>
+                </div>
+                <div class="eval-badges">
+                    <span class="badge badge-{{ eval.statut|lower }}">
+                        {{ eval.get_statut_display }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="eval-body">
+                <div class="eval-info-grid">
+                    <div class="info-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>{{ eval.date_debut|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-clock"></i>
+                        <span>{{ eval.duree_minutes }} min</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-star"></i>
+                        <span>Coef. {{ eval.coefficient }}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-users"></i>
+                        <span>{{ eval.classes.count }} classe{{ eval.classes.count|pluralize }}</span>
+                    </div>
+                </div>
+
+                <div class="eval-progress">
+                    <div class="progress-info">
+                        <span>{{ eval.nombre_compositions }} composition{{ eval.nombre_compositions|pluralize }}</span>
+                        <span>{{ eval.nombre_corrections }} corrigée{{ eval.nombre_corrections|pluralize }}</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {% widthratio eval.nombre_corrections eval.nombre_compositions 100 %}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="eval-footer">
+                <a href="{% url 'evaluations:evaluation_detail_enseignant' eval.pk %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-eye"></i> Voir
+                </a>
+                {% if eval.statut == 'BROUILLON' %}
+                    <a href="{% url 'evaluations:evaluation_edit' eval.pk %}" class="btn btn-sm btn-info">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                {% endif %}
+                {% if eval.nombre_compositions > 0 and eval.nombre_corrections < eval.nombre_compositions %}
+                    <a href="{% url 'dashboard:teacher_evaluation_correction' eval.pk %}" class="btn btn-sm btn-warning">
+                        <i class="fas fa-check"></i> Corriger
+                    </a>
+                {% endif %}
+                <div class="dropdown-compact">
+                    <button class="btn btn-sm btn-outline dropdown-toggle">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <div class="dropdown-menu-compact">
+                        <a href="{% url 'evaluations:statistiques' eval.pk %}">
+                            <i class="fas fa-chart-bar"></i> Statistiques
+                        </a>
+                        {% if eval.statut == 'BROUILLON' %}
+                            <a href="#" onclick="deleteEvaluation('{{ eval.pk }}')" class="text-danger">
+                                <i class="fas fa-trash"></i> Supprimer
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state-full">
+            <i class="fas fa-tasks fa-3x"></i>
+            <h3>Aucune évaluation</h3>
+            <p>Créez votre première évaluation</p>
+            <a href="{% url 'evaluations:evaluation_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Créer une évaluation
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% include 'components/pagination.html' with page_obj=page_obj %}
+</div>
+
+<style>
+.teacher-evaluations { padding: 12px; }
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.breadcrumb-nav {
+    font-size: 10px;
+    color: #6b7280;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.breadcrumb-nav i { font-size: 8px; }
+.breadcrumb-nav .current { color: #2563eb; font-weight: 500; }
+
+.header-content h1 {
+    margin: 0 0 6px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.header-stats {
+    display: flex;
+    gap: 6px;
+}
+
+.stat-badge {
+    padding: 2px 6px;
+    background: #f3f4f6;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.header-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.filters-section {
+    background: white;
+    padding: 10px;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    margin-bottom: 12px;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+    gap: 8px;
+    align-items: end;
+}
+
+.form-input-sm, .form-select-sm {
+    padding: 5px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 12px;
+    height: 28px;
+}
+
+.filter-actions { display: flex; gap: 4px; }
+
+.btn {
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-decoration: none;
+}
+
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-info { background: #3b82f6; color: white; }
+.btn-info:hover { background: #2563eb; }
+.btn-warning { background: #f59e0b; color: white; }
+.btn-warning:hover { background: #d97706; }
+.btn-outline { background: white; border: 1px solid #e5e7eb; color: #1f2937; }
+.btn-outline:hover { background: #f3f4f6; }
+
+.evaluations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.eval-card {
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    transition: all 0.2s;
+}
+
+.eval-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.eval-header {
+    padding: 12px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.eval-title-section h3 {
+    margin: 0 0 6px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.eval-meta {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.meta-tag {
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.meta-tag.type-devoir { background: #dbeafe; color: #1e40af; }
+.meta-tag.type-composition { background: #fef3c7; color: #92400e; }
+.meta-tag.type-tp { background: #d1fae5; color: #065f46; }
+.meta-tag.type-projet { background: #e0e7ff; color: #3730a3; }
+.meta-tag.type-examen { background: #fee2e2; color: #991b1b; }
+.meta-tag.type-quiz { background: #e0e7ff; color: #3730a3; }
+.meta-tag.matiere { background: #f3f4f6; color: #1f2937; }
+
+.eval-badges { display: flex; gap: 4px; }
+
+.badge {
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.badge-brouillon { background: #f3f4f6; color: #6b7280; }
+.badge-programmee { background: #dbeafe; color: #1e40af; }
+.badge-en_cours { background: #fef3c7; color: #92400e; }
+.badge-terminee { background: #d1fae5; color: #065f46; }
+.badge-annulee { background: #fee2e2; color: #991b1b; }
+
+.eval-body {
+    padding: 12px;
+}
+
+.eval-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.info-item i {
+    width: 12px;
+    color: #9ca3af;
+}
+
+.eval-progress {
+    margin-top: 10px;
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.progress-bar {
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #2563eb);
+    transition: width 0.3s;
+}
+
+.eval-footer {
+    padding: 10px 12px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 5px;
+    background: #fafbfc;
+}
+
+.dropdown-compact {
+    position: relative;
+    margin-left: auto;
+}
+
+.dropdown-menu-compact {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    min-width: 140px;
+    display: none;
+    z-index: 1000;
+    margin-bottom: 5px;
+}
+
+.dropdown-menu-compact.show { display: block; }
+
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    text-decoration: none;
+    color: #1f2937;
+    font-size: 11px;
+    transition: background 0.2s;
+}
+
+.dropdown-menu-compact a:hover { background: #f3f4f6; }
+.text-danger { color: #ef4444; }
+.text-danger:hover { background: #fee2e2 !important; }
+
+.empty-state-full {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 50px 20px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.empty-state-full i { color: #d1d5db; margin-bottom: 15px; }
+.empty-state-full h3 { margin: 0 0 8px 0; color: #1f2937; font-size: 16px; }
+.empty-state-full p { color: #6b7280; margin-bottom: 15px; }
+
+@media (max-width: 1024px) {
+    .evaluations-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+    .filters-form { grid-template-columns: 1fr 1fr; gap: 6px; }
+}
+
+@media (max-width: 768px) {
+    .evaluations-grid { grid-template-columns: 1fr; }
+    .filters-form { grid-template-columns: 1fr; }
+    .page-header-compact { flex-direction: column; gap: 8px; }
+}
+</style>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.classList.remove('show');
+            });
+            dropdown.classList.toggle('show');
+        });
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.dropdown-compact')) {
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+});
+
+function deleteEvaluation(evalId) {
+    if (confirm('Supprimer cette évaluation ? Cette action est irréversible.')) {
+        fetch(`/evaluations/enseignant/${evalId}/supprimer/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    }
+}
+</script>
+{% endblock %}

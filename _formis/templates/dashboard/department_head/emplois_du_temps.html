@@ -1,0 +1,724 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Emplois du Temps - Administration{% endblock %}
+
+{% block content %}
+<div class="admin-emplois-du-temps">
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Emplois du temps</span>
+            </div>
+            <h1>Gestion des Emplois du Temps</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ page_obj.paginator.count }} total</span>
+                <span class="stat-badge publies">{{ nombre_publies }} publiés</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary btn-sm" onclick="openGenerateModal()">
+                <i class="fas fa-magic"></i> Générer auto
+            </button>
+            <a href="{% url 'courses:emploi_du_temps_create' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Nouveau
+            </a>
+        </div>
+    </div>
+
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <select name="type" class="form-select-sm" id="typeFilter" onchange="toggleFilters(this.value)">
+                    <option value="classe" {% if current_filters.type == 'classe' %}selected{% endif %}>Par Classe</option>
+                    <option value="enseignant" {% if current_filters.type == 'enseignant' %}selected{% endif %}>Par Enseignant</option>
+                </select>
+            </div>
+
+            <div class="filter-group" id="classeFilter">
+                <select name="classe" class="form-select-sm">
+                    <option value="">Toutes classes</option>
+                    {% for classe in classes %}
+                        <option value="{{ classe.id }}" {% if current_filters.classe == classe.id|stringformat:"s" %}selected{% endif %}>
+                            {{ classe.nom }} - {{ classe.niveau.filiere.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group" id="enseignantFilter" style="display: none;">
+                <select name="enseignant" class="form-select-sm">
+                    <option value="">Tous enseignants</option>
+                    {% for enseignant in enseignants %}
+                        <option value="{{ enseignant.id }}" {% if current_filters.enseignant == enseignant.id|stringformat:"s" %}selected{% endif %}>
+                            {{ enseignant.get_full_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <select name="periode" class="form-select-sm">
+                    <option value="">Toutes périodes</option>
+                    {% for periode in periodes %}
+                        <option value="{{ periode.id }}" {% if current_filters.periode == periode.id|stringformat:"s" %}selected{% endif %}>
+                            {{ periode.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <select name="statut" class="form-select-sm">
+                    <option value="">Tous statuts</option>
+                    <option value="publie" {% if current_filters.statut == 'publie' %}selected{% endif %}>Publiés</option>
+                    <option value="non_publie" {% if current_filters.statut == 'non_publie' %}selected{% endif %}>Brouillons</option>
+                    <option value="actuel" {% if current_filters.statut == 'actuel' %}selected{% endif %}>Actuels</option>
+                </select>
+            </div>
+
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:admin_emplois_du_temps' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="edt-grid">
+        {% for edt in emplois_du_temps %}
+        <div class="edt-card" id="edt-card-{{ edt.id }}">
+            <div class="edt-card-header">
+                <div class="edt-title">
+                    <h3>{{ edt.nom|truncatechars:50 }}</h3>
+                    <div class="edt-target">
+                        {% if edt.classe %}
+                            <i class="fas fa-users"></i> {{ edt.classe.nom }}
+                        {% elif edt.enseignant %}
+                            <i class="fas fa-user-tie"></i> {{ edt.enseignant.get_full_name }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="edt-badges">
+                    {% if edt.actuel %}
+                        <span class="badge badge-primary"><i class="fas fa-star"></i> Actuel</span>
+                    {% endif %}
+                    {% if edt.publie %}
+                        <span class="badge badge-success"><i class="fas fa-check"></i> Publié</span>
+                    {% else %}
+                        <span class="badge badge-warning"><i class="fas fa-clock"></i> Brouillon</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="edt-card-body">
+                <div class="edt-info">
+                    <div class="info-item">
+                        <i class="fas fa-calendar-week"></i>
+                        <span>Semaine du {{ edt.semaine_debut|date:"d/m/Y" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>{{ edt.periode_academique.nom }}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-clock"></i>
+                        <span>{{ edt.creneaux.count }} créneaux</span>
+                    </div>
+                    {% if edt.cree_par %}
+                    <div class="info-item">
+                        <i class="fas fa-user"></i>
+                        <span>{{ edt.cree_par.get_full_name|truncatechars:20 }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="edt-card-footer">
+                <a href="{% url 'courses:emploi_du_temps_detail' edt.id %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-eye"></i> Voir
+                </a>
+                <a href="{% url 'courses:emploi_du_temps_edit' edt.id %}" class="btn btn-sm btn-info">
+                    <i class="fas fa-edit"></i> Modifier
+                </a>
+                {% if not edt.publie %}
+                    <button class="btn btn-sm btn-success" onclick="publishEDT('{{ edt.id }}')">
+                        <i class="fas fa-check"></i> Publier
+                    </button>
+                {% endif %}
+                <div class="dropdown-compact">
+                    <button class="btn btn-sm btn-outline dropdown-toggle">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <div class="dropdown-menu-compact">
+                        <a href="{% url 'courses:emploi_du_temps_detail' edt.id %}">
+                            <i class="fas fa-eye"></i> Détails
+                        </a>
+                        <a href="#" onclick="exportEDTPDF('{{ edt.id }}')">
+                            <i class="fas fa-file-pdf"></i> Export PDF
+                        </a>
+                        <a href="#" onclick="exportEDTExcel('{{ edt.id }}')">
+                            <i class="fas fa-file-excel"></i> Export Excel
+                        </a>
+                        <a href="#" onclick="duplicateEDT('{{ edt.id }}')">
+                            <i class="fas fa-copy"></i> Dupliquer
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        {% if not edt.publie %}
+                            <a href="#" onclick="publishEDT('{{ edt.id }}')" class="text-success">
+                                <i class="fas fa-check"></i> Publier
+                            </a>
+                        {% else %}
+                            <a href="#" onclick="unpublishEDT('{{ edt.id }}')" class="text-warning">
+                                <i class="fas fa-eye-slash"></i> Dépublier
+                            </a>
+                        {% endif %}
+                        <div class="dropdown-divider"></div>
+                        <a href="#" onclick="deleteEDT('{{ edt.id }}')" class="text-danger">
+                            <i class="fas fa-trash"></i> Supprimer
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state-full">
+            <i class="fas fa-calendar-alt fa-3x"></i>
+            <h3>Aucun emploi du temps trouvé</h3>
+            <p>Créez un nouvel emploi du temps ou générez-en un automatiquement</p>
+            <div class="empty-actions">
+                <button class="btn btn-secondary" onclick="openGenerateModal()">
+                    <i class="fas fa-magic"></i> Générer automatiquement
+                </button>
+                <a href="{% url 'courses:emploi_du_temps_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Créer manuellement
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% include 'components/pagination.html' %}
+</div>
+
+<!-- Modal de génération automatique -->
+<div id="generateModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-magic"></i> Générer un emploi du temps</h3>
+            <button class="modal-close" onclick="closeGenerateModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="generateForm">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label class="required">Type d'emploi du temps</label>
+                    <select name="type" class="form-select" onchange="toggleGenerateType(this.value)">
+                        <option value="classe">Pour une classe</option>
+                        <option value="enseignant">Pour un enseignant</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="genClasseGroup">
+                    <label class="required">Classe</label>
+                    <select name="classe_id" class="form-select" required>
+                        <option value="">Sélectionner une classe...</option>
+                        {% for classe in classes %}
+                            <option value="{{ classe.id }}">
+                                {{ classe.nom }} - {{ classe.niveau.filiere.nom }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group" id="genEnseignantGroup" style="display: none;">
+                    <label class="required">Enseignant</label>
+                    <select name="enseignant_id" class="form-select">
+                        <option value="">Sélectionner un enseignant...</option>
+                        {% for enseignant in enseignants %}
+                            <option value="{{ enseignant.id }}">
+                                {{ enseignant.get_full_name }} ({{ enseignant.matricule }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="required">Période académique</label>
+                    <select name="periode_id" class="form-select" required>
+                        <option value="">Sélectionner une période...</option>
+                        {% for periode in periodes %}
+                            <option value="{{ periode.id }}">{{ periode.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="required">Semaine de début (Lundi)</label>
+                    <input type="date" name="semaine_debut" class="form-control" required>
+                    <small class="form-text">Sélectionner un lundi</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Nombre de semaines</label>
+                    <input type="number" name="nb_semaines" class="form-control" value="1" min="1" max="16">
+                    <small class="form-text">Génération pour plusieurs semaines consécutives</small>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeGenerateModal()">Annuler</button>
+            <button class="btn btn-primary" onclick="submitGenerate()">
+                <i class="fas fa-magic"></i> Générer
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-emplois-du-temps { padding: 15px; }
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.breadcrumb-nav {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.breadcrumb-nav .current { color: #2563eb; font-weight: 500; }
+.header-content h1 { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #1f2937; }
+.header-stats { display: flex; gap: 8px; margin-top: 5px; }
+.stat-badge {
+    padding: 2px 8px;
+    background: #f3f4f6;
+    border-radius: 12px;
+    font-size: 11px;
+    color: #1f2937;
+    font-weight: 500;
+}
+.stat-badge.publies { background: #d1fae5; color: #065f46; }
+.header-actions { display: flex; gap: 8px; }
+.filters-section {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+.filters-form {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr 1.2fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+.form-select-sm {
+    padding: 6px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    height: 32px;
+}
+.filter-actions { display: flex; gap: 5px; }
+.edt-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+.edt-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #e5e7eb;
+}
+.edt-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.edt-card-header {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    background: #f9fafb;
+}
+.edt-title h3 {
+    margin: 0 0 6px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+}
+.edt-target {
+    font-size: 12px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.edt-badges { display: flex; gap: 5px; flex-direction: column; align-items: flex-end; }
+.badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.badge-primary { background: #dbeafe; color: #1e40af; }
+.badge-success { background: #d1fae5; color: #065f46; }
+.badge-warning { background: #fef3c7; color: #92400e; }
+.edt-card-body { padding: 12px 15px; }
+.edt-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #6b7280;
+}
+.info-item i { color: #9ca3af; width: 14px; }
+.edt-card-footer {
+    padding: 10px 15px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    background: #fafbfc;
+}
+.btn {
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-info { background: #3b82f6; color: white; }
+.btn-info:hover { background: #2563eb; }
+.btn-secondary { background: #6b7280; color: white; }
+.btn-secondary:hover { background: #4b5563; }
+.btn-success { background: #10b981; color: white; }
+.btn-success:hover { background: #059669; }
+.btn-outline { background: white; border: 1px solid #e5e7eb; color: #374151; }
+.btn-outline:hover { background: #f3f4f6; }
+
+.dropdown-compact {
+    position: relative;
+}
+.dropdown-menu-compact {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+    min-width: 180px;
+    display: none;
+    z-index: 1000;
+    margin-bottom: 5px;
+}
+.dropdown-menu-compact.show { display: block; }
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: #1f2937;
+    font-size: 12px;
+    transition: background 0.2s;
+}
+.dropdown-menu-compact a:hover { background: #f3f4f6; }
+.dropdown-menu-compact a i { width: 14px; text-align: center; }
+.dropdown-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 4px 0;
+}
+.text-success { color: #10b981; }
+.text-warning { color: #f59e0b; }
+.text-danger { color: #ef4444; }
+
+.empty-state-full {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.empty-state-full i { color: #d1d5db; margin-bottom: 20px; }
+.empty-state-full h3 { margin: 0 0 10px 0; color: #1f2937; font-size: 18px; }
+.empty-state-full p { color: #6b7280; margin-bottom: 20px; }
+.empty-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+.modal.show { display: flex; }
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6b7280;
+}
+.modal-body { padding: 20px; }
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+.form-group { margin-bottom: 15px; }
+.form-group label {
+    display: block;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+.form-group label.required::after {
+    content: "*";
+    color: #ef4444;
+    margin-left: 4px;
+}
+.form-control, .form-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+}
+.form-text {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+@media (max-width: 768px) {
+    .edt-grid { grid-template-columns: 1fr; }
+    .filters-form { grid-template-columns: 1fr; gap: 8px; }
+    .page-header-compact { flex-direction: column; gap: 10px; }
+}
+</style>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const typeFilter = document.getElementById('typeFilter');
+    if (typeFilter) {
+        toggleFilters(typeFilter.value);
+    }
+
+    // Gestion des dropdowns
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.classList.remove('show');
+            });
+            dropdown.classList.toggle('show');
+        });
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.dropdown-compact')) {
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+});
+
+function toggleFilters(type) {
+    document.getElementById('classeFilter').style.display = type === 'classe' ? 'block' : 'none';
+    document.getElementById('enseignantFilter').style.display = type === 'enseignant' ? 'block' : 'none';
+}
+
+function openGenerateModal() {
+    document.getElementById('generateModal').classList.add('show');
+}
+
+function closeGenerateModal() {
+    document.getElementById('generateModal').classList.remove('show');
+}
+
+function toggleGenerateType(type) {
+    const classeGroup = document.getElementById('genClasseGroup');
+    const enseignantGroup = document.getElementById('genEnseignantGroup');
+
+    if (type === 'classe') {
+        classeGroup.style.display = 'block';
+        enseignantGroup.style.display = 'none';
+        classeGroup.querySelector('select').required = true;
+        enseignantGroup.querySelector('select').required = false;
+    } else {
+        classeGroup.style.display = 'none';
+        enseignantGroup.style.display = 'block';
+        classeGroup.querySelector('select').required = false;
+        enseignantGroup.querySelector('select').required = true;
+    }
+}
+
+function submitGenerate() {
+    const form = document.getElementById('generateForm');
+    const formData = new FormData(form);
+
+    fetch('/courses/emplois-du-temps/generate/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeGenerateModal();
+            window.location.href = `/courses/emplois-du-temps/${data.edt_id}/`;
+        } else {
+            alert(data.message || 'Erreur lors de la génération');
+        }
+    })
+    .catch(() => alert('Erreur de connexion'));
+}
+
+function publishEDT(edtId) {
+    if (confirm('Publier cet emploi du temps ?')) {
+        fetch(`/courses/emplois-du-temps/${edtId}/publish/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    }
+}
+
+function unpublishEDT(edtId) {
+    if (confirm('Dépublier cet emploi du temps ?')) {
+        // Implémenter la fonction
+        alert('Fonction à implémenter');
+    }
+}
+
+function exportEDTPDF(edtId) {
+    window.location.href = `/courses/emplois-du-temps/${edtId}/export/pdf/`;
+}
+
+function exportEDTExcel(edtId) {
+    window.location.href = `/courses/emplois-du-temps/${edtId}/export/excel/`;
+}
+
+function duplicateEDT(edtId) {
+    if (confirm('Dupliquer cet emploi du temps ?')) {
+        // Implémenter la fonction
+        alert('Fonction à implémenter');
+    }
+}
+
+function deleteEDT(edtId) {
+    if (confirm('Supprimer cet emploi du temps ? Cette action est irréversible.')) {
+        fetch(`/courses/emplois-du-temps/${edtId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById(`edt-card-${edtId}`).remove();
+            } else {
+                alert(data.message || 'Erreur');
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

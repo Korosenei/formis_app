@@ -1,0 +1,882 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Mes Étudiants{% endblock %}
+
+{% block content %}
+<div class="teacher-students">
+    <!-- Header compact -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Enseignant</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Mes Étudiants</span>
+            </div>
+            <h1>Mes Étudiants</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ students.paginator.count }} étudiant{{ students.paginator.count|pluralize }}</span>
+                <span class="stat-badge actifs">{{ students.paginator.count }} dans mes cours</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button onclick="exportStudents()" class="btn-icon" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="messages-container">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}" id="message-{{ forloop.counter }}">
+                    {% if message.tags == 'success' %}
+                        <i class="fas fa-check-circle"></i>
+                    {% else %}
+                        <i class="fas fa-exclamation-circle"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button class="close-alert" onclick="closeAlert('message-{{ forloop.counter }}')">&times;</button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Filtres -->
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="Rechercher un étudiant..."
+                       value="{{ current_filters.search }}" class="form-input-sm">
+            </div>
+            <div class="filter-group">
+                <select name="classe" class="form-select-sm">
+                    <option value="">Toutes mes classes</option>
+                    {% for cls in classes %}
+                        <option value="{{ cls.id }}" {% if current_filters.classe == cls.id|stringformat:"s" %}selected{% endif %}>
+                            {{ cls.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:teacher_students' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Actions en lot -->
+    <div class="bulk-actions-bar" id="bulkActionsBar" style="display: none;">
+        <div class="bulk-info">
+            <i class="fas fa-check-square"></i>
+            <span id="selectedCount">0</span> sélectionné(s)
+        </div>
+        <div class="bulk-buttons">
+            <button class="btn btn-sm btn-info" onclick="sendBulkMessage()">
+                <i class="fas fa-envelope"></i> Message
+            </button>
+            <button class="btn btn-sm btn-warning" onclick="bulkExport()">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Tableau -->
+    <div class="students-table-container">
+        <div class="table-wrapper">
+            <table class="students-table">
+                <thead>
+                    <tr>
+                        <th width="30"><input type="checkbox" class="select-all-header" id="selectAllStudents"></th>
+                        <th width="35">Photo</th>
+                        <th width="150">Étudiant</th>
+                        <th width="170">Classe / Filière</th>
+                        <th width="180">Contacts</th>
+                        <th width="50">Statut</th>
+                        <th width="70">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr class="student-row">
+                        <td><input type="checkbox" class="student-checkbox" value="{{ student.id }}"></td>
+                        <td>
+                            <div class="user-avatar-sm">
+                                {% if student.photo_profil %}
+                                    <img src="{{ student.photo_profil.url }}" alt="">
+                                {% else %}
+                                    <i class="fas fa-user-graduate"></i>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="personal-info">
+                                <span class="student-name">{{ student.get_full_name|truncatechars:23 }}</span>
+                                <div class="student-detail">
+                                    <code class="matricule-sm">{{ student.matricule }}</code>
+                                    {% if student.genre %}
+                                        <span class="genre-icon">
+                                            {% if student.genre|lower == 'm' %}
+                                                <i class="fas fa-mars text-info" title="M"></i>
+                                            {% else %}
+                                                <i class="fas fa-venus text-pink" title="F"></i>
+                                            {% endif %}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="academic-info">
+                                {% if student.profil_apprenant.classe_actuelle %}
+                                    <div class="classe-name">{{ student.profil_apprenant.classe_actuelle.nom }}</div>
+                                    <div class="filiere-name">{{ student.profil_apprenant.classe_actuelle.niveau.filiere.nom|truncatechars:25 }}</div>
+                                    <div class="niveau-name">{{ student.profil_apprenant.classe_actuelle.niveau.nom }}</div>
+                                {% else %}
+                                    <span class="text-muted">Non assigné</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="contact-info">
+                                <div class="email-text" title="{{ student.email }}">
+                                    <i class="fas fa-envelope"></i>
+                                    {{ student.email|truncatechars:20 }}
+                                </div>
+                                {% if student.telephone %}
+                                    <div class="phone-text">
+                                        <i class="fas fa-phone"></i>
+                                        {{ student.telephone }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if student.est_actif %}
+                                <i class="fas fa-check-circle text-success" title="Actif"></i>
+                            {% else %}
+                                <i class="fas fa-times-circle text-danger" title="Inactif"></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons-sm">
+                                <button class="btn-icon-sm btn-primary" onclick="viewStudent('{{ student.id }}')" title="Voir le profil">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <div class="dropdown-compact">
+                                    <button class="btn-icon-sm btn-outline dropdown-toggle">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="dropdown-menu-compact">
+                                        <a href="#" onclick="event.preventDefault(); viewGrades('{{ student.id }}')">
+                                            <i class="fas fa-chart-bar"></i> Voir notes
+                                        </a>
+                                        <a href="#" onclick="event.preventDefault(); viewAttendance('{{ student.id }}')">
+                                            <i class="fas fa-user-check"></i> Présences
+                                        </a>
+                                        <a href="#" onclick="event.preventDefault(); sendMessage('{{ student.id }}')">
+                                            <i class="fas fa-envelope"></i> Envoyer message
+                                        </a>
+                                        <a href="#" onclick="event.preventDefault(); generateReport('{{ student.id }}')">
+                                            <i class="fas fa-file-pdf"></i> Rapport
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <div class="empty-content">
+                                <i class="fas fa-user-graduate fa-2x text-muted"></i>
+                                <p class="mt-2">Aucun étudiant trouvé dans vos cours</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if students %}
+            {% include 'components/pagination.html' with page_obj=page_obj %}
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.teacher-students {
+    padding: 12px;
+    max-width: 100%;
+}
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.breadcrumb-nav {
+    font-size: 10px;
+    color: #6b7280;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.breadcrumb-nav i {
+    font-size: 8px;
+}
+
+.breadcrumb-nav .current {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.header-content h1 {
+    margin: 0 0 6px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.header-stats {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.stat-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    background: #f3f4f6;
+    border-radius: 10px;
+    font-size: 10px;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.stat-badge.actifs {
+    background: #d4edda;
+    color: #155724;
+}
+
+.header-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.messages-container {
+    margin-bottom: 12px;
+}
+
+.alert {
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    position: relative;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-15px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.alert-success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.alert-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.close-alert {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    line-height: 1;
+}
+
+.close-alert:hover {
+    opacity: 1;
+}
+
+.filters-section {
+    background: white;
+    padding: 10px;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    margin-bottom: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr auto;
+    gap: 8px;
+    align-items: end;
+}
+
+.form-input-sm,
+.form-select-sm {
+    padding: 5px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 12px;
+    height: 28px;
+    width: 100%;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.bulk-actions-bar {
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+}
+
+.bulk-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #155724;
+    font-weight: 500;
+}
+
+.bulk-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.btn {
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 11px;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #1f2937;
+}
+
+.btn-outline:hover {
+    background: #f3f4f6;
+}
+
+.btn-info {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-info:hover {
+    background: #2563eb;
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+}
+
+.students-table-container {
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.students-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.students-table th {
+    background: #f3f4f6;
+    padding: 6px 4px;
+    text-align: left;
+    font-weight: 600;
+    color: #1f2937;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.students-table td {
+    padding: 6px 4px;
+    border-bottom: 1px solid #d1d5db;
+    vertical-align: middle;
+}
+
+.students-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.user-avatar-sm {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    color: #6b7280;
+    font-size: 11px;
+}
+
+.user-avatar-sm img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.personal-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.student-name {
+    font-weight: 500;
+    color: #1f2937;
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.student-detail {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.matricule-sm {
+    background: #f3f4f6;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-family: monospace;
+    font-size: 9px;
+    color: #1f2937;
+}
+
+.genre-icon {
+    font-size: 10px;
+}
+
+.academic-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.classe-name {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 11px;
+    line-height: 1.2;
+}
+
+.filiere-name {
+    color: #2563eb;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.niveau-name {
+    color: #6b7280;
+    font-size: 9px;
+    line-height: 1.2;
+}
+
+.contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.email-text, .phone-text {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #6b7280;
+    font-size: 10px;
+    line-height: 1.2;
+}
+
+.email-text i, .phone-text i {
+    width: 10px;
+    font-size: 9px;
+}
+
+.action-buttons-sm {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.btn-icon-sm {
+    width: 22px;
+    height: 22px;
+    border-radius: 3px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 9px;
+    transition: all 0.2s;
+}
+
+.btn-icon-sm.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-icon-sm.btn-outline {
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #6b7280;
+}
+
+.btn-icon-sm:hover {
+    transform: scale(1.05);
+}
+
+.btn-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: #f3f4f6;
+    color: #1f2937;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    background: #d1d5db;
+}
+
+.dropdown-compact {
+    position: relative;
+}
+
+.dropdown-menu-compact {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    min-width: 140px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+    display: none;
+}
+
+.dropdown-menu-compact.show {
+    display: block;
+}
+
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    text-decoration: none;
+    color: #1f2937;
+    font-size: 10px;
+    transition: background 0.2s;
+}
+
+.dropdown-menu-compact a:hover {
+    background: #f3f4f6;
+}
+
+.text-success { color: #10b981; }
+.text-danger { color: #ef4444; }
+.text-muted { color: #6b7280; }
+.text-info { color: #3b82f6; }
+.text-pink { color: #e91e63; }
+
+.empty-state {
+    text-align: center;
+    padding: 30px 15px;
+}
+
+.empty-content {
+    color: #6b7280;
+}
+
+.mt-2 { margin-top: 6px; }
+
+@media (max-width: 1024px) {
+    .filters-form {
+        grid-template-columns: 1fr 1fr auto;
+        gap: 6px;
+    }
+
+    .students-table {
+        min-width: 800px;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-header-compact {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .filters-form {
+        grid-template-columns: 1fr;
+    }
+
+    .header-stats {
+        width: 100%;
+    }
+
+    .bulk-actions-bar {
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+    }
+
+    .bulk-buttons {
+        justify-content: center;
+    }
+}
+
+@keyframes slideOut {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(-15px); opacity: 0; }
+}
+</style>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+function closeAlert(id) {
+    const alert = document.getElementById(id);
+    if (alert) {
+        alert.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => alert.remove(), 300);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            alert.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => alert.remove(), 300);
+        }, 5000);
+    });
+
+    const selectAll = document.getElementById('selectAllStudents');
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    const bulkBar = document.getElementById('bulkActionsBar');
+    const selectedCount = document.getElementById('selectedCount');
+
+    selectAll?.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+        updateBulkActions();
+    });
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    function updateBulkActions() {
+        const selected = document.querySelectorAll('.student-checkbox:checked').length;
+        selectedCount.textContent = selected;
+        bulkBar.style.display = selected > 0 ? 'flex' : 'none';
+
+        if (selectAll) {
+            selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+            selectAll.checked = selected === checkboxes.length;
+        }
+    }
+
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.classList.remove('show');
+            });
+
+            dropdown.classList.toggle('show');
+        });
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.dropdown-compact')) {
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+});
+
+function viewStudent(studentId) {
+    window.location.href = `/accounts/students/${studentId}/`;
+}
+
+function viewGrades(studentId) {
+    window.location.href = `/dashboard/teacher/students/${studentId}/grades/`;
+}
+
+function viewAttendance(studentId) {
+    window.location.href = `/dashboard/teacher/students/${studentId}/attendance/`;
+}
+
+function sendMessage(studentId) {
+    alert(`Envoyer un message à l'étudiant ${studentId}`);
+}
+
+function generateReport(studentId) {
+    window.location.href = `/dashboard/teacher/students/${studentId}/report/`;
+}
+
+function exportStudents() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/accounts/students/export/?${params.toString()}`;
+}
+
+function sendBulkMessage() {
+    const selected = Array.from(document.querySelectorAll('.student-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins un étudiant');
+        return;
+    }
+    alert(`Message à ${selected.length} étudiant(s)`);
+}
+
+function bulkExport() {
+    const selected = Array.from(document.querySelectorAll('.student-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins un étudiant');
+        return;
+    }
+    const params = new URLSearchParams();
+    params.set('students', selected.join(','));
+    window.location.href = `/accounts/students/export/?${params.toString()}`;
+}
+
+function showMessage(message, type) {
+    const container = document.querySelector('.messages-container') || createMessageContainer();
+    const messageId = 'msg-' + Date.now();
+
+    const alertHtml = `
+        <div class="alert alert-${type}" id="${messageId}">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+            ${message}
+            <button class="close-alert" onclick="closeAlert('${messageId}')">&times;</button>
+        </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', alertHtml);
+    setTimeout(() => closeAlert(messageId), 5000);
+}
+
+function createMessageContainer() {
+    const container = document.createElement('div');
+    container.className = 'messages-container';
+    document.querySelector('.teacher-students').insertBefore(
+        container,
+        document.querySelector('.filters-section')
+    );
+    return container;
+}
+</script>
+{% endblock %}

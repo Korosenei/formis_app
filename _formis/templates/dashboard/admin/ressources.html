@@ -1,0 +1,762 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Gestion des Ressources - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-ressources">
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Ressources</span>
+            </div>
+            <h1>Gestion des Ressources</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ ressources.paginator.count }} total</span>
+                <span class="stat-badge downloads">{{ total_telechargements }} téléchargements</span>
+                <span class="stat-badge views">{{ total_vues }} vues</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportRessources()" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="Rechercher..."
+                       value="{{ current_filters.search }}" class="form-input-sm">
+            </div>
+            <div class="filter-group">
+                <select name="type" class="form-select-sm">
+                    <option value="">Tous types</option>
+                    {% for key, label in types_ressource %}
+                        <option value="{{ key }}" {% if current_filters.type == key %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="enseignant" class="form-select-sm">
+                    <option value="">Tous enseignants</option>
+                    {% for enseignant in enseignants %}
+                        <option value="{{ enseignant.id }}" {% if current_filters.enseignant == enseignant.id|stringformat:"s" %}selected{% endif %}>
+                            {{ enseignant.get_full_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="public" class="form-select-sm">
+                    <option value="">Toutes</option>
+                    <option value="True" {% if current_filters.public == 'True' %}selected{% endif %}>Publiques</option>
+                    <option value="False" {% if current_filters.public == 'False' %}selected{% endif %}>Privées</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:admin_ressources' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="ressources-grid">
+        {% for ressource in ressources %}
+        <div class="ressource-card" id="ressource-{{ ressource.id }}">
+            <div class="ressource-header">
+                <div class="ressource-icon {{ ressource.type_ressource|lower }}">
+                    {% if ressource.type_ressource == 'PDF' %}
+                        <i class="fas fa-file-pdf"></i>
+                    {% elif ressource.type_ressource == 'VIDEO' %}
+                        <i class="fas fa-video"></i>
+                    {% elif ressource.type_ressource == 'DOC' %}
+                        <i class="fas fa-file-word"></i>
+                    {% elif ressource.type_ressource == 'PPT' %}
+                        <i class="fas fa-file-powerpoint"></i>
+                    {% elif ressource.type_ressource == 'AUDIO' %}
+                        <i class="fas fa-file-audio"></i>
+                    {% elif ressource.type_ressource == 'IMAGE' %}
+                        <i class="fas fa-file-image"></i>
+                    {% elif ressource.type_ressource == 'LINK' %}
+                        <i class="fas fa-link"></i>
+                    {% else %}
+                        <i class="fas fa-file"></i>
+                    {% endif %}
+                </div>
+                <div class="ressource-info">
+                    <h3>{{ ressource.titre|truncatechars:45 }}</h3>
+                    <p class="cours-title">{{ ressource.cours.titre|truncatechars:40 }}</p>
+                </div>
+                <div class="ressource-badges">
+                    {% if ressource.obligatoire %}
+                        <span class="badge-obligatoire" title="Obligatoire">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </span>
+                    {% endif %}
+                    {% if ressource.public %}
+                        <span class="badge-public" title="Public">
+                            <i class="fas fa-globe"></i>
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="ressource-body">
+                {% if ressource.description %}
+                <p class="ressource-description">{{ ressource.description|truncatechars:120 }}</p>
+                {% endif %}
+
+                <div class="ressource-meta">
+                    <div class="meta-row">
+                        <span class="meta-item">
+                            <i class="fas fa-tag"></i>
+                            {{ ressource.get_type_ressource_display }}
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas fa-hdd"></i>
+                            {{ ressource.get_taille_fichier_display }}
+                        </span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-item">
+                            <i class="fas fa-eye"></i>
+                            {{ ressource.nombre_vues }} vues
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas fa-download"></i>
+                            {{ ressource.nombre_telechargements }} DL
+                        </span>
+                    </div>
+                </div>
+
+                <div class="ressource-cours-info">
+                    <span class="cours-matiere">{{ ressource.cours.matiere.nom }}</span>
+                    <span class="cours-classe">{{ ressource.cours.classe.nom }}</span>
+                </div>
+            </div>
+
+            <div class="ressource-footer">
+                <div class="footer-info">
+                    <span class="enseignant-info">
+                        <i class="fas fa-user"></i>
+                        {{ ressource.cours.enseignant.get_full_name|truncatechars:20 }}
+                    </span>
+                    <span class="date-info">
+                        <i class="fas fa-calendar"></i>
+                        {{ ressource.created_at|date:"d/m/Y" }}
+                    </span>
+                </div>
+                <div class="footer-actions">
+                    <a href="{% url 'courses:ressource_view' ressource.id %}"
+                       class="btn btn-sm btn-primary" title="Voir">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    {% if ressource.telechargeable %}
+                    <a href="{% url 'courses:ressource_download' ressource.id %}"
+                       class="btn btn-sm btn-success" title="Télécharger">
+                        <i class="fas fa-download"></i>
+                    </a>
+                    {% endif %}
+                    {% if user == ressource.cours.enseignant or user.role == 'ADMIN' %}
+                    <div class="dropdown-compact">
+                        <button class="btn btn-sm btn-outline dropdown-toggle" title="Plus">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="dropdown-menu-compact">
+                            <a href="{% url 'courses:ressource_edit' ressource.id %}">
+                                <i class="fas fa-edit"></i> Modifier
+                            </a>
+                            <a href="{% url 'courses:cours_detail' ressource.cours.id %}">
+                                <i class="fas fa-book"></i> Voir le cours
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" onclick="deleteRessource('{{ ressource.id }}')" class="text-danger">
+                                <i class="fas fa-trash"></i> Supprimer
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state-full">
+            <i class="fas fa-folder-open fa-3x"></i>
+            <h3>Aucune ressource trouvée</h3>
+            <p>Les ressources pédagogiques apparaîtront ici une fois ajoutées aux cours</p>
+        </div>
+        {% endfor %}
+    </div>
+
+        <!-- Pagination -->
+        {% if ressources %}
+            {% include 'components/pagination.html' with page_obj=page_obj %}
+        {% endif %}
+</div>
+
+<style>
+.admin-ressources { padding: 15px; }
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav .current {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.header-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+    flex-wrap: wrap;
+}
+
+.stat-badge {
+    padding: 2px 8px;
+    background: #f3f4f6;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.stat-badge.downloads {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.stat-badge.views {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #6b7280;
+}
+
+.btn-icon:hover {
+    background: #f3f4f6;
+}
+
+.filters-section {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 1.5fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.form-select-sm, .form-input-sm {
+    padding: 6px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    height: 32px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 11px;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #6b7280;
+}
+
+.btn-outline:hover {
+    background: #f3f4f6;
+}
+
+.ressources-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.ressource-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.ressource-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.ressource-header {
+    padding: 15px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    position: relative;
+}
+
+.ressource-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.ressource-icon.pdf { background: #ef4444; }
+.ressource-icon.video { background: #8b5cf6; }
+.ressource-icon.doc { background: #3b82f6; }
+.ressource-icon.ppt { background: #f97316; }
+.ressource-icon.audio { background: #10b981; }
+.ressource-icon.image { background: #f59e0b; }
+.ressource-icon.link { background: #06b6d4; }
+.ressource-icon.other { background: #6b7280; }
+
+.ressource-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.ressource-info h3 {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+    line-height: 1.3;
+}
+
+.cours-title {
+    margin: 0;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.ressource-badges {
+    display: flex;
+    gap: 4px;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+}
+
+.badge-obligatoire,
+.badge-public {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+}
+
+.badge-obligatoire {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-public {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.ressource-body {
+    padding: 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ressource-description {
+    margin: 0;
+    font-size: 12px;
+    color: #4b5563;
+    line-height: 1.5;
+}
+
+.ressource-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.meta-row {
+    display: flex;
+    gap: 12px;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.meta-item i {
+    width: 12px;
+    color: #9ca3af;
+}
+
+.ressource-cours-info {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: auto;
+}
+
+.cours-matiere,
+.cours-classe {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.cours-matiere {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.cours-classe {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.ressource-footer {
+    padding: 10px 15px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fafbfc;
+}
+
+.footer-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.enseignant-info,
+.date-info {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.enseignant-info i,
+.date-info i {
+    width: 12px;
+    color: #9ca3af;
+}
+
+.footer-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.dropdown-compact {
+    position: relative;
+}
+
+.dropdown-menu-compact {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+    min-width: 160px;
+    display: none;
+    z-index: 1000;
+    margin-bottom: 5px;
+}
+
+.dropdown-menu-compact.show {
+    display: block;
+}
+
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: #1f2937;
+    font-size: 12px;
+    transition: background 0.2s;
+}
+
+.dropdown-menu-compact a:hover {
+    background: #f3f4f6;
+}
+
+.dropdown-menu-compact a i {
+    width: 14px;
+    text-align: center;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 4px 0;
+}
+
+.text-danger {
+    color: #ef4444;
+}
+
+.text-danger:hover {
+    color: #dc2626;
+    background: #fee2e2 !important;
+}
+
+.empty-state-full {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.empty-state-full i {
+    color: #d1d5db;
+    margin-bottom: 20px;
+}
+
+.empty-state-full h3 {
+    margin: 0 0 10px 0;
+    color: #1f2937;
+    font-size: 18px;
+}
+
+.empty-state-full p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .filters-form {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .ressources-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .page-header-compact {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .header-stats {
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-start;
+    }
+}
+</style>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestion des dropdowns
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.classList.remove('show');
+            });
+
+            dropdown.classList.toggle('show');
+        });
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.dropdown-compact')) {
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+});
+
+function exportRessources() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/courses/ressources/export/?${params.toString()}`;
+}
+
+function deleteRessource(ressourceId) {
+    if (confirm('Supprimer cette ressource ? Cette action est irréversible.')) {
+        fetch(`/courses/ressources/${ressourceId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const card = document.getElementById(`ressource-${ressourceId}`);
+                if (card) {
+                    card.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => card.remove(), 300);
+                }
+                alert('Ressource supprimée avec succès');
+            } else {
+                alert(data.message || 'Erreur lors de la suppression');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur de connexion');
+        });
+    }
+}
+</script>
+
+<style>
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+}
+</style>
+{% endblock %}

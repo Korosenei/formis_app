@@ -1,0 +1,834 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Correction en masse - {{ evaluation.titre }}{% endblock %}
+
+{% block content %}
+<div class="correction-masse">
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <a href="{% url 'evaluations:list_enseignant' %}">Évaluations</a>
+                <i class="fas fa-chevron-right"></i>
+                <a href="{% url 'evaluations:evaluation_detail_enseignant' evaluation.id %}">{{ evaluation.titre }}</a>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Correction en masse</span>
+            </div>
+            <h1>Correction en masse</h1>
+            <p class="subtitle">{{ evaluation.titre }} - {{ evaluation.matiere.nom }}</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="importNotes()">
+                <i class="fas fa-file-import"></i> Importer CSV
+            </button>
+            <button class="btn btn-success" onclick="saveAllNotes()">
+                <i class="fas fa-save"></i> Enregistrer tout
+            </button>
+        </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="instructions-card">
+        <div class="instruction-icon">
+            <i class="fas fa-info-circle"></i>
+        </div>
+        <div class="instruction-content">
+            <h3>Instructions rapides</h3>
+            <ul>
+                <li>Saisissez les notes directement dans les champs</li>
+                <li>Utilisez <kbd>Tab</kbd> pour naviguer entre les champs</li>
+                <li>Les notes doivent être entre 0 et {{ evaluation.note_maximale }}</li>
+                <li>Cliquez sur "Enregistrer tout" pour sauvegarder toutes les notes</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Formulaire de correction -->
+    <form id="correctionForm" method="post">
+        {% csrf_token %}
+
+        <div class="corrections-table-wrapper">
+            <table class="corrections-table">
+                <thead>
+                    <tr>
+                        <th width="40">
+                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                        </th>
+                        <th width="60">#</th>
+                        <th>Étudiant</th>
+                        <th width="150">Matricule</th>
+                        <th width="120">Date soumission</th>
+                        <th width="150">Note / {{ evaluation.note_maximale }}</th>
+                        <th width="100">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for composition in compositions %}
+                    <tr class="composition-row" data-id="{{ composition.id }}">
+                        <td>
+                            <input type="checkbox" class="row-checkbox" name="selected[]" value="{{ composition.id }}">
+                        </td>
+                        <td class="text-center">{{ forloop.counter }}</td>
+                        <td>
+                            <div class="student-cell">
+                                <div class="student-avatar-sm">
+                                    {% if composition.apprenant.photo_profil %}
+                                        <img src="{{ composition.apprenant.photo_profil.url }}" alt="">
+                                    {% else %}
+                                        <i class="fas fa-user"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="student-name">
+                                    <strong>{{ composition.apprenant.get_full_name }}</strong>
+                                    {% if composition.est_en_retard %}
+                                        <span class="badge-warning-sm">
+                                            <i class="fas fa-exclamation-triangle"></i> Retard
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ composition.apprenant.matricule }}</td>
+                        <td class="text-center">
+                            {% if composition.date_soumission %}
+                                {{ composition.date_soumission|date:"d/m/Y H:i" }}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="note-input-group">
+                                <input type="number"
+                                       class="note-input"
+                                       name="note_{{ composition.id }}"
+                                       id="note_{{ composition.id }}"
+                                       step="0.25"
+                                       min="0"
+                                       max="{{ evaluation.note_maximale }}"
+                                       value="{% if composition.note_obtenue %}{{ composition.note_obtenue }}{% endif %}"
+                                       placeholder="0.00"
+                                       onchange="validateNote(this)">
+                                <span class="note-max">/ {{ evaluation.note_maximale }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button type="button" class="btn-icon"
+                                        onclick="openCommentModal({{ composition.id }}, '{{ composition.apprenant.get_full_name }}')"
+                                        title="Ajouter commentaire">
+                                    <i class="fas fa-comment"></i>
+                                </button>
+                                <button type="button" class="btn-icon"
+                                        onclick="viewFiles({{ composition.id }})"
+                                        title="Voir fichiers">
+                                    <i class="fas fa-file"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">
+                            Aucune composition soumise
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Actions groupées -->
+        <div class="bulk-actions">
+            <div class="bulk-info">
+                <span id="selectedCount">0</span> composition(s) sélectionnée(s)
+            </div>
+            <div class="bulk-buttons">
+                <button type="button" class="btn btn-outline" onclick="applyNoteToSelected()">
+                    <i class="fas fa-copy"></i> Appliquer une note
+                </button>
+                <button type="button" class="btn btn-outline" onclick="clearSelected()">
+                    <i class="fas fa-eraser"></i> Effacer sélection
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Modal Commentaire -->
+<div id="commentModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Commentaire</h3>
+            <button class="modal-close" onclick="closeCommentModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="currentCompositionId">
+            <div class="form-group">
+                <label>Commentaire de correction</label>
+                <textarea id="commentInput"
+                          class="form-control"
+                          rows="5"
+                          placeholder="Votre commentaire sur la copie..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeCommentModal()">Annuler</button>
+            <button class="btn btn-primary" onclick="saveComment()">
+                <i class="fas fa-save"></i> Enregistrer
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Note groupée -->
+<div id="bulkNoteModal" class="modal">
+    <div class="modal-content modal-sm">
+        <div class="modal-header">
+            <h3>Appliquer une note</h3>
+            <button class="modal-close" onclick="closeBulkNoteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Note à appliquer</label>
+                <input type="number"
+                       id="bulkNoteInput"
+                       class="form-control"
+                       step="0.25"
+                       min="0"
+                       max="{{ evaluation.note_maximale }}"
+                       placeholder="Ex: 15.5">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeBulkNoteModal()">Annuler</button>
+            <button class="btn btn-primary" onclick="applyBulkNote()">
+                <i class="fas fa-check"></i> Appliquer
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.correction-masse { padding: 15px; max-width: 1600px; margin: 0 auto; }
+
+.page-header {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.breadcrumb-nav {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav a { color: #2563eb; text-decoration: none; }
+.breadcrumb-nav .current { color: #1f2937; font-weight: 500; }
+
+.header-content h1 {
+    margin: 0 0 5px 0;
+    font-size: 22px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.subtitle {
+    margin: 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.header-actions { display: flex; gap: 10px; }
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s;
+}
+
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-secondary { background: #6b7280; color: white; }
+.btn-secondary:hover { background: #4b5563; }
+.btn-success { background: #10b981; color: white; }
+.btn-success:hover { background: #059669; }
+.btn-outline { background: white; border: 1px solid #d1d5db; color: #374151; }
+.btn-outline:hover { background: #f9fafb; }
+
+.instructions-card {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 20px;
+}
+
+.instruction-icon {
+    width: 50px;
+    height: 50px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #2563eb;
+    flex-shrink: 0;
+}
+
+.instruction-content h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e40af;
+}
+
+.instruction-content ul {
+    margin: 0;
+    padding-left: 20px;
+    color: #1e40af;
+    font-size: 14px;
+}
+
+.instruction-content li { margin-bottom: 5px; }
+
+kbd {
+    padding: 2px 6px;
+    background: white;
+    border: 1px solid #bfdbfe;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.corrections-table-wrapper {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.corrections-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.corrections-table thead th {
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    padding: 15px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.corrections-table tbody td {
+    padding: 15px 12px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 14px;
+}
+
+.composition-row:hover {
+    background: #fafbfc;
+}
+
+.text-center { text-align: center; }
+.text-muted { color: #9ca3af; }
+
+.student-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.student-avatar-sm {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e5e7eb;
+    color: #6b7280;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.student-avatar-sm img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.student-name {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.student-name strong {
+    font-size: 14px;
+    color: #1f2937;
+}
+
+.badge-warning-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.note-input-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.note-input {
+    width: 80px;
+    padding: 8px;
+    border: 2px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.3s;
+}
+
+.note-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.note-input.valid {
+    border-color: #10b981;
+}
+
+.note-input.invalid {
+    border-color: #ef4444;
+}
+
+.note-max {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #f3f4f6;
+    color: #6b7280;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.btn-icon:hover {
+    background: #e5e7eb;
+    color: #1f2937;
+}
+
+.bulk-actions {
+    background: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.bulk-info {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.bulk-info span {
+    font-weight: 700;
+    color: #2563eb;
+    font-size: 16px;
+}
+
+.bulk-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show { display: flex; }
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content.modal-sm {
+    max-width: 400px;
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: #6b7280;
+    line-height: 1;
+}
+
+.modal-close:hover { color: #1f2937; }
+
+.modal-body { padding: 20px; }
+
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.form-group { margin-bottom: 15px; }
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 100px;
+}
+
+@media (max-width: 1024px) {
+    .corrections-table-wrapper {
+        overflow-x: auto;
+    }
+
+    .bulk-actions {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+}
+</style>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Gestion de la sélection
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const selected = document.querySelectorAll('.row-checkbox:checked').length;
+    document.getElementById('selectedCount').textContent = selected;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateSelectedCount);
+    });
+});
+
+// Validation de note
+function validateNote(input) {
+    const max = parseFloat(input.max);
+    const value = parseFloat(input.value);
+
+    if (isNaN(value) || value < 0) {
+        input.classList.add('invalid');
+        input.classList.remove('valid');
+        return false;
+    }
+
+    if (value > max) {
+        alert(`La note ne peut pas dépasser ${max}`);
+        input.value = max;
+        input.classList.add('invalid');
+        input.classList.remove('valid');
+        return false;
+    }
+
+    input.classList.add('valid');
+    input.classList.remove('invalid');
+    return true;
+}
+
+// Sauvegarder toutes les notes
+function saveAllNotes() {
+    const notes = {};
+    const inputs = document.querySelectorAll('.note-input');
+    let hasError = false;
+
+    inputs.forEach(input => {
+        if (input.value) {
+            if (!validateNote(input)) {
+                hasError = true;
+                return;
+            }
+            const id = input.name.replace('note_', '');
+            notes[id] = input.value;
+        }
+    });
+
+    if (hasError) {
+        alert('Veuillez corriger les notes invalides');
+        return;
+    }
+
+    if (Object.keys(notes).length === 0) {
+        alert('Aucune note à enregistrer');
+        return;
+    }
+
+    if (!confirm(`Enregistrer ${Object.keys(notes).length} note(s) ?`)) {
+        return;
+    }
+
+    // Afficher un loader
+    const btn = event.target;
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
+    btn.disabled = true;
+
+    fetch('{% url "evaluations:correction_en_masse" evaluation.id %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ notes: notes })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Notes enregistrées avec succès');
+            location.reload();
+        } else {
+            alert('Erreur: ' + (data.error || 'Une erreur est survenue'));
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de l\'enregistrement');
+    })
+    .finally(() => {
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+    });
+}
+
+// Modal Commentaire
+let currentCompositionId = null;
+
+function openCommentModal(compositionId, studentName) {
+    currentCompositionId = compositionId;
+    document.getElementById('currentCompositionId').value = compositionId;
+    document.getElementById('modalTitle').textContent = `Commentaire - ${studentName}`;
+    document.getElementById('commentInput').value = '';
+    document.getElementById('commentModal').classList.add('show');
+}
+
+function closeCommentModal() {
+    document.getElementById('commentModal').classList.remove('show');
+    currentCompositionId = null;
+}
+
+function saveComment() {
+    const comment = document.getElementById('commentInput').value;
+
+    if (!comment.trim()) {
+        alert('Veuillez saisir un commentaire');
+        return;
+    }
+
+    // Stocker temporairement (à implémenter selon vos besoins)
+    alert('Commentaire enregistré');
+    closeCommentModal();
+}
+
+// Note groupée
+function applyNoteToSelected() {
+    const selected = document.querySelectorAll('.row-checkbox:checked');
+
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins une composition');
+        return;
+    }
+
+    document.getElementById('bulkNoteModal').classList.add('show');
+}
+
+function closeBulkNoteModal() {
+    document.getElementById('bulkNoteModal').classList.remove('show');
+}
+
+function applyBulkNote() {
+    const note = document.getElementById('bulkNoteInput').value;
+
+    if (!note) {
+        alert('Veuillez saisir une note');
+        return;
+    }
+
+    const max = {{ evaluation.note_maximale }};
+    if (parseFloat(note) > max) {
+        alert(`La note ne peut pas dépasser ${max}`);
+        return;
+    }
+
+    const selected = document.querySelectorAll('.row-checkbox:checked');
+    selected.forEach(checkbox => {
+        const row = checkbox.closest('tr');
+        const input = row.querySelector('.note-input');
+        if (input) {
+            input.value = note;
+            validateNote(input);
+        }
+    });
+
+    closeBulkNoteModal();
+}
+
+function clearSelected() {
+    const selected = document.querySelectorAll('.row-checkbox:checked');
+    selected.forEach(checkbox => {
+        const row = checkbox.closest('tr');
+        const input = row.querySelector('.note-input');
+        if (input) {
+            input.value = '';
+            input.classList.remove('valid', 'invalid');
+        }
+    });
+}
+
+function viewFiles(compositionId) {
+    window.open(`/evaluations/composition/${compositionId}/files/`, '_blank');
+}
+
+function importNotes() {
+    window.location.href = '{% url "evaluations:importer_notes" evaluation.id %}';
+}
+
+// Navigation au clavier
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('.note-input');
+
+    inputs.forEach((input, index) => {
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                const nextInput = inputs[index + 1];
+                if (nextInput) {
+                    nextInput.focus();
+                    nextInput.select();
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

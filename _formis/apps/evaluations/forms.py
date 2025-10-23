@@ -5,7 +5,7 @@ from django.forms.widgets import DateTimeInput, CheckboxSelectMultiple
 from django.db.models import Q
 from django.forms import MultiValueField, FileField
 from .models import Evaluation, Composition, FichierComposition, Note
-from apps.courses.models import MatiereModule
+from apps.courses.models import Matiere
 from apps.academic.models import Classe
 from apps.establishments.models import AnneeAcademique
 
@@ -27,7 +27,7 @@ class EvaluationForm(forms.ModelForm):
     class Meta:
         model = Evaluation
         fields = [
-            'matiere_module', 'titre', 'description', 'type_evaluation',
+            'matiere', 'titre', 'description', 'type_evaluation',
             'coefficient', 'note_maximale', 'date_debut', 'date_fin',
             'duree_minutes', 'fichier_evaluation', 'fichier_correction',
             'correction_visible_immediatement', 'date_publication_correction',
@@ -84,7 +84,7 @@ class EvaluationForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Ex: 120'
             }),
-            'matiere_module': forms.Select(attrs={
+            'matiere': forms.Select(attrs={
                 'class': 'form-control'
             }),
             'type_evaluation': forms.Select(attrs={
@@ -111,19 +111,19 @@ class EvaluationForm(forms.ModelForm):
 
         # Filtrer les matières selon l'enseignant connecté
         if user and user.role == 'ENSEIGNANT':
-            self.fields['matiere_module'].queryset = MatiereModule.objects.filter(
+            self.fields['matiere'].queryset = Matiere.objects.filter(
                 enseignant=user
             ).select_related('matiere', 'module')
 
             # Filtrer les classes selon les matières de l'enseignant
-            classes_ids = MatiereModule.objects.filter(
+            classes_ids = Matiere.objects.filter(
                 enseignant=user
             ).values_list('module__classes', flat=True)
             self.fields['classes'].queryset = Classe.objects.filter(
                 id__in=classes_ids
             ).distinct()
         else:
-            self.fields['matiere_module'].queryset = MatiereModule.objects.none()
+            self.fields['matiere'].queryset = Matiere.objects.none()
             self.fields['classes'].queryset = Classe.objects.none()
 
         # Configuration des champs requis
@@ -156,7 +156,7 @@ class EvaluationForm(forms.ModelForm):
         autorise_retard = cleaned_data.get('autorise_retard')
         penalite_retard = cleaned_data.get('penalite_retard')
         coefficient = cleaned_data.get('coefficient')
-        matiere_module = cleaned_data.get('matiere_module')
+        matiere = cleaned_data.get('matiere')
 
         # Validation des dates
         if date_debut and date_fin:
@@ -198,21 +198,21 @@ class EvaluationForm(forms.ModelForm):
             cleaned_data['penalite_retard'] = 0
 
         # Validation du coefficient par rapport à la matière
-        if coefficient and matiere_module:
+        if coefficient and matiere:
             # Calculer la somme des coefficients existants pour cette matière
             total_coefficients = Evaluation.objects.filter(
-                matiere_module=matiere_module,
+                matiere=matiere,
                 statut__in=['PROGRAMMEE', 'EN_COURS', 'TERMINEE']
             ).exclude(pk=self.instance.pk).aggregate(
                 total=models.Sum('coefficient')
             )['total'] or 0
 
             total_avec_cette_eval = total_coefficients + coefficient
-            if total_avec_cette_eval > matiere_module.coefficient:
+            if total_avec_cette_eval > matiere.coefficient:
                 raise ValidationError({
                     'coefficient':
                         f"La somme des coefficients ({total_avec_cette_eval}) ne peut pas "
-                        f"dépasser le coefficient de la matière ({matiere_module.coefficient})"
+                        f"dépasser le coefficient de la matière ({matiere.coefficient})"
                 })
 
         return cleaned_data
@@ -416,7 +416,7 @@ class EvaluationSearchForm(forms.Form):
     )
 
     matiere = forms.ModelChoiceField(
-        queryset=MatiereModule.objects.none(),
+        queryset=Matiere.objects.none(),
         required=False,
         empty_label="Toutes les matières",
         widget=forms.Select(attrs={'class': 'form-control'})
@@ -452,12 +452,12 @@ class EvaluationSearchForm(forms.Form):
 
         if user and user.role == 'ENSEIGNANT':
             # Filtrer selon les matières de l'enseignant
-            self.fields['matiere'].queryset = MatiereModule.objects.filter(
+            self.fields['matiere'].queryset = Matiere.objects.filter(
                 enseignant=user
             ).select_related('matiere', 'module')
 
             # Filtrer les classes selon les matières de l'enseignant
-            classes_ids = MatiereModule.objects.filter(
+            classes_ids = Matiere.objects.filter(
                 enseignant=user
             ).values_list('module__classes', flat=True)
             self.fields['classe'].queryset = Classe.objects.filter(
@@ -466,15 +466,15 @@ class EvaluationSearchForm(forms.Form):
         elif user and user.role == 'APPRENANT':
             # Pour les apprenants, limiter aux matières de leur classe
             if hasattr(user, 'classe') and user.classe:
-                self.fields['matiere'].queryset = MatiereModule.objects.filter(
+                self.fields['matiere'].queryset = Matiere.objects.filter(
                     module__classes=user.classe
                 ).select_related('matiere', 'module')
                 self.fields['classe'].queryset = Classe.objects.filter(id=user.classe.id)
             else:
-                self.fields['matiere'].queryset = MatiereModule.objects.none()
+                self.fields['matiere'].queryset = Matiere.objects.none()
                 self.fields['classe'].queryset = Classe.objects.none()
         else:
-            self.fields['matiere'].queryset = MatiereModule.objects.all()
+            self.fields['matiere'].queryset = Matiere.objects.all()
             self.fields['classe'].queryset = Classe.objects.all()
 
 
@@ -635,7 +635,7 @@ class StatistiquesForm(forms.Form):
     )
 
     matiere = forms.ModelChoiceField(
-        queryset=MatiereModule.objects.none(),
+        queryset=Matiere.objects.none(),
         required=False,
         empty_label="Toutes les matières",
         widget=forms.Select(attrs={'class': 'form-control'})
@@ -652,8 +652,8 @@ class StatistiquesForm(forms.Form):
             pass
 
         if user and user.role == 'ENSEIGNANT':
-            self.fields['matiere'].queryset = MatiereModule.objects.filter(
+            self.fields['matiere'].queryset = Matiere.objects.filter(
                 enseignant=user
             ).select_related('matiere', 'module')
         else:
-            self.fields['matiere'].queryset = MatiereModule.objects.all()
+            self.fields['matiere'].queryset = Matiere.objects.all()

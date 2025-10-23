@@ -1,0 +1,540 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Cahiers de Texte - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-cahiers">
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Cahiers de texte</span>
+            </div>
+            <h1>Gestion des Cahiers de Texte</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ cahiers.paginator.count }} total</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportCahiers()" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <select name="classe" class="form-select-sm">
+                    <option value="">Toutes classes</option>
+                    {% for classe in classes %}
+                        <option value="{{ classe.id }}" {% if current_filters.classe == classe.id|stringformat:"s" %}selected{% endif %}>
+                            {{ classe.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="matiere" class="form-select-sm">
+                    <option value="">Toutes matières</option>
+                    {% for matiere in matieres %}
+                        <option value="{{ matiere.id }}" {% if current_filters.matiere == matiere.id|stringformat:"s" %}selected{% endif %}>
+                            {{ matiere.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="enseignant" class="form-select-sm">
+                    <option value="">Tous enseignants</option>
+                    {% for enseignant in enseignants %}
+                        <option value="{{ enseignant.id }}" {% if current_filters.enseignant == enseignant.id|stringformat:"s" %}selected{% endif %}>
+                            {{ enseignant.get_full_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <input type="date" name="date_debut" value="{{ current_filters.date_debut }}"
+                       class="form-input-sm" placeholder="Date début">
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:admin_cahiers_texte' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="cahiers-list">
+        {% for cahier in cahiers %}
+        <div class="cahier-card" id="cahier-{{ cahier.id }}">
+            <div class="cahier-header">
+                <div class="cahier-date-badge">
+                    <i class="fas fa-calendar"></i>
+                    {{ cahier.cours.date_prevue|date:"d/m/Y" }}
+                </div>
+                <div class="cahier-info">
+                    <h3>{{ cahier.cours.titre }}</h3>
+                    <div class="cahier-meta">
+                        <span class="meta-tag matiere">
+                            <i class="fas fa-book"></i>
+                            {{ cahier.cours.matiere.nom }}
+                        </span>
+                        <span class="meta-tag classe">
+                            <i class="fas fa-users"></i>
+                            {{ cahier.cours.classe.nom }}
+                        </span>
+                        <span class="meta-tag enseignant">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                            {{ cahier.cours.enseignant.get_full_name }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cahier-body">
+                <div class="cahier-section">
+                    <h4><i class="fas fa-check-circle"></i> Travail fait</h4>
+                    <p>{{ cahier.travail_fait|truncatechars:180 }}</p>
+                </div>
+
+                {% if cahier.travail_donne %}
+                <div class="cahier-section highlight">
+                    <h4><i class="fas fa-tasks"></i> Travail donné</h4>
+                    <p>{{ cahier.travail_donne|truncatechars:180 }}</p>
+                    {% if cahier.date_travail_pour %}
+                    <div class="deadline-info">
+                        <i class="fas fa-calendar-check"></i>
+                        Pour le {{ cahier.date_travail_pour|date:"d/m/Y" }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if cahier.observations %}
+                <div class="cahier-section observations">
+                    <h4><i class="fas fa-comment-alt"></i> Observations</h4>
+                    <p>{{ cahier.observations|truncatechars:150 }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="cahier-footer">
+                <div class="footer-info">
+                    <span class="author-info">
+                        <i class="fas fa-user"></i>
+                        {{ cahier.rempli_par.get_full_name }}
+                    </span>
+                    <span class="date-info">
+                        <i class="fas fa-clock"></i>
+                        {{ cahier.date_saisie|date:"d/m/Y à H:i" }}
+                    </span>
+                </div>
+                <div class="footer-actions">
+                    <a href="{% url 'courses:cahier_texte_view' cahier.cours.id %}"
+                       class="btn btn-sm btn-primary">
+                        <i class="fas fa-eye"></i> Voir
+                    </a>
+                    {% if user == cahier.cours.enseignant %}
+                    <a href="{% url 'courses:cahier_texte_edit' cahier.cours.id %}"
+                       class="btn btn-sm btn-info">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <i class="fas fa-book-open fa-3x"></i>
+            <h3>Aucun cahier de texte trouvé</h3>
+            <p>Les cahiers de texte apparaîtront ici une fois remplis par les enseignants</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% include 'components/pagination.html' with page_obj=cahiers %}
+</div>
+
+<style>
+.admin-cahiers { padding: 15px; }
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav .current {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.header-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.stat-badge {
+    padding: 2px 8px;
+    background: #f3f4f6;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #6b7280;
+}
+
+.btn-icon:hover {
+    background: #f3f4f6;
+}
+
+.filters-section {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 1.5fr 1.5fr 1.5fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.form-select-sm, .form-input-sm {
+    padding: 6px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    height: 32px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 11px;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-info {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-info:hover {
+    background: #2563eb;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #1f2937;
+}
+
+.btn-outline:hover {
+    background: #f3f4f6;
+}
+
+.cahiers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.cahier-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.cahier-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.cahier-header {
+    padding: 15px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.cahier-date-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.cahier-info h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.cahier-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.meta-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.meta-tag.matiere {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.meta-tag.classe {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.meta-tag.enseignant {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.cahier-body {
+    padding: 15px;
+}
+
+.cahier-section {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.cahier-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.cahier-section.highlight {
+    background: #fffbeb;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 3px solid #fbbf24;
+}
+
+.cahier-section.observations {
+    background: #f9fafb;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 3px solid #d1d5db;
+}
+
+.cahier-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cahier-section h4 i {
+    color: #3b82f6;
+    font-size: 12px;
+}
+
+.cahier-section p {
+    margin: 0;
+    font-size: 13px;
+    color: #4b5563;
+    line-height: 1.6;
+}
+
+.deadline-info {
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cahier-footer {
+    padding: 12px 15px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fafbfc;
+}
+
+.footer-info {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.author-info, .date-info {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.footer-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.empty-state i {
+    color: #d1d5db;
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    margin: 0 0 10px 0;
+    color: #1f2937;
+    font-size: 18px;
+}
+
+.empty-state p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .filters-form {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .page-header-compact {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .cahier-meta {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .cahier-footer {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+}
+</style>
+
+<script>
+function exportCahiers() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/courses/cahiers-texte/export/?${params.toString()}`;
+}
+</script>
+{% endblock %}

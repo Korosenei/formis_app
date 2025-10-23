@@ -1,0 +1,1095 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Enseignants du Département{% endblock %}
+
+{% block content %}
+<div class="dept-teachers">
+    <!-- Header compact -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Chef de département</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Enseignants</span>
+            </div>
+            <h1>Enseignants - {{ departement.nom }}</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ stats.total }} total</span>
+                <span class="stat-badge actifs">{{ stats.actifs }} actifs</span>
+                <span class="stat-badge permanents">{{ stats.permanents }} permanents</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button onclick="exportTeachers()" class="btn-icon" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+            <a href="{% url 'accounts:teacher_add' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Ajouter
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="messages-container">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}" id="message-{{ forloop.counter }}">
+                    {% if message.tags == 'success' %}
+                        <i class="fas fa-check-circle text-success"></i>
+                    {% else %}
+                        <i class="fas fa-exclamation-circle text-danger"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button class="close-alert" onclick="closeAlert('message-{{ forloop.counter }}')">&times;</button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Filtres -->
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="Rechercher..."
+                       value="{{ current_filters.search }}" class="form-input-sm">
+            </div>
+            <div class="filter-group">
+                <select name="est_permanent" class="form-select-sm">
+                    <option value="">Type de contrat</option>
+                    <option value="True" {% if current_filters.est_permanent == 'True' %}selected{% endif %}>Permanent</option>
+                    <option value="False" {% if current_filters.est_permanent == 'False' %}selected{% endif %}>Vacataire</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="specialisation" class="form-select-sm">
+                    <option value="">Spécialisation</option>
+                    {% for spec in specialisations %}
+                        <option value="{{ spec }}" {% if current_filters.specialisation == spec %}selected{% endif %}>
+                            {{ spec }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="est_actif" class="form-select-sm">
+                    <option value="">Statut</option>
+                    <option value="True" {% if current_filters.est_actif == 'True' %}selected{% endif %}>Actif</option>
+                    <option value="False" {% if current_filters.est_actif == 'False' %}selected{% endif %}>Inactif</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:department_head_teachers' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Actions en lot -->
+    <div class="bulk-actions-bar" id="bulkActionsBar" style="display: none;">
+        <div class="bulk-info">
+            <i class="fas fa-check-square"></i>
+            <span id="selectedCount">0</span> sélectionné(s)
+        </div>
+        <div class="bulk-buttons">
+            <button class="btn btn-sm btn-info" onclick="sendBulkMessage()">
+                <i class="fas fa-envelope"></i> Message
+            </button>
+            <button class="btn btn-sm btn-warning" onclick="bulkExport()">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Tableau -->
+    <div class="teachers-table-container">
+        <div class="table-wrapper">
+            <table class="teachers-table">
+                <thead>
+                    <tr>
+                        <th width="30"><input type="checkbox" class="select-all-header" id="selectAllTeachers"></th>
+                        <th width="35">Photo</th>
+                        <th width="140">Enseignant</th>
+                        <th width="180">Contacts</th>
+                        <th width="130">Spécialisation</th>
+                        <th width="50">Type</th>
+                        <th width="50">Statut</th>
+                        <th width="60">Date</th>
+                        <th width="70">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for teacher in teachers %}
+                    <tr class="teacher-row" id="teacher-row-{{ teacher.id }}">
+                        <td><input type="checkbox" class="teacher-checkbox" value="{{ teacher.id }}"></td>
+                        <td>
+                            <div class="user-avatar-sm">
+                                {% if teacher.photo_profil %}
+                                    <img src="{{ teacher.photo_profil.url }}" alt="">
+                                {% else %}
+                                    <i class="fas fa-chalkboard-teacher"></i>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="personal-info">
+                                <span class="teacher-name">{{ teacher.get_full_name|truncatechars:23 }}</span>
+                                <div class="teacher-detail">
+                                    <code class="matricule-sm">{{ teacher.matricule }}</code>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="contact-info">
+                                <div class="email-text" title="{{ teacher.email }}">
+                                    <i class="fas fa-envelope"></i>
+                                    {{ teacher.email|truncatechars:20 }}
+                                </div>
+                                {% if teacher.telephone %}
+                                    <div class="phone-text">
+                                        <i class="fas fa-phone"></i>
+                                        {{ teacher.telephone }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="specialisation-text" title="{{ teacher.profil_enseignant.specialisation|default:'Non définie' }}">
+                                {{ teacher.profil_enseignant.specialisation|default:'-'|truncatechars:18 }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if teacher.profil_enseignant.est_permanent %}
+                                <span class="role-badge role-permanent" title="Permanent">
+                                    <i class="fas fa-user-tie"></i>
+                                </span>
+                            {% else %}
+                                <span class="role-badge role-vacataire" title="Vacataire">
+                                    <i class="fas fa-user-clock"></i>
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span id="status-badge-{{ teacher.id }}">
+                                {% if teacher.est_actif %}
+                                    <i class="fas fa-check-circle text-success" title="Actif"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-danger" title="Inactif"></i>
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td class="date-sm">{{ teacher.date_creation|date:"d/m/y" }}</td>
+                        <td>
+                            <div class="action-buttons-sm">
+                                <button class="btn-icon-sm btn-primary" onclick="viewTeacher('{{ teacher.id }}')" title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn-icon-sm btn-warning" onclick="editTeacher('{{ teacher.id }}')" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <div class="dropdown-compact">
+                                    <button class="btn-icon-sm btn-outline dropdown-toggle">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="dropdown-menu-compact">
+                                        {% if teacher.est_actif %}
+                                            <a href="#" onclick="event.preventDefault(); toggleTeacherStatus('{{ teacher.id }}', false)">
+                                                <i class="fas fa-pause"></i> Désactiver
+                                            </a>
+                                        {% else %}
+                                            <a href="#" onclick="event.preventDefault(); toggleTeacherStatus('{{ teacher.id }}', true)">
+                                                <i class="fas fa-play"></i> Activer
+                                            </a>
+                                        {% endif %}
+                                        <a href="#" onclick="event.preventDefault(); resetPassword('{{ teacher.id }}')">
+                                            <i class="fas fa-key"></i> Reset pwd
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <div class="empty-content">
+                                <i class="fas fa-chalkboard-teacher fa-2x text-muted"></i>
+                                <p class="mt-2">Aucun enseignant trouvé</p>
+                                <a href="{% url 'accounts:teacher_add' %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus"></i> Ajouter
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if teachers %}
+            {% include 'components/pagination.html' with page_obj=page_obj %}
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de confirmation -->
+<div id="confirmModal" class="modal">
+    <div class="modal-content modal-sm">
+        <div class="modal-header">
+            <h4 id="confirmTitle">Confirmation</h4>
+            <button class="modal-close" onclick="closeConfirmModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="confirmMessage"></p>
+            <div id="confirmDetails" class="confirm-details"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-outline" onclick="closeConfirmModal()">Annuler</button>
+            <button type="button" id="confirmBtn" class="btn btn-sm btn-danger">Confirmer</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.dept-teachers {
+    padding: 12px;
+    max-width: 100%;
+}
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.breadcrumb-nav {
+    font-size: 10px;
+    color: #6b7280;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.breadcrumb-nav i {
+    font-size: 8px;
+}
+
+.breadcrumb-nav .current {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.header-content h1 {
+    margin: 0 0 6px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.header-stats {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.stat-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    background: #f3f4f6;
+    border-radius: 10px;
+    font-size: 10px;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.stat-badge.actifs {
+    background: #d4edda;
+    color: #155724;
+}
+
+.stat-badge.permanents {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.header-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.messages-container {
+    margin-bottom: 12px;
+}
+
+.alert {
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    position: relative;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-15px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.alert-success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.alert-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.close-alert {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    line-height: 1;
+}
+
+.close-alert:hover {
+    opacity: 1;
+}
+
+.filters-section {
+    background: white;
+    padding: 10px;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    margin-bottom: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 8px;
+    align-items: end;
+}
+
+.form-input-sm,
+.form-select-sm {
+    padding: 5px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 12px;
+    height: 28px;
+    width: 100%;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.bulk-actions-bar {
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+}
+
+.bulk-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #155724;
+    font-weight: 500;
+}
+
+.bulk-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.btn {
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 11px;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #1f2937;
+}
+
+.btn-outline:hover {
+    background: #f3f4f6;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.btn-info {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-info:hover {
+    background: #2563eb;
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+}
+
+.teachers-table-container {
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.teachers-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.teachers-table th {
+    background: #f3f4f6;
+    padding: 6px 4px;
+    text-align: left;
+    font-weight: 600;
+    color: #1f2937;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.teachers-table td {
+    padding: 6px 4px;
+    border-bottom: 1px solid #d1d5db;
+    vertical-align: middle;
+}
+
+.teachers-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.user-avatar-sm {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    color: #6b7280;
+    font-size: 11px;
+}
+
+.user-avatar-sm img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.personal-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.teacher-name {
+    font-weight: 500;
+    color: #1f2937;
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.teacher-detail {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.matricule-sm {
+    background: #f3f4f6;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-family: monospace;
+    font-size: 9px;
+    color: #1f2937;
+}
+
+.contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.email-text, .phone-text {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #6b7280;
+    font-size: 10px;
+    line-height: 1.2;
+}
+
+.email-text i, .phone-text i {
+    width: 10px;
+    font-size: 9px;
+}
+
+.specialisation-text {
+    color: #1f2937;
+    font-size: 10px;
+    font-style: italic;
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.role-permanent {
+    background: #10b981;
+    color: white;
+}
+
+.role-vacataire {
+    background: #f59e0b;
+    color: white;
+}
+
+.date-sm {
+    font-size: 10px;
+    color: #6b7280;
+}
+
+.action-buttons-sm {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.btn-icon-sm {
+    width: 22px;
+    height: 22px;
+    border-radius: 3px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 9px;
+    transition: all 0.2s;
+}
+
+.btn-icon-sm.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-icon-sm.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-icon-sm.btn-outline {
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #6b7280;
+}
+
+.btn-icon-sm:hover {
+    transform: scale(1.05);
+}
+
+.btn-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: #f3f4f6;
+    color: #1f2937;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    background: #d1d5db;
+}
+
+.dropdown-compact {
+    position: relative;
+}
+
+.dropdown-menu-compact {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    min-width: 130px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+    display: none;
+}
+
+.dropdown-menu-compact.show {
+    display: block;
+}
+
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    text-decoration: none;
+    color: #1f2937;
+    font-size: 10px;
+    transition: background 0.2s;
+}
+
+.dropdown-menu-compact a:hover {
+    background: #f3f4f6;
+}
+
+.text-success { color: #10b981; }
+.text-danger { color: #ef4444 !important; }
+.text-warning { color: #f59e0b; }
+.text-muted { color: #6b7280; }
+
+.empty-state {
+    text-align: center;
+    padding: 30px 15px;
+}
+
+.empty-content {
+    color: #6b7280;
+}
+
+.mt-2 { margin-top: 6px; }
+
+#confirmModal.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+#confirmModal.modal.show {
+    display: flex;
+}
+
+#confirmModal .modal-content {
+    background: white;
+    border-radius: 6px;
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+#confirmModal .modal-sm {
+    width: 450px;
+}
+
+#confirmModal .modal-header {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#confirmModal .modal-header h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+#confirmModal .modal-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #6b7280;
+    transition: color 0.2s;
+}
+
+#confirmModal .modal-close:hover {
+    color: #1f2937;
+}
+
+#confirmModal .modal-body {
+    padding: 12px;
+    color: #4b5563;
+    font-size: 13px;
+}
+
+#confirmModal .modal-footer {
+    padding: 12px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+#confirmModal .confirm-details {
+    background: #f3f4f6;
+    padding: 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+@media (max-width: 1024px) {
+    .filters-form {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+    }
+
+    .teachers-table {
+        min-width: 800px;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-header-compact {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .filters-form {
+        grid-template-columns: 1fr;
+    }
+
+    .header-stats {
+        width: 100%;
+    }
+
+    .bulk-actions-bar {
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+    }
+
+    .bulk-buttons {
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+function closeAlert(id) {
+    const alert = document.getElementById(id);
+    if (alert) {
+        alert.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => alert.remove(), 300);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            alert.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => alert.remove(), 300);
+        }, 5000);
+    });
+
+    const selectAll = document.getElementById('selectAllTeachers');
+    const checkboxes = document.querySelectorAll('.teacher-checkbox');
+    const bulkBar = document.getElementById('bulkActionsBar');
+    const selectedCount = document.getElementById('selectedCount');
+
+    selectAll?.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+        updateBulkActions();
+    });
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    function updateBulkActions() {
+        const selected = document.querySelectorAll('.teacher-checkbox:checked').length;
+        selectedCount.textContent = selected;
+        bulkBar.style.display = selected > 0 ? 'flex' : 'none';
+
+        if (selectAll) {
+            selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+            selectAll.checked = selected === checkboxes.length;
+        }
+    }
+
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.classList.remove('show');
+            });
+
+            dropdown.classList.toggle('show');
+        });
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.dropdown-compact')) {
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+});
+
+function viewTeacher(teacherId) {
+    window.location.href = `/accounts/teachers/${teacherId}/`;
+}
+
+function editTeacher(teacherId) {
+    window.location.href = `/accounts/teachers/${teacherId}/edit/`;
+}
+
+function toggleTeacherStatus(teacherId, activate) {
+    const message = activate ? 'Activer cet enseignant ?' : 'Désactiver cet enseignant ?';
+
+    if (confirm(message)) {
+        fetch(`/accounts/teachers/${teacherId}/toggle-status/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const statusBadge = document.getElementById(`status-badge-${teacherId}`);
+                if (statusBadge) {
+                    statusBadge.innerHTML = data.est_actif
+                        ? '<i class="fas fa-check-circle text-success" title="Actif"></i>'
+                        : '<i class="fas fa-times-circle text-danger" title="Inactif"></i>';
+                }
+                showMessage(data.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showMessage(data.error || 'Erreur lors de la modification du statut', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Erreur de connexion', 'error');
+        });
+    }
+}
+
+function resetPassword(teacherId) {
+    showConfirmModal(
+        'Réinitialiser le mot de passe',
+        'Êtes-vous sûr de vouloir réinitialiser le mot de passe de cet enseignant ?',
+        'Un nouveau mot de passe sera généré et affiché.',
+        function() {
+            fetch(`/accounts/teachers/${teacherId}/reset-password/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                closeConfirmModal();
+                if (data.success) {
+                    showMessage(
+                        `Mot de passe réinitialisé avec succès !<br><strong>Nouveau mot de passe : ${data.message.split(':')[1]}</strong>`,
+                        'success'
+                    );
+                } else {
+                    showMessage(data.error || 'Erreur lors de la réinitialisation', 'error');
+                }
+            })
+            .catch(error => {
+                closeConfirmModal();
+                console.error('Error:', error);
+                showMessage('Erreur de connexion', 'error');
+            });
+        }
+    );
+}
+
+function exportTeachers() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/accounts/teachers/export/?${params.toString()}`;
+}
+
+function sendBulkMessage() {
+    const selected = Array.from(document.querySelectorAll('.teacher-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins un enseignant');
+        return;
+    }
+    alert(`Message à ${selected.length} enseignant(s)`);
+}
+
+function bulkExport() {
+    const selected = Array.from(document.querySelectorAll('.teacher-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins un enseignant');
+        return;
+    }
+    const params = new URLSearchParams();
+    params.set('teachers', selected.join(','));
+    window.location.href = `/accounts/teachers/export/?${params.toString()}`;
+}
+
+function showConfirmModal(title, message, details, callback) {
+    const modal = document.getElementById('confirmModal');
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+    document.getElementById('confirmDetails').textContent = details;
+
+    const confirmBtn = document.getElementById('confirmBtn');
+    confirmBtn.onclick = callback;
+
+    modal.classList.add('show');
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirmModal').classList.remove('show');
+}
+
+function showMessage(message, type) {
+    const container = document.querySelector('.messages-container') || createMessageContainer();
+    const messageId = 'msg-' + Date.now();
+
+    const alertHtml = `
+        <div class="alert alert-${type}" id="${messageId}">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+            ${message}
+            <button class="close-alert" onclick="closeAlert('${messageId}')">&times;</button>
+        </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', alertHtml);
+    setTimeout(() => closeAlert(messageId), 5000);
+}
+
+function createMessageContainer() {
+    const container = document.createElement('div');
+    container.className = 'messages-container';
+    document.querySelector('.dept-teachers').insertBefore(
+        container,
+        document.querySelector('.filters-section')
+    );
+    return container;
+}
+
+@keyframes slideOut {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(-15px); opacity: 0; }
+}
+</script>
+{% endblock %}

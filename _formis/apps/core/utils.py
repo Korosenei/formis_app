@@ -21,13 +21,11 @@ def generate_random_string(length=8, include_digits=True, include_uppercase=True
 
     return ''.join(random.choice(chars) for _ in range(length))
 
-
 def generate_password(length=12):
     """Génère un mot de passe sécurisé"""
     characters = string.ascii_letters + string.digits + "!@#$%&*"
     password = ''.join(random.choice(characters) for _ in range(length))
     return password
-
 
 def send_account_creation_email(user, password, establishment):
     """Envoie un email de création de compte"""

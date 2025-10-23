@@ -17,8 +17,8 @@
             </div>
             <h1>Gestion des Matières</h1>
             <div class="header-stats">
-                <span class="stat-badge">{{ matieres.paginator.count }} total</span>
-                <span class="stat-badge actifs">{{ nombre_matieres_actives }} actives</span>
+                <span class="stat-badge">{{ page_obj.paginator.count }} total</span>
+                <span class="stat-badge actifs">{{ matieres|length }} sur cette page</span>
             </div>
         </div>
         <div class="header-actions">
@@ -39,18 +39,31 @@
                        value="{{ current_filters.search }}" class="form-input-sm">
             </div>
             <div class="filter-group">
+                <select name="niveau" class="form-select-sm">
+                    <option value="">Tous niveaux</option>
+                    {% for niveau in niveaux %}
+                        <option value="{{ niveau.id }}" {% if current_filters.niveau == niveau.id|stringformat:"s" %}selected{% endif %}>
+                            {{ niveau.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="module" class="form-select-sm">
+                    <option value="">Tous modules</option>
+                    <option value="sans_module" {% if current_filters.module == 'sans_module' %}selected{% endif %}>Sans module</option>
+                    {% for module in modules %}
+                        <option value="{{ module.id }}" {% if current_filters.module == module.id|stringformat:"s" %}selected{% endif %}>
+                            {{ module.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
                 <select name="actif" class="form-select-sm">
                     <option value="">Tous statuts</option>
                     <option value="True" {% if current_filters.actif == 'True' %}selected{% endif %}>Actives</option>
                     <option value="False" {% if current_filters.actif == 'False' %}selected{% endif %}>Inactives</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <select name="sort" class="form-select-sm">
-                    <option value="nom" {% if current_filters.sort == 'nom' %}selected{% endif %}>Nom A-Z</option>
-                    <option value="-nom" {% if current_filters.sort == '-nom' %}selected{% endif %}>Nom Z-A</option>
-                    <option value="code" {% if current_filters.sort == 'code' %}selected{% endif %}>Code</option>
-                    <option value="-coefficient" {% if current_filters.sort == '-coefficient' %}selected{% endif %}>Coefficient</option>
                 </select>
             </div>
             <div class="filter-actions">
@@ -68,14 +81,11 @@
     <div class="bulk-actions-bar" id="bulkActionsBar" style="display: none;">
         <div class="bulk-info">
             <i class="fas fa-check-square"></i>
-            <span id="selectedCount">0</span> sélectionné(s)
+            <span id="selectedCount">0</span> sélectionnée(s)
         </div>
         <div class="bulk-buttons">
             <button class="btn btn-sm btn-warning" onclick="bulkExport()">
                 <i class="fas fa-file-export"></i> Export
-            </button>
-            <button class="btn btn-sm btn-info" onclick="bulkAssignModules()">
-                <i class="fas fa-link"></i> Assigner modules
             </button>
         </div>
     </div>
@@ -89,66 +99,73 @@
                         <th width="30">
                             <input type="checkbox" class="select-all-header" id="selectAllMatieres">
                         </th>
-                        <th width="250">Matière</th>
+                        <th>Matière</th>
                         <th width="100">Code</th>
-                        <th width="80">Coefficient</th>
-                        <th width="120">Volume horaire</th>
-                        <th width="100">Théorie</th>
-                        <th width="100">Pratique</th>
-                        <th width="80">TD</th>
-                        <th width="60">Modules</th>
+                        <th width="150">Niveau</th>
+                        <th width="120">Module</th>
+                        <th width="150">Enseignant</th>
+                        <th width="80">CM/TD/TP</th>
+                        <th width="60">Coef.</th>
+                        <th width="60">ECTS</th>
                         <th width="60">Statut</th>
                         <th width="80">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for matiere in matieres %}
-                    <tr class="matiere-row">
+                    <tr class="matiere-row" id="matiere-row-{{ matiere.id }}">
                         <td>
                             <input type="checkbox" class="matiere-checkbox" value="{{ matiere.id }}">
                         </td>
                         <td>
                             <div class="matiere-info">
-                                <div class="color-indicator" style="background: {{ matiere.couleur }}"></div>
-                                <div class="matiere-details">
-                                    <div class="matiere-name">{{ matiere.nom|truncatechars:35 }}</div>
-                                    {% if matiere.description %}
-                                        <small class="matiere-desc">{{ matiere.description|truncatechars:50 }}</small>
-                                    {% endif %}
-                                </div>
+                                <span class="matiere-name">{{ matiere.nom }}</span>
+                                <div class="matiere-color" style="background-color: {{ matiere.couleur }}"></div>
                             </div>
                         </td>
                         <td>
                             <code class="code-badge">{{ matiere.code }}</code>
                         </td>
+                        <td>
+                            <div class="niveau-info">
+                                <span class="niveau-name">{{ matiere.niveau.nom }}</span>
+                                <small class="filiere-name">{{ matiere.niveau.filiere.nom|truncatechars:15 }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            {% if matiere.module %}
+                                <span class="module-badge">{{ matiere.module.nom|truncatechars:15 }}</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if matiere.enseignant_responsable %}
+                                <span class="enseignant-name">{{ matiere.enseignant_responsable.get_full_name|truncatechars:20 }}</span>
+                            {% else %}
+                                <span class="text-muted">Non assigné</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="heures-detail">
+                                <span class="h-cm">{{ matiere.heures_cours_magistral }}</span>/
+                                <span class="h-td">{{ matiere.heures_travaux_diriges }}</span>/
+                                <span class="h-tp">{{ matiere.heures_travaux_pratiques }}</span>
+                            </div>
+                            <small class="total-h">{{ matiere.volume_horaire_total }}h</small>
+                        </td>
                         <td class="text-center">
                             <span class="coef-badge">{{ matiere.coefficient }}</span>
                         </td>
-                        <td>
-                            <div class="volume-total">
-                                <span class="volume-badge-primary">{{ matiere.volume_horaire_total }}h</span>
-                            </div>
-                        </td>
                         <td class="text-center">
-                            <span class="hours-badge hours-theorie">{{ matiere.heures_theorie }}h</span>
-                        </td>
-                        <td class="text-center">
-                            <span class="hours-badge hours-pratique">{{ matiere.heures_pratique }}h</span>
-                        </td>
-                        <td class="text-center">
-                            <span class="hours-badge hours-td">{{ matiere.heures_td }}h</span>
-                        </td>
-                        <td class="text-center">
-                            <span class="count-badge">{{ matiere.nombre_modules }}</span>
+                            <span class="ects-badge">{{ matiere.credits_ects|floatformat:1 }}</span>
                         </td>
                         <td>
-                            <div class="status-info">
-                                {% if matiere.actif %}
-                                    <i class="fas fa-check-circle text-success" title="Active"></i>
-                                {% else %}
-                                    <i class="fas fa-times-circle text-danger" title="Inactive"></i>
-                                {% endif %}
-                            </div>
+                            {% if matiere.actif %}
+                                <i class="fas fa-check-circle text-success" title="Active"></i>
+                            {% else %}
+                                <i class="fas fa-times-circle text-danger" title="Inactive"></i>
+                            {% endif %}
                         </td>
                         <td>
                             <div class="action-buttons-sm">
@@ -169,22 +186,9 @@
                                         <a href="{% url 'courses:matiere_edit' matiere.id %}">
                                             <i class="fas fa-edit"></i> Modifier
                                         </a>
-                                        <a href="#" onclick="assignToModules('{{ matiere.id }}')">
-                                            <i class="fas fa-link"></i> Assigner modules
+                                        <a href="#" onclick="viewCours('{{ matiere.id }}')">
+                                            <i class="fas fa-chalkboard"></i> Cours
                                         </a>
-                                        <a href="#" onclick="changeColor('{{ matiere.id }}', '{{ matiere.couleur }}')">
-                                            <i class="fas fa-palette"></i> Changer couleur
-                                        </a>
-                                        <div class="dropdown-divider"></div>
-                                        {% if matiere.actif %}
-                                            <a href="#" onclick="toggleMatiereStatus('{{ matiere.id }}', false)" class="text-warning">
-                                                <i class="fas fa-pause"></i> Désactiver
-                                            </a>
-                                        {% else %}
-                                            <a href="#" onclick="toggleMatiereStatus('{{ matiere.id }}', true)" class="text-success">
-                                                <i class="fas fa-play"></i> Activer
-                                            </a>
-                                        {% endif %}
                                         <div class="dropdown-divider"></div>
                                         <a href="#" onclick="deleteMatiere('{{ matiere.id }}')" class="text-danger">
                                             <i class="fas fa-trash"></i> Supprimer
@@ -212,15 +216,14 @@
         </div>
 
         <!-- Pagination -->
-        {% include 'components/pagination.html' with page_obj=matieres %}
+        {% if matieres %}
+            {% include 'components/pagination.html' with page_obj=page_obj %}
+        {% endif %}
     </div>
 </div>
 
 <style>
-.admin-matieres {
-    padding: 15px;
-}
-
+.admin-matieres { padding: 15px; }
 .page-header-compact {
     display: flex;
     justify-content: space-between;
@@ -231,7 +234,6 @@
     border-radius: 6px;
     box-shadow: var(--shadow-sm);
 }
-
 .breadcrumb-nav {
     font-size: 11px;
     color: var(--text-light);
@@ -240,28 +242,15 @@
     align-items: center;
     gap: 5px;
 }
-
-.breadcrumb-nav .current {
-    color: var(--primary-color);
-    font-weight: 500;
-}
-
+.breadcrumb-nav .current { color: var(--primary-color); font-weight: 500; }
 .header-content h1 {
     margin: 0 0 8px 0;
     font-size: 18px;
     font-weight: 600;
     color: var(--text-dark);
 }
-
-.header-stats {
-    display: flex;
-    gap: 8px;
-    margin-top: 5px;
-}
-
+.header-stats { display: flex; gap: 8px; margin-top: 5px; }
 .stat-badge {
-    display: inline-flex;
-    align-items: center;
     padding: 2px 8px;
     background: var(--light-gray);
     border-radius: 12px;
@@ -269,18 +258,8 @@
     color: var(--text-dark);
     font-weight: 500;
 }
-
-.stat-badge.actifs {
-    background: #d4edda;
-    color: #155724;
-}
-
-.header-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
+.stat-badge.actifs { background: #d4edda; color: #155724; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
 .filters-section {
     background: var(--white);
     padding: 12px;
@@ -289,14 +268,12 @@
     margin-bottom: 15px;
     border: 1px solid var(--border-color);
 }
-
 .filters-form {
     display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr auto;
+    grid-template-columns: 2fr 1.5fr 1.5fr 1fr auto;
     gap: 12px;
     align-items: end;
 }
-
 .form-input-sm, .form-select-sm {
     padding: 6px 10px;
     border: 1px solid var(--border-color);
@@ -304,37 +281,20 @@
     font-size: var(--font-size-sm);
     height: 32px;
 }
-
-.filter-actions {
-    display: flex;
-    gap: 5px;
-}
-
+.filter-actions { display: flex; gap: 5px; }
 .bulk-actions-bar {
     background: #e8f5e8;
     border: 1px solid #c3e6c3;
-    border-radius: var(--border-radius);
+    border-radius: 6px;
     padding: 10px 15px;
     margin-bottom: 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: var(--font-size-sm);
+    font-size: 13px;
 }
-
-.bulk-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #155724;
-    font-weight: 500;
-}
-
-.bulk-buttons {
-    display: flex;
-    gap: 8px;
-}
-
+.bulk-info { display: flex; align-items: center; gap: 8px; color: #155724; font-weight: 500; }
+.bulk-buttons { display: flex; gap: 8px; }
 .matieres-table-container {
     background: var(--white);
     border-radius: var(--border-radius);
@@ -342,19 +302,12 @@
     border: 1px solid var(--border-color);
     overflow: hidden;
 }
-
-.table-wrapper {
-    overflow-x: hidden;
-    max-width: 100%;
-}
-
+.table-wrapper { overflow-x: auto; }
 .matieres-table {
     width: 100%;
     border-collapse: collapse;
     min-width: 100%;
-    table-layout: auto;
 }
-
 .matieres-table th {
     background: var(--light-gray);
     padding: 8px 6px;
@@ -365,126 +318,84 @@
     font-size: var(--font-size-xs);
     white-space: nowrap;
 }
-
 .matieres-table td {
     padding: 8px 6px;
     border-bottom: 1px solid var(--gray);
     vertical-align: middle;
     font-size: var(--font-size-xs);
 }
-
 .matiere-info {
     display: flex;
     align-items: center;
     gap: 8px;
 }
-
-.color-indicator {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    border: 2px solid #fff;
-    box-shadow: 0 0 0 1px var(--border-color);
-    flex-shrink: 0;
-}
-
-.matiere-details {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
 .matiere-name {
     font-weight: 500;
     color: var(--text-dark);
     font-size: var(--font-size-sm);
 }
-
-.matiere-desc {
+.matiere-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid #e5e7eb;
+}
+.code-badge {
+    background: var(--light-gray);
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 11px;
+    color: var(--text-dark);
+}
+.niveau-info { display: flex; flex-direction: column; gap: 2px; }
+.niveau-name {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: var(--font-size-xs);
+}
+.filiere-name {
     color: var(--text-light);
     font-size: 10px;
 }
-
-.code-badge {
-    background: var(--light-gray);
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-family: monospace;
-    font-size: 10px;
-    color: var(--text-dark);
-    font-weight: 600;
-}
-
-.coef-badge {
-    background: var(--primary-color);
-    color: white;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 600;
+.module-badge {
     display: inline-block;
-}
-
-.volume-total {
-    display: flex;
-    justify-content: center;
-}
-
-.volume-badge-primary {
-    background: var(--success-color);
-    color: white;
-    padding: 4px 10px;
-    border-radius: 12px;
+    padding: 2px 6px;
+    background: #e0e7ff;
+    color: #3730a3;
+    border-radius: 4px;
     font-size: 11px;
-    font-weight: 700;
-    display: inline-block;
 }
-
-.hours-badge {
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 10px;
-    font-weight: 500;
-    display: inline-block;
+.enseignant-name {
+    font-size: var(--font-size-xs);
+    color: var(--text-dark);
 }
-
-.hours-theorie {
-    background: #e3f2fd;
-    color: #1976d2;
-}
-
-.hours-pratique {
-    background: #fff3e0;
-    color: #f57c00;
-}
-
-.hours-td {
-    background: #f3e5f5;
-    color: #7b1fa2;
-}
-
-.count-badge {
-    background: var(--warning-color);
-    color: white;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 600;
-    display: inline-block;
-}
-
-.status-info {
+.heures-detail {
     display: flex;
+    gap: 2px;
     justify-content: center;
-    align-items: center;
+    font-size: 11px;
+    font-weight: 600;
 }
-
-.action-buttons-sm {
-    display: flex;
-    align-items: center;
-    gap: 3px;
+.h-cm { color: #3b82f6; }
+.h-td { color: #10b981; }
+.h-tp { color: #f59e0b; }
+.total-h {
+    display: block;
+    margin-top: 2px;
+    font-size: 10px;
+    color: var(--text-light);
 }
-
+.coef-badge, .ects-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1f2937;
+}
+.action-buttons-sm { display: flex; align-items: center; gap: 3px; }
 .btn-icon-sm {
     width: 24px;
     height: 24px;
@@ -498,7 +409,6 @@
     transition: all 0.3s;
     text-decoration: none;
 }
-
 .btn-icon-sm.btn-primary { background: var(--primary-color); color: white; }
 .btn-icon-sm.btn-info { background: var(--info-color); color: white; }
 .btn-icon-sm.btn-outline {
@@ -506,12 +416,7 @@
     border: 1px solid var(--border-color);
     color: var(--text-light);
 }
-
-.btn-icon-sm:hover {
-    transform: scale(1.05);
-    box-shadow: var(--shadow-sm);
-}
-
+.btn-icon-sm:hover { opacity: 0.9; transform: translateY(-1px); }
 .btn-icon {
     width: 32px;
     height: 32px;
@@ -522,31 +427,36 @@
     align-items: center;
     justify-content: center;
     border-radius: 4px;
-    background: var(--light-gray);
-    color: var(--text-dark);
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+}
+.btn-icon:hover { background: var(--light-gray); }
+.btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
     transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
 }
-
-.btn-icon:hover {
-    background: var(--border-color);
+.btn-sm { padding: 6px 12px; font-size: 11px; }
+.btn-primary { background: var(--primary-color); color: white; }
+.btn-outline {
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #1f2937;
 }
-
-/* Dropdown compact */
+.btn-outline:hover { background: #f3f4f6; }
+.btn-warning { background: #f59e0b; color: white; }
+.dropdown-compact { position: relative; }
 .matieres-table-container,
 .table-wrapper,
 .matieres-table tr,
-.matieres-table td {
-    overflow: visible !important;
-}
-
-.matieres-table td {
-    height: auto !important;
-}
-
-.dropdown-compact {
-    position: relative;
-}
-
+.matieres-table td { overflow: visible !important; }
 .dropdown-menu-compact {
     position: absolute;
     top: 100%;
@@ -557,79 +467,59 @@
     border-radius: 6px;
     box-shadow: var(--shadow-lg);
     display: none;
-    min-width: 180px;
+    min-width: 140px;
 }
-
 .dropdown-menu-compact a {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
+    gap: 6px;
+    padding: 6px 8px;
     text-decoration: none;
     color: var(--text-dark);
     font-size: 11px;
-    transition: background 0.2s;
 }
-
-.dropdown-menu-compact a:hover {
-    background: var(--light-gray);
-}
-
-.dropdown-menu-compact a i {
-    width: 14px;
-    text-align: center;
-}
-
+.dropdown-menu-compact a:hover { background: var(--light-gray); }
 .text-success { color: var(--success-color); }
 .text-danger { color: var(--danger-color); }
-.text-warning { color: var(--warning-color); }
 .text-muted { color: var(--text-light); }
-.text-info { color: var(--info-color); }
-
 .dropdown-divider {
     height: 1px;
     background: var(--border-color);
-    margin: 4px 0;
+    margin: 3px 0;
 }
-
 .empty-state {
     text-align: center;
     padding: 40px 20px;
 }
-
-.empty-content {
-    color: var(--text-light);
-}
-
+.empty-content { color: var(--text-light); }
+.text-center { text-align: center; }
 .mt-2 { margin-top: 8px; }
 
-/* Responsive */
 @media (max-width: 768px) {
-    .page-header-compact {
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .filters-form {
-        grid-template-columns: 1fr;
-        gap: 8px;
-    }
-
-    .matieres-table {
-        min-width: 1000px;
-    }
-
-    .header-stats {
-        flex-direction: column;
-        gap: 4px;
-        align-items: flex-start;
-    }
+    .filters-form { grid-template-columns: 1fr; gap: 8px; }
+    .matieres-table { min-width: 1000px; }
 }
 </style>
 
 <script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Gestion des sélections multiples
     const selectAll = document.getElementById('selectAllMatieres');
     const checkboxes = document.querySelectorAll('.matiere-checkbox');
     const bulkBar = document.getElementById('bulkActionsBar');
@@ -655,17 +545,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Gestion des dropdowns
     document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
         toggle.addEventListener('click', function(e) {
             e.stopPropagation();
             const dropdown = this.nextElementSibling;
-
-            // Fermer tous les autres
             document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
                 if (menu !== dropdown) menu.style.display = 'none';
             });
-
             dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
         });
     });
@@ -677,76 +563,34 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Fonctions
+function deleteMatiere(matiereId) {
+    if (confirm('Supprimer cette matière ? Cette action est irréversible.')) {
+        fetch(`/courses/matieres/${matiereId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrftoken }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const row = document.getElementById(`matiere-row-${matiereId}`);
+                if (row) {
+                    row.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => row.remove(), 300);
+                }
+            } else {
+                alert(data.error || 'Erreur lors de la suppression');
+            }
+        });
+    }
+}
+
 function exportMatieres() {
     const params = new URLSearchParams(window.location.search);
     window.location.href = `/courses/matieres/export/?${params.toString()}`;
 }
 
-function deleteMatiere(matiereId) {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette matière ? Cette action est irréversible.')) {
-        fetch(`/courses/matiere/${matiereId}/delete/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert(data.message || 'Erreur lors de la suppression');
-            }
-        })
-        .catch(error => {
-            alert('Erreur de connexion');
-        });
-    }
-}
-
-function toggleMatiereStatus(matiereId, activate) {
-    if (confirm(`${activate ? 'Activer' : 'Désactiver'} cette matière ?`)) {
-        fetch(`/courses/matiere/${matiereId}/toggle-status/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({active: activate})
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) location.reload();
-            else alert(data.message || 'Erreur');
-        });
-    }
-}
-
-function assignToModules(matiereId) {
-    window.location.href = `/courses/matiere/${matiereId}/assign-modules/`;
-}
-
-function changeColor(matiereId, currentColor) {
-    const newColor = prompt('Nouvelle couleur (format hex, ex: #3498db):', currentColor);
-    if (newColor && /^#[0-9A-F]{6}$/i.test(newColor)) {
-        fetch(`/courses/matiere/${matiereId}/change-color/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({color: newColor})
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) location.reload();
-            else alert(data.message || 'Erreur');
-        });
-    } else if (newColor) {
-        alert('Format de couleur invalide. Utilisez le format #RRGGBB');
-    }
+function viewCours(matiereId) {
+    window.location.href = `/dashboard/admin/courses/?matiere=${matiereId}`;
 }
 
 function bulkExport() {
@@ -758,30 +602,6 @@ function bulkExport() {
     const params = new URLSearchParams();
     params.set('matieres', selected.join(','));
     window.location.href = `/courses/matieres/export/?${params.toString()}`;
-}
-
-function bulkAssignModules() {
-    const selected = Array.from(document.querySelectorAll('.matiere-checkbox:checked')).map(cb => cb.value);
-    if (selected.length === 0) {
-        alert('Veuillez sélectionner au moins une matière');
-        return;
-    }
-    window.location.href = `/courses/matieres/bulk-assign-modules/?ids=${selected.join(',')}`;
-}
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
 }
 </script>
 {% endblock %}

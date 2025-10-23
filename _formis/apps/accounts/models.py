@@ -53,6 +53,13 @@ class Utilisateur(AbstractUser):
         verbose_name="Département"
     )
 
+    departements_intervention = models.ManyToManyField(
+        'academic.Departement',
+        blank=True,
+        related_name='enseignants_intervenants',
+        verbose_name="Départements d'intervention"
+    )
+
     # Métadonnées
     est_actif = models.BooleanField(default=True)
     date_creation = models.DateTimeField(auto_now_add=True)
@@ -117,6 +124,20 @@ class Utilisateur(AbstractUser):
             'APPRENANT': '/dashboard/student/',
         }
         return urls_tableau_de_bord.get(self.role, '/dashboard/')
+
+    def peut_etre_chef_departement(self):
+        """Vérifie si l'utilisateur peut être nommé chef de département"""
+        return self.role in ['ENSEIGNANT', 'CHEF_DEPARTEMENT'] and self.est_actif
+
+    def est_chef_de_departement(self):
+        """Vérifie si l'utilisateur est chef d'un département"""
+        return hasattr(self, 'departements_diriges') and self.departements_diriges.exists()
+
+    def get_departements_diriges(self):
+        """Retourne les départements dirigés par cet utilisateur"""
+        if hasattr(self, 'departements_diriges'):
+            return self.departements_diriges.all()
+        return []
 
     def peut_gerer_utilisateur(self, utilisateur_cible):
         """
@@ -350,7 +371,7 @@ class ProfilEnseignant(models.Model):
         Utilisateur,
         on_delete=models.CASCADE,
         related_name='profil_enseignant',
-        limit_choices_to={'role': 'ENSEIGNANT'}
+        limit_choices_to={'role__in': ['ENSEIGNANT', 'CHEF_DEPARTEMENT']}
     )
 
     # Informations professionnelles
@@ -359,9 +380,27 @@ class ProfilEnseignant(models.Model):
     specialisation = models.CharField(max_length=100, null=True, blank=True)
     qualifications = models.TextField(null=True, blank=True)
 
-    # Statut
+    # NOUVEAU: Type d'enseignant
+    TYPE_ENSEIGNANT = [
+        ('PERMANENT', 'Permanent'),
+        ('VACATAIRE', 'Vacataire'),
+    ]
+    type_enseignant = models.CharField(
+        max_length=20,
+        choices=TYPE_ENSEIGNANT,
+        default='VACATAIRE',
+        verbose_name="Type d'enseignant"
+    )
+
+    # Statut (conservé pour compatibilité)
     est_permanent = models.BooleanField(default=False)
     est_principal = models.BooleanField(default=False)
+
+    # NOUVEAU: Indicateur chef de département
+    est_chef_departement = models.BooleanField(
+        default=False,
+        verbose_name="Est chef de département"
+    )
 
     # Matières enseignées
     matieres = models.ManyToManyField('courses.Matiere', blank=True)
@@ -371,6 +410,21 @@ class ProfilEnseignant(models.Model):
         verbose_name = "Profil enseignant"
         verbose_name_plural = "Profils enseignants"
 
+    def save(self, *args, **kwargs):
+        # Synchroniser est_permanent avec type_enseignant
+        self.est_permanent = (self.type_enseignant == 'PERMANENT')
+
+        # Synchroniser le rôle de l'utilisateur si chef de département
+        if self.est_chef_departement and self.utilisateur.role == 'ENSEIGNANT':
+            self.utilisateur.role = 'CHEF_DEPARTEMENT'
+            self.utilisateur.save()
+        elif not self.est_chef_departement and self.utilisateur.role == 'CHEF_DEPARTEMENT':
+            # Vérifier s'il n'est plus chef d'aucun département
+            if not self.utilisateur.departements_diriges.exists():
+                self.utilisateur.role = 'ENSEIGNANT'
+                self.utilisateur.save()
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Profil enseignant de {self.utilisateur.get_full_name()}"
-

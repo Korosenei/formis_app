@@ -1,0 +1,526 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{{ matiere.nom }} - Détails{% endblock %}
+
+{% block content %}
+<div class="matiere-detail">
+    <div class="detail-header">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <a href="{% url 'dashboard:admin' %}">Dashboard</a>
+                <i class="fas fa-chevron-right"></i>
+                <a href="{% url 'dashboard:admin_matieres' %}">Matières</a>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">{{ matiere.nom }}</span>
+            </div>
+            <div class="header-title">
+                <h1>{{ matiere.nom }}</h1>
+                <div class="header-badges">
+                    <code class="code-badge">{{ matiere.code }}</code>
+                    <div class="color-badge" style="background-color: {{ matiere.couleur }}" title="Couleur: {{ matiere.couleur }}"></div>
+                    {% if matiere.actif %}
+                        <span class="status-badge active"><i class="fas fa-check-circle"></i> Active</span>
+                    {% else %}
+                        <span class="status-badge inactive"><i class="fas fa-times-circle"></i> Inactive</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-sm btn-secondary" onclick="window.print()">
+                <i class="fas fa-print"></i> Imprimer
+            </button>
+            <a href="{% url 'courses:matiere_edit' matiere.id %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-edit"></i> Modifier
+            </a>
+            <div class="dropdown-compact">
+                <button class="btn btn-sm btn-outline dropdown-toggle">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <div class="dropdown-menu-compact">
+                    <a href="{% url 'courses:cours_create' %}?matiere={{ matiere.id }}">
+                        <i class="fas fa-plus"></i> Ajouter un cours
+                    </a>
+                    <a href="{% url 'dashboard:admin_courses' %}?matiere={{ matiere.id }}">
+                        <i class="fas fa-list"></i> Voir tous les cours
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <a href="#" onclick="exportMatiere('{{ matiere.id }}')">
+                        <i class="fas fa-download"></i> Exporter
+                    </a>
+                    {% if not matiere.actif %}
+                    <a href="#" onclick="toggleMatiereStatus('{{ matiere.id }}', true)" class="text-success">
+                        <i class="fas fa-check"></i> Activer
+                    </a>
+                    {% else %}
+                    <a href="#" onclick="toggleMatiereStatus('{{ matiere.id }}', false)" class="text-warning">
+                        <i class="fas fa-ban"></i> Désactiver
+                    </a>
+                    {% endif %}
+                    <div class="dropdown-divider"></div>
+                    <a href="#" onclick="deleteMatiere('{{ matiere.id }}')" class="text-danger">
+                        <i class="fas fa-trash"></i> Supprimer
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e3f2fd;">
+                <i class="fas fa-clock" style="color: #1976d2;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ matiere.volume_horaire_total }}h</div>
+                <div class="stat-label">Volume horaire total</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #f3e5f5;">
+                <i class="fas fa-award" style="color: #7b1fa2;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ matiere.credits_ects|floatformat:1 }}</div>
+                <div class="stat-label">Crédits ECTS</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #fff3e0;">
+                <i class="fas fa-balance-scale" style="color: #e65100;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ matiere.coefficient }}</div>
+                <div class="stat-label">Coefficient</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e8f5e9;">
+                <i class="fas fa-chalkboard" style="color: #2e7d32;"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats_cours.total }}</div>
+                <div class="stat-label">Cours total</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-grid">
+        <div class="detail-section">
+            <div class="section-header">
+                <h3><i class="fas fa-info-circle"></i> Informations générales</h3>
+            </div>
+            <div class="section-content">
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-layer-group"></i> Niveau</span>
+                    <span class="info-value">{{ matiere.niveau.nom }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-graduation-cap"></i> Filière</span>
+                    <span class="info-value">{{ matiere.niveau.filiere.nom }}</span>
+                </div>
+                {% if matiere.niveau.filiere.departement %}
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-building"></i> Département</span>
+                    <span class="info-value">{{ matiere.niveau.filiere.departement.nom }}</span>
+                </div>
+                {% endif %}
+                {% if matiere.module %}
+                <div class="info-row">
+                    <span class="info-label"><i class="fas fa-cubes"></i> Module</span>
+                    <span class="info-value">
+                        <a href="{% url 'courses:module_detail' matiere.module.id %}" class="info-link">
+                            {{ matiere.module.nom }}
+                        </a>
+                    </span>
+                </div>
+                {% endif %}
+                {% if matiere.description %}
+                <div class="info-row-full">
+                    <span class="info-label"><i class="fas fa-align-left"></i> Description</span>
+                    <p class="info-text">{{ matiere.description }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <div class="section-header">
+                <h3><i class="fas fa-user-tie"></i> Enseignant responsable</h3>
+            </div>
+            <div class="section-content">
+                {% if matiere.enseignant_responsable %}
+                    <div class="teacher-card">
+                        <div class="teacher-avatar">
+                            {% if matiere.enseignant_responsable.photo_profil %}
+                                <img src="{{ matiere.enseignant_responsable.photo_profil.url }}" alt="">
+                            {% else %}
+                                <i class="fas fa-user"></i>
+                            {% endif %}
+                        </div>
+                        <div class="teacher-info">
+                            <h4>{{ matiere.enseignant_responsable.get_full_name }}</h4>
+                            <p><i class="fas fa-envelope"></i> {{ matiere.enseignant_responsable.email }}</p>
+                            {% if matiere.enseignant_responsable.telephone %}
+                                <p><i class="fas fa-phone"></i> {{ matiere.enseignant_responsable.telephone }}</p>
+                            {% endif %}
+                            <a href="{% url 'accounts:user_detail' matiere.enseignant_responsable.id %}" class="btn btn-sm btn-outline mt-2">
+                                <i class="fas fa-user"></i> Voir le profil
+                            </a>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="empty-state-sm">
+                        <i class="fas fa-user-slash"></i>
+                        <p>Aucun enseignant responsable assigné</p>
+                        <a href="{% url 'courses:matiere_edit' matiere.id %}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-plus"></i> Assigner un enseignant
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-section">
+        <div class="section-header">
+            <h3><i class="fas fa-chart-bar"></i> Répartition du volume horaire</h3>
+        </div>
+        <div class="section-content">
+            <div class="hours-grid">
+                <div class="hour-card cm">
+                    <div class="hour-header">
+                        <div class="hour-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                        <span class="hour-type">Cours Magistraux</span>
+                    </div>
+                    <div class="hour-body">
+                        <div class="hour-value">{{ matiere.heures_cours_magistral }}h</div>
+                        <div class="hour-progress">
+                            <div class="progress-bar" style="width: {{ matiere.heures_cours_magistral|divisibleby:matiere.volume_horaire_total|floatformat:0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hour-card td">
+                    <div class="hour-header">
+                        <div class="hour-icon"><i class="fas fa-users"></i></div>
+                        <span class="hour-type">Travaux Dirigés</span>
+                    </div>
+                    <div class="hour-body">
+                        <div class="hour-value">{{ matiere.heures_travaux_diriges }}h</div>
+                        <div class="hour-progress">
+                            <div class="progress-bar" style="width: {{ matiere.heures_travaux_diriges|divisibleby:matiere.volume_horaire_total|floatformat:0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hour-card tp">
+                    <div class="hour-header">
+                        <div class="hour-icon"><i class="fas fa-flask"></i></div>
+                        <span class="hour-type">Travaux Pratiques</span>
+                    </div>
+                    <div class="hour-body">
+                        <div class="hour-value">{{ matiere.heures_travaux_pratiques }}h</div>
+                        <div class="hour-progress">
+                            <div class="progress-bar" style="width: {{ matiere.heures_travaux_pratiques|divisibleby:matiere.volume_horaire_total|floatformat:0 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-section">
+        <div class="section-header">
+            <h3><i class="fas fa-chalkboard"></i> Statistiques des cours</h3>
+            <a href="{% url 'courses:cours_create' %}?matiere={{ matiere.id }}" class="btn-link">
+                <i class="fas fa-plus"></i> Ajouter un cours
+            </a>
+        </div>
+        <div class="section-content">
+            <div class="cours-stats-grid">
+                <div class="stat-item-detailed programmes">
+                    <div class="stat-icon-wrapper">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="stat-details">
+                        <span class="stat-number">{{ stats_cours.programmes }}</span>
+                        <span class="stat-text">Programmés</span>
+                    </div>
+                </div>
+                <div class="stat-item-detailed en-cours">
+                    <div class="stat-icon-wrapper">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                    <div class="stat-details">
+                        <span class="stat-number">{{ stats_cours.en_cours|default:0 }}</span>
+                        <span class="stat-text">En cours</span>
+                    </div>
+                </div>
+                <div class="stat-item-detailed termines">
+                    <div class="stat-icon-wrapper">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-details">
+                        <span class="stat-number">{{ stats_cours.termines }}</span>
+                        <span class="stat-text">Terminés</span>
+                    </div>
+                </div>
+                <div class="stat-item-detailed annules">
+                    <div class="stat-icon-wrapper">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                    <div class="stat-details">
+                        <span class="stat-number">{{ stats_cours.annules|default:0 }}</span>
+                        <span class="stat-text">Annulés</span>
+                    </div>
+                </div>
+            </div>
+            <div class="cours-actions-bar">
+                <a href="{% url 'dashboard:admin_courses' %}?matiere={{ matiere.id }}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-list"></i> Voir tous les cours
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if classes %}
+    <div class="detail-section">
+        <div class="section-header">
+            <h3><i class="fas fa-door-open"></i> Classes concernées ({{ classes.count }})</h3>
+        </div>
+        <div class="list-container">
+            {% for classe in classes %}
+                <div class="list-item">
+                    <div class="classe-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="item-info">
+                        <h4>{{ classe.nom }}</h4>
+                        <small>{{ classe.niveau.filiere.nom }} - {{ classe.effectif_actuel|default:0 }} étudiants</small>
+                    </div>
+                    <a href="{% url 'academic:classe_detail' classe.id %}" class="btn btn-sm btn-outline">
+                        <i class="fas fa-eye"></i> Voir
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.matiere-detail { padding: 15px; max-width: 1200px; margin: 0 auto; }
+.detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.breadcrumb-nav { font-size: 12px; color: #6b7280; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+.breadcrumb-nav a { color: #6b7280; text-decoration: none; }
+.breadcrumb-nav a:hover { color: #2563eb; }
+.breadcrumb-nav .current { color: #2563eb; font-weight: 500; }
+.header-title { display: flex; flex-direction: column; gap: 8px; }
+.header-title h1 { margin: 0; font-size: 24px; font-weight: 600; color: #1f2937; }
+.header-badges { display: flex; gap: 8px; align-items: center; }
+.code-badge { background: #f3f4f6; padding: 4px 10px; border-radius: 4px; font-family: monospace; font-size: 12px; }
+.color-badge { width: 24px; height: 24px; border-radius: 4px; border: 2px solid #e5e7eb; cursor: help; }
+.status-badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+.status-badge.active { background: #d1fae5; color: #065f46; }
+.status-badge.inactive { background: #fee2e2; color: #991b1b; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+.stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; gap: 15px; align-items: center; transition: transform 0.2s; }
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.stat-icon { width: 48px; height: 48px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.stat-value { font-size: 28px; font-weight: 700; color: #1f2937; }
+.stat-label { font-size: 13px; color: #6b7280; }
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-bottom: 20px; }
+.detail-section { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+.section-header { padding: 15px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: #f9fafb; }
+.section-header h3 { margin: 0; font-size: 16px; font-weight: 600; color: #1f2937; display: flex; align-items: center; gap: 8px; }
+.btn-link { font-size: 13px; color: #2563eb; text-decoration: none; display: flex; align-items: center; gap: 5px; font-weight: 500; }
+.btn-link:hover { text-decoration: underline; }
+.section-content { padding: 15px; }
+.info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; align-items: center; }
+.info-row:last-child { border-bottom: none; }
+.info-label { font-size: 13px; color: #6b7280; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.info-value { font-size: 13px; color: #1f2937; text-align: right; font-weight: 500; }
+.info-link { color: #2563eb; text-decoration: none; }
+.info-link:hover { text-decoration: underline; }
+.info-row-full { padding: 10px 0; }
+.info-text { margin: 8px 0 0 0; font-size: 13px; color: #1f2937; line-height: 1.6; }
+.teacher-card { display: flex; gap: 15px; align-items: flex-start; }
+.teacher-avatar { width: 60px; height: 60px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #6b7280; overflow: hidden; flex-shrink: 0; }
+.teacher-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.teacher-info { flex: 1; }
+.teacher-info h4 { margin: 0 0 8px 0; font-size: 15px; color: #1f2937; font-weight: 600; }
+.teacher-info p { margin: 0 0 4px 0; font-size: 13px; color: #6b7280; display: flex; align-items: center; gap: 6px; }
+.teacher-info p i { width: 14px; color: #9ca3af; }
+.empty-state-sm { text-align: center; padding: 30px 20px; color: #6b7280; }
+.empty-state-sm i { font-size: 48px; color: #d1d5db; margin-bottom: 12px; }
+.empty-state-sm p { margin: 0 0 15px 0; font-size: 14px; }
+.hours-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+.hour-card { border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.hour-card.cm { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
+.hour-card.td { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); }
+.hour-card.tp { background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); }
+.hour-header { padding: 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.5); }
+.hour-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: white; }
+.hour-card.cm .hour-icon { background: #3b82f6; }
+.hour-card.td .hour-icon { background: #10b981; }
+.hour-card.tp .hour-icon { background: #f59e0b; }
+.hour-type { font-size: 13px; font-weight: 600; color: #1f2937; }
+.hour-body { padding: 15px; }
+.hour-value { font-size: 28px; font-weight: 700; color: #1f2937; margin-bottom: 8px; }
+.hour-progress { height: 6px; background: rgba(255,255,255,0.5); border-radius: 3px; overflow: hidden; }
+.progress-bar { height: 100%; background: #1f2937; border-radius: 3px; transition: width 0.3s; }
+.cours-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 15px; }
+.stat-item-detailed { display: flex; align-items: center; gap: 12px; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; transition: all 0.3s; }
+.stat-item-detailed:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+.stat-item-detailed.programmes { background: #eff6ff; border-color: #bfdbfe; }
+.stat-item-detailed.en-cours { background: #fffbeb; border-color: #fde68a; }
+.stat-item-detailed.termines { background: #ecfdf5; border-color: #a7f3d0; }
+.stat-item-detailed.annules { background: #fef2f2; border-color: #fecaca; }
+.stat-icon-wrapper { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: white; }
+.stat-item-detailed.programmes .stat-icon-wrapper { background: #3b82f6; }
+.stat-item-detailed.en-cours .stat-icon-wrapper { background: #f59e0b; }
+.stat-item-detailed.termines .stat-icon-wrapper { background: #10b981; }
+.stat-item-detailed.annules .stat-icon-wrapper { background: #ef4444; }
+.stat-details { display: flex; flex-direction: column; }
+.stat-number { font-size: 24px; font-weight: 700; color: #1f2937; }
+.stat-text { font-size: 12px; color: #6b7280; font-weight: 500; }
+.cours-actions-bar { display: flex; justify-content: center; padding-top: 15px; border-top: 1px solid #e5e7eb; }
+.list-container { display: flex; flex-direction: column; gap: 10px; padding: 15px; }
+.list-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; transition: all 0.3s; }
+.list-item:hover { background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+.classe-icon { width: 40px; height: 40px; border-radius: 8px; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.item-info { flex: 1; }
+.item-info h4 { margin: 0 0 4px 0; font-size: 14px; color: #1f2937; font-weight: 600; }
+.item-info small { font-size: 12px; color: #6b7280; }
+.btn { padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; transition: all 0.3s; }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-secondary { background: #6b7280; color: white; }
+.btn-secondary:hover { background: #4b5563; }
+.btn-outline { background: white; border: 1px solid #e5e7eb; color: #1f2937; }
+.btn-outline:hover { background: #f3f4f6; }
+.mt-2 { margin-top: 8px; }
+.dropdown-compact { position: relative; }
+.dropdown-menu-compact { position: absolute; top: 100%; right: 0; z-index: 1000; background: white; border: 1px solid #e5e7eb; border-radius: 6px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); min-width: 180px; display: none; }
+.dropdown-menu-compact.show { display: block; }
+.dropdown-menu-compact a { display: flex; align-items: center; gap: 8px; padding: 8px 12px; text-decoration: none; color: #1f2937; font-size: 12px; transition: background 0.2s; }
+.dropdown-menu-compact a:hover { background: #f3f4f6; }
+.dropdown-menu-compact a i { width: 14px; text-align: center; }
+.dropdown-divider { height: 1px; background: #e5e7eb; margin: 4px 0; }
+.text-success { color: #10b981; }
+.text-warning { color: #f59e0b; }
+.text-danger { color: #ef4444; }
+
+@media (max-width: 768px) {
+    .detail-header { flex-direction: column; gap: 15px; }
+    .header-actions { width: 100%; justify-content: space-between; }
+    .detail-grid { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: 1fr; }
+    .hours-grid { grid-template-columns: 1fr; }
+    .cours-stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media print {
+    .header-actions, .btn, .btn-link { display: none !important; }
+    .detail-section { page-break-inside: avoid; }
+}
+</style>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestion des dropdowns
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+
+            // Fermer les autres dropdowns
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.classList.remove('show');
+            });
+
+            dropdown.classList.toggle('show');
+        });
+    });
+
+    // Fermer les dropdowns en cliquant ailleurs
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+            menu.classList.remove('show');
+        });
+    });
+});
+
+function toggleMatiereStatus(matiereId, activate) {
+    const action = activate ? 'activer' : 'désactiver';
+    if (confirm(`Voulez-vous vraiment ${action} cette matière ?`)) {
+        fetch(`/courses/matieres/${matiereId}/toggle-status/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || 'Erreur lors de la modification');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur de connexion');
+        });
+    }
+}
+
+function deleteMatiere(matiereId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette matière ? Cette action est irréversible.')) {
+        fetch(`/courses/matieres/${matiereId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = '/dashboard/admin/matieres/';
+            } else {
+                alert(data.error || 'Erreur lors de la suppression');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur de connexion');
+        });
+    }
+}
+
+function exportMatiere(matiereId) {
+    window.location.href = `/courses/matieres/${matiereId}/export/`;
+}
+</script>
+{% endblock %}

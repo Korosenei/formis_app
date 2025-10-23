@@ -1,6 +1,5 @@
 # apps/accounts/views.py
-import codecs
-
+from django.db import models
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -8,7 +7,6 @@ from django.contrib import messages
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView, FormView, TemplateView
 from django.core.mail import send_mail
 from django.utils import timezone
-from django.contrib.auth.forms import PasswordChangeForm
 from django.urls import reverse_lazy, reverse
 from django.utils.crypto import get_random_string
 from django.template.loader import render_to_string
@@ -19,15 +17,25 @@ import uuid
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.http import HttpResponse, JsonResponse
-from django.db.models import Q, Count
 import csv
 import secrets
 import string
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import update_session_auth_hash
+from datetime import date, datetime
+from django.db.models import Avg, Sum, F, IntegerField, Count, Q
+from django.utils.timesince import timesince
 
-from .forms import LoginForm, ProfileForm, ForgotPasswordForm, ResetPasswordForm, BasicProfileForm, TeacherProfileForm, StudentProfileForm
-from .models import Utilisateur, ProfilApprenant, PasswordResetToken
+from .forms import LoginForm, ProfileForm, ForgotPasswordForm, ResetPasswordForm, BasicProfileForm, TeacherProfileForm, StudentProfileForm, NommerChefDepartementForm
+from .models import Utilisateur, ProfilEnseignant, ProfilApprenant, PasswordResetToken
+from .managers import (send_account_creation_email, send_password_recovery_email, send_password_changed_email,
+                       send_account_reactivation_email, send_account_deactivation_email, logger)
 
 from apps.academic.models import Departement, Classe
+from apps.courses.models import Module, Matiere, StatutCours, TypeCours, Cours, Presence, Ressource, CahierTexte, EmploiDuTemps
+from apps.enrollment.models import Candidature, Inscription
+from apps.evaluations.models import Evaluation, Note
+from apps.payments.models import Paiement, PlanPaiement, InscriptionPaiement
 
 
 class LoginView(FormView):
@@ -124,50 +132,38 @@ class ForgotPasswordView(FormView):
                 expires_at=timezone.now() + timedelta(hours=24)
             )
 
-            # Envoyer l'email
-            self.send_reset_email(user, reset_token.token)
-            messages.success(
-                self.request,
-                "Un email de réinitialisation a été envoyé à votre adresse email. "
-                "Vérifiez votre boîte de réception et vos spams."
+            # Construire l'URL de réinitialisation
+            reset_url = self.request.build_absolute_uri(
+                reverse('accounts:reset_password', kwargs={'token': reset_token.token})
             )
 
+            # **ENVOI DE L'EMAIL DE RÉCUPÉRATION**
+            email_sent = send_password_recovery_email(
+                user=user,
+                establishment=user.etablissement,
+                reset_url=reset_url
+            )
+
+            if email_sent:
+                messages.success(
+                    self.request,
+                    "Un email de réinitialisation a été envoyé à votre adresse email. "
+                    "Vérifiez votre boîte de réception et vos spams."
+                )
+            else:
+                messages.error(
+                    self.request,
+                    "Erreur lors de l'envoi de l'email. Veuillez réessayer ou contacter l'administration."
+                )
+
         except Utilisateur.DoesNotExist:
-            # Ne pas révéler si l'email existe ou non pour des raisons de sécurité
+            # Ne pas révéler si l'email existe pour des raisons de sécurité
             messages.success(
                 self.request,
                 "Si cette adresse email est associée à un compte, vous recevrez un lien de réinitialisation."
             )
 
         return super().form_valid(form)
-
-    def send_reset_email(self, user, token):
-        """Envoie l'email de réinitialisation"""
-        subject = 'Réinitialisation de votre mot de passe - FORMIS'
-        reset_url = self.request.build_absolute_uri(
-            reverse('accounts:reset_password', kwargs={'token': token})
-        )
-
-        context = {
-            'user': user,
-            'reset_url': reset_url,
-            'site_name': 'FORMIS',
-        }
-
-        html_message = render_to_string('emails/password_reset.html', context)
-        plain_message = strip_tags(html_message)
-
-        try:
-            send_mail(
-                subject,
-                plain_message,
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                html_message=html_message,
-                fail_silently=False,
-            )
-        except Exception as e:
-            messages.error(self.request, "Erreur lors de l'envoi de l'email. Contactez l'administration.")
 
 class ResetPasswordView(FormView):
     """Vue de réinitialisation du mot de passe"""
@@ -197,6 +193,14 @@ class ResetPasswordView(FormView):
         # Marquer le token comme utilisé
         self.reset_token.mark_as_used()
 
+        # **ENVOI DE L'EMAIL DE CONFIRMATION**
+        ip_address = self.request.META.get('REMOTE_ADDR')
+        send_password_changed_email(
+            user=user,
+            establishment=user.etablissement,
+            ip_address=ip_address
+        )
+
         messages.success(
             self.request,
             "Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter."
@@ -211,53 +215,194 @@ class ResetPasswordView(FormView):
 
 class ProfileView(LoginRequiredMixin, TemplateView):
     """Vue du profil utilisateur"""
-    template_name = 'dashboard/profile.html'
+    template_name = 'accounts/profile.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-
         context['user'] = user
 
-        # Informations spécifiques selon le rôle
+        # Calculer l’âge si date_naissance existe
+        if user.date_naissance:
+            context['age_str'] = timesince(user.date_naissance, now=date.today()).split(",")[0]
+            today = date.today()
+            context['age_years'] = today.year - user.date_naissance.year - (
+                (today.month, today.day) < (user.date_naissance.month, user.date_naissance.day)
+            )
+        else:
+            context['age_str'] = None
+            context['age_years'] = None
+
         if user.role == 'APPRENANT':
             try:
-                context['profil_apprenant'] = user.profil_apprenant
-                # Ajouter d'autres informations si nécessaire
-            except:
+                profil_apprenant = user.profil_apprenant
+                context['profil_apprenant'] = profil_apprenant
+
+                # Inscription active
+                inscription = Inscription.objects.filter(
+                    etudiant=user,
+                    statut='ACTIVE'
+                ).select_related(
+                    'candidature__filiere',
+                    'candidature__niveau',
+                    'classe_assignee'
+                ).first()
+                context['inscription'] = inscription
+
+                # Statistiques académiques
+                if inscription and inscription.classe_assignee:
+                    context['total_cours'] = Cours.objects.filter(
+                        classe=inscription.classe_assignee
+                    ).count()
+
+                    total_presences = Presence.objects.filter(etudiant=user).count()
+                    if total_presences > 0:
+                        presences_valides = Presence.objects.filter(
+                            etudiant=user,
+                            statut__in=['PRESENT', 'RETARD']
+                        ).count()
+                        context['taux_presence'] = round((presences_valides / total_presences) * 100, 1)
+                    else:
+                        context['taux_presence'] = 100
+
+                    # Moyenne générale
+                    try:
+                        notes = Note.objects.filter(
+                            etudiant=user,
+                            statut='PUBLIEE'
+                        ).aggregate(moyenne=models.Avg('valeur'))
+                        context['moyenne_generale'] = round(notes['moyenne'] or 0, 2)
+                    except:
+                        context['moyenne_generale'] = 0
+
+                # Paiement
+                try:
+                    inscription_paiement = InscriptionPaiement.objects.get(inscription=inscription)
+                    context['inscription_paiement'] = inscription_paiement
+                    context['statut_paiement'] = inscription_paiement.get_statut_display()
+                    context['pourcentage_paye'] = inscription_paiement.pourcentage_paye
+                except:
+                    pass
+
+            except ProfilApprenant.DoesNotExist:
                 pass
 
         elif user.role == 'ENSEIGNANT':
             try:
-                context['profil_enseignant'] = user.profil_enseignant
-                # Ajouter d'autres informations si nécessaire
-            except:
+                profil_enseignant = user.profil_enseignant
+                context['profil_enseignant'] = profil_enseignant
+
+                context['mes_cours'] = Cours.objects.filter(
+                    enseignant=user
+                ).select_related('matiere', 'classe').count()
+
+                context['mes_classes'] = Classe.objects.filter(
+                    cours__enseignant=user
+                ).distinct().count()
+
+                context['total_etudiants'] = Utilisateur.objects.filter(
+                    profil_apprenant__classe_actuelle__cours__enseignant=user,
+                    role='APPRENANT'
+                ).distinct().count()
+
+                context['evaluations_creees'] = Evaluation.objects.filter(
+                    enseignant=user
+                ).count()
+
+            except ProfilEnseignant.DoesNotExist:
                 pass
+
+        elif user.role in ['ADMIN', 'CHEF_DEPARTEMENT']:
+            if user.role == 'ADMIN':
+                etablissement = user.etablissement
+                context['total_users'] = Utilisateur.objects.filter(
+                    etablissement=etablissement
+                ).count()
+                context['total_departements'] = Departement.objects.filter(
+                    etablissement=etablissement
+                ).count()
+
+                # Ajoutés pour éviter les erreurs
+                context['total_enseignants'] = Utilisateur.objects.filter(
+                    etablissement=etablissement,
+                    role='ENSEIGNANT'
+                ).count()
+                context['total_apprenants'] = Utilisateur.objects.filter(
+                    etablissement=etablissement,
+                    role='APPRENANT'
+                ).count()
+
+            else:  # CHEF_DEPARTEMENT
+                departement = user.departement
+                context['total_enseignants'] = Utilisateur.objects.filter(
+                    departement=departement,
+                    role='ENSEIGNANT'
+                ).count()
+                context['total_apprenants'] = Utilisateur.objects.filter(
+                    departement=departement,
+                    role='APPRENANT'
+                ).count()
+
+        try:
+            context['profil_utilisateur'] = user.profil
+        except:
+            pass
+
+        # Dernière activité
+        context['derniere_activite'] = user.last_login or user.date_creation
 
         return context
 
 class EditProfileView(LoginRequiredMixin, UpdateView):
     """Vue de modification du profil"""
     model = Utilisateur
-    form_class = ProfileForm
-    template_name = 'dashboard/edit_profile.html'
+    template_name = 'accounts/edit_profile.html'
     success_url = reverse_lazy('accounts:profile')
 
     def get_object(self):
         return self.request.user
 
+    def get_form_class(self):
+        """Retourne le formulaire selon le rôle"""
+        user = self.request.user
+
+        if user.role == 'APPRENANT':
+            return StudentProfileForm
+        elif user.role == 'ENSEIGNANT':
+            return TeacherProfileForm
+        else:
+            return BasicProfileForm
+
     def form_valid(self, form):
         messages.success(self.request, "Votre profil a été mis à jour avec succès.")
+
+        # Si c'est une requête AJAX
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': 'Profil mis à jour avec succès'
+            })
+
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'errors': form.errors
+            }, status=400)
+
+        return super().form_invalid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Modifier le profil'
+        context['title'] = 'Modifier mon profil'
+        context['is_modal'] = self.request.GET.get('modal') == '1'
         return context
 
 class ChangePasswordView(LoginRequiredMixin, FormView):
     """Vue de changement de mot de passe"""
-    template_name = 'dashboard/change_password.html'
+    template_name = 'accounts/change_password.html'
     form_class = PasswordChangeForm
     success_url = reverse_lazy('accounts:profile')
 
@@ -267,14 +412,46 @@ class ChangePasswordView(LoginRequiredMixin, FormView):
         return kwargs
 
     def form_valid(self, form):
-        form.save()
-        messages.success(self.request, "Votre mot de passe a été modifié avec succès.")
+        user = form.save()
+        # Maintenir la session après changement de mot de passe
+        update_session_auth_hash(self.request, user)
+
+        messages.success(
+            self.request,
+            "Votre mot de passe a été modifié avec succès."
+        )
+
+        # Si c'est une requête AJAX
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': 'Mot de passe modifié avec succès'
+            })
+
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'errors': form.errors
+            }, status=400)
+
+        return super().form_invalid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Changer le mot de passe'
+        context['title'] = 'Changer mon mot de passe'
+        context['is_modal'] = self.request.GET.get('modal') == '1'
         return context
+
+@login_required
+def upload_profile_photo(request):
+    if request.method == 'POST' and request.FILES.get('photo'):
+        request.user.photo = request.FILES['photo']
+        request.user.save()
+        return redirect('profile')
+    return redirect('profile')
 
 def check_email_availability(request):
     """Vérifie la disponibilité d'un email"""
@@ -395,7 +572,6 @@ class UserCreateView(LoginRequiredMixin, CreateView):
         context['submit_text'] = 'Créer'
         context['cancel_url'] = self.get_cancel_url()
 
-        # Limiter les départements selon le rôle
         if self.request.user.role == 'ADMIN':
             context['departements'] = Departement.objects.filter(
                 etablissement=self.request.user.etablissement
@@ -440,15 +616,31 @@ class UserCreateView(LoginRequiredMixin, CreateView):
 
         user.save()
 
-        messages.success(
-            self.request,
-            f"Utilisateur {user.get_full_name()} créé avec succès. "
-            f"Mot de passe temporaire: {temp_password}"
+        # **ENVOI DE L'EMAIL DE CRÉATION**
+        email_sent = send_account_creation_email(
+            user=user,
+            password=temp_password,
+            establishment=user.etablissement,
+            created_by=self.request.user
         )
-        return super().form_valid(form)
+
+        if email_sent:
+            messages.success(
+                self.request,
+                f"Utilisateur {user.get_full_name()} créé avec succès. "
+                f"Un email contenant les identifiants a été envoyé à {user.email}."
+            )
+        else:
+            messages.warning(
+                self.request,
+                f"Utilisateur {user.get_full_name()} créé avec succès. "
+                f"Mot de passe temporaire: {temp_password} "
+                f"(Email non envoyé - erreur d'envoi)"
+            )
+
+        return redirect(self.get_success_url())
 
     def form_invalid(self, form):
-        """En cas d'erreur de validation"""
         messages.error(self.request, "Erreur lors de la création. Vérifiez les informations saisies.")
         return super().form_invalid(form)
 
@@ -593,6 +785,149 @@ class UserDeleteView(LoginRequiredMixin, DeleteView):
         messages.success(request, f"Utilisateur {user_name} désactivé avec succès")
         return self.get_success_url()
 
+# ================================
+# GESTION DES CHEFS DE DEPARTEMENTS
+# ================================
+class DepartmentHeadListView(LoginRequiredMixin, ListView):
+    """Liste et gestion des chefs de département"""
+    template_name = 'dashboard/admin/department_heads.html'
+    context_object_name = 'chefs_departement'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        etablissement = self.request.user.etablissement
+
+        # Récupérer tous les départements avec leurs chefs
+        departements = Departement.objects.filter(
+            etablissement=etablissement,
+            est_actif=True
+        ).select_related('chef').order_by('nom')
+
+        return departements
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        etablissement = self.request.user.etablissement
+
+        # Départements sans chef
+        depts_sans_chef = Departement.objects.filter(
+            etablissement=etablissement,
+            est_actif=True,
+            chef__isnull=True
+        ).count()
+
+        # Total des départements
+        total_depts = Departement.objects.filter(
+            etablissement=etablissement,
+            est_actif=True
+        ).count()
+
+        context.update({
+            'departements_sans_chef': depts_sans_chef,
+            'total_departements': total_depts,
+            'can_nominate': depts_sans_chef > 0
+        })
+
+        return context
+
+class NommerChefDepartementView(LoginRequiredMixin, FormView):
+    """Vue pour nommer un chef de département"""
+    template_name = 'accounts/department_head/nominate.html'
+    form_class = NommerChefDepartementForm
+
+    def dispatch(self, request, *args, **kwargs):
+        # Seuls les ADMIN peuvent nommer des chefs de département
+        if request.user.role != 'ADMIN':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_success_url(self):
+        return reverse_lazy('dashboard:admin_department_heads')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['etablissement'] = self.request.user.etablissement
+        return kwargs
+
+    def form_valid(self, form):
+        try:
+            enseignant = form.save()
+            messages.success(
+                self.request,
+                f"{enseignant.get_full_name()} a été nommé(e) chef de département avec succès."
+            )
+        except Exception as e:
+            messages.error(
+                self.request,
+                f"Erreur lors de la nomination : {str(e)}"
+            )
+            return self.form_invalid(form)
+
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = 'Nommer un chef de département'
+        context['cancel_url'] = reverse_lazy('dashboard:admin_department_heads')
+        return context
+
+@login_required
+def revoquer_chef_departement(request, pk):
+    """Révoquer un chef de département"""
+    if request.user.role != 'ADMIN':
+        return JsonResponse({'success': False, 'error': 'Non autorisé'}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Méthode non autorisée'}, status=405)
+
+    try:
+        departement = get_object_or_404(
+            Departement,
+            pk=pk,
+            etablissement=request.user.etablissement
+        )
+
+        if not departement.chef:
+            return JsonResponse({
+                'success': False,
+                'error': 'Ce département n\'a pas de chef'
+            }, status=400)
+
+        ancien_chef = departement.chef
+        ancien_chef_nom = ancien_chef.get_full_name()
+
+        # Retirer le chef
+        departement.chef = None
+        departement.save()
+
+        # Mettre à jour le profil
+        if hasattr(ancien_chef, 'profil_enseignant'):
+            profil = ancien_chef.profil_enseignant
+            profil.est_chef_departement = False
+            profil.save()
+
+        # Si l'utilisateur n'est chef d'aucun autre département, changer son rôle
+        if not ancien_chef.departements_diriges.exists():
+            ancien_chef.role = 'ENSEIGNANT'
+            ancien_chef.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'{ancien_chef_nom} n\'est plus chef de {departement.nom}'
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 
 # ================================
 # GESTION DES ENSEIGNANTS
@@ -668,9 +1003,14 @@ class TeacherCreateView(LoginRequiredMixin, CreateView):
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
-            messages.error(request, "Vous ne pouvez pas créer d'utilisateur. Vérifiez vos permissions.")
+            messages.error(request, "Vous ne pouvez pas créer d'utilisateur.")
             return redirect('dashboard:redirect')
         return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['etablissement'] = self.request.user.etablissement
+        return kwargs
 
     def get_success_url(self):
         if self.request.user.role == 'ADMIN':
@@ -679,45 +1019,53 @@ class TeacherCreateView(LoginRequiredMixin, CreateView):
             return reverse_lazy('dashboard:department_head_teachers')
 
     def get_cancel_url(self):
-        if self.request.user.role == 'ADMIN':
-            return reverse_lazy('dashboard:admin_teachers')
-        else:
-            return reverse_lazy('dashboard:department_head_teachers')
+        return self.get_success_url()
 
     def form_valid(self, form):
         user = form.save(commit=False)
-        user.role = 'ENSEIGNANT'
         user.etablissement = self.request.user.etablissement
         user.cree_par = self.request.user
+
+        # Si chef de département, assigner automatiquement son département
+        if self.request.user.role == 'CHEF_DEPARTEMENT':
+            user.departement = self.request.user.departement
 
         temp_password = generate_password()
         user.set_password(temp_password)
 
         user.save()
-        form.save()  # Sauvegarde les profils associés
+        form.save()  # Sauvegarde les relations ManyToMany
 
-        messages.success(
-            self.request,
-            f"Enseignant {user.get_full_name()} créé avec succès. "
-            f"Mot de passe temporaire: {temp_password}"
+        email_sent = send_account_creation_email(
+            user=user,
+            password=temp_password,
+            establishment=user.etablissement,
+            created_by=self.request.user
         )
-        return redirect(self.success_url)
+
+        role_display = "Chef de département" if user.role == 'CHEF_DEPARTEMENT' else "Enseignant"
+
+        if email_sent:
+            messages.success(
+                self.request,
+                f"{role_display} {user.get_full_name()} créé avec succès. "
+                f"Un email contenant les identifiants a été envoyé à {user.email}."
+            )
+        else:
+            messages.warning(
+                self.request,
+                f"{role_display} {user.get_full_name()} créé avec succès. "
+                f"Mot de passe temporaire: {temp_password} "
+                f"(Email non envoyé - erreur d'envoi)"
+            )
+
+        return redirect(self.get_success_url())
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['title'] = 'Ajouter un enseignant'
         context['submit_text'] = 'Créer'
         context['cancel_url'] = self.get_cancel_url()
-
-        if self.request.user.role == 'ADMIN':
-            context['departements'] = Departement.objects.filter(
-                etablissement=self.request.user.etablissement
-            )
-        else:
-            context['departements'] = Departement.objects.filter(
-                id=self.request.user.departement.id
-            )
-
         return context
 
 class TeacherUpdateView(LoginRequiredMixin, UpdateView):
@@ -728,9 +1076,14 @@ class TeacherUpdateView(LoginRequiredMixin, UpdateView):
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
-            messages.error(request, "Vous ne pouvez pas modifier cet utilisateur. Vérifiez vos permissions.")
+            messages.error(request, "Vous ne pouvez pas modifier cet utilisateur.")
             return self.get_error_redirect()
         return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['etablissement'] = self.request.user.etablissement
+        return kwargs
 
     def get_success_url(self):
         if self.request.user.role == 'ADMIN':
@@ -739,10 +1092,7 @@ class TeacherUpdateView(LoginRequiredMixin, UpdateView):
             return reverse_lazy('dashboard:department_head_teachers')
 
     def get_cancel_url(self):
-        if self.request.user.role == 'ADMIN':
-            return reverse_lazy('dashboard:admin_teachers')
-        else:
-            return reverse_lazy('dashboard:department_head_teachers')
+        return self.get_success_url()
 
     def get_error_redirect(self):
         if self.request.user.role == 'ADMIN':
@@ -759,16 +1109,6 @@ class TeacherUpdateView(LoginRequiredMixin, UpdateView):
         context['title'] = 'Modifier l\'enseignant'
         context['submit_text'] = 'Enregistrer'
         context['cancel_url'] = self.get_cancel_url()
-
-        if self.request.user.role == 'ADMIN':
-            context['departements'] = Departement.objects.filter(
-                etablissement=self.request.user.etablissement
-            )
-        else:
-            context['departements'] = Departement.objects.filter(
-                id=self.request.user.departement.id
-            )
-
         return context
 
 class TeacherDetailView(LoginRequiredMixin, DetailView):
@@ -934,10 +1274,7 @@ class StudentCreateView(LoginRequiredMixin, CreateView):
             return reverse_lazy('dashboard:department_head_students')
 
     def get_cancel_url(self):
-        if self.request.user.role == 'ADMIN':
-            return reverse_lazy('dashboard:admin_students')
-        else:
-            return reverse_lazy('dashboard:department_head_students')
+        return self.get_success_url()
 
     def form_valid(self, form):
         user = form.save(commit=False)
@@ -951,12 +1288,29 @@ class StudentCreateView(LoginRequiredMixin, CreateView):
         user.save()
         form.save()
 
-        messages.success(
-            self.request,
-            f"Étudiant {user.get_full_name()} créé avec succès. "
-            f"Mot de passe temporaire: {temp_password}"
+        # **ENVOI DE L'EMAIL**
+        email_sent = send_account_creation_email(
+            user=user,
+            password=temp_password,
+            establishment=user.etablissement,
+            created_by=self.request.user
         )
-        return redirect(self.success_url)
+
+        if email_sent:
+            messages.success(
+                self.request,
+                f"Étudiant {user.get_full_name()} créé avec succès. "
+                f"Un email contenant les identifiants a été envoyé à {user.email}."
+            )
+        else:
+            messages.warning(
+                self.request,
+                f"Étudiant {user.get_full_name()} créé avec succès. "
+                f"Mot de passe temporaire: {temp_password} "
+                f"(Email non envoyé - erreur d'envoi)"
+            )
+
+        return redirect(self.get_success_url())
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1236,8 +1590,24 @@ def toggle_user_status(request, pk):
     if user == request.user:
         return JsonResponse({'success': False, 'error': 'Vous ne pouvez pas vous désactiver vous-même'}, status=400)
 
+    # Changer le statut
+    was_active = user.est_actif
     user.est_actif = not user.est_actif
     user.save()
+
+    # **ENVOI D'EMAIL SELON L'ACTION**
+    if user.est_actif and not was_active:
+        # Réactivation
+        send_account_reactivation_email(
+            user=user,
+            establishment=user.etablissement
+        )
+    elif not user.est_actif and was_active:
+        # Désactivation
+        send_account_deactivation_email(
+            user=user,
+            establishment=user.etablissement
+        )
 
     return JsonResponse({
         'success': True,
@@ -1275,24 +1645,45 @@ def admin_reset_password(request, pk):
     user.set_password(new_password)
     user.save()
 
-    # Envoyer email (optionnel)
+    # **ENVOI D'EMAIL AVEC LE NOUVEAU MOT DE PASSE**
     try:
         send_mail(
-            'Réinitialisation de mot de passe',
-            f'Votre nouveau mot de passe temporaire : {new_password}\n\nVeuillez le changer après connexion.',
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email],
-            fail_silently=True,
+            subject=f'Réinitialisation de mot de passe - {user.etablissement.nom}',
+            message=f'''Bonjour {user.get_full_name()},
+
+Votre mot de passe a été réinitialisé par un administrateur.
+
+Nouveau mot de passe temporaire : {new_password}
+
+Veuillez vous connecter et changer ce mot de passe immédiatement.
+
+Lien de connexion : {settings.SITE_URL}/accounts/login/
+
+Cordialement,
+L'équipe {user.etablissement.nom}
+''',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
         )
         email_sent = True
-    except:
+    except Exception as e:
+        logger.error(f"Erreur envoi email réinitialisation admin: {e}")
         email_sent = False
 
-    return JsonResponse({
-        'success': True,
-        'message': f'Nouveau mot de passe : {new_password}',
-        'email_sent': email_sent
-    })
+    if email_sent:
+        return JsonResponse({
+            'success': True,
+            'message': f'Un email contenant le nouveau mot de passe a été envoyé à {user.email}',
+            'email_sent': True
+        })
+    else:
+        return JsonResponse({
+            'success': True,
+            'message': f'Nouveau mot de passe : {new_password} (Email non envoyé)',
+            'password': new_password,
+            'email_sent': False
+        })
 
 
 def generate_password():

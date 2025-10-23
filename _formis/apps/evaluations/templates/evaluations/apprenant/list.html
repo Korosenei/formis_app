@@ -1,421 +1,274 @@
 {% extends 'base/dashboard_base.html' %}
 {% load static %}
 
-{% block page_title %}Mes Évaluations - FORMIS{% endblock %}
-
-{% block extra_css %}
-<style>
-  .evaluation-card {
-    border: 1px solid #dee2e6;
-    border-radius: 0.75rem;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    background: white;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .evaluation-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background: #dee2e6;
-  }
-
-  .evaluation-card.active::before { background: #28a745; }
-  .evaluation-card.terminee::before { background: #6c757d; }
-  .evaluation-card.programmee::before { background: #17a2b8; }
-  .evaluation-card.en-retard::before { background: #dc3545; }
-
-  .evaluation-card:hover {
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-    transform: translateY(-2px);
-  }
-
-  .countdown-badge {
-    background: linear-gradient(45deg, #ff6b6b, #ee5a24);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 2rem;
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-    font-size: 0.9rem;
-  }
-
-  .status-badge {
-    padding: 0.4rem 0.8rem;
-    border-radius: 1.5rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-  }
-
-  .progress-bar-custom {
-    height: 8px;
-    border-radius: 4px;
-    background: #e9ecef;
-    overflow: hidden;
-  }
-
-  .progress-bar-fill {
-    height: 100%;
-    border-radius: 4px;
-    transition: width 0.3s ease;
-  }
-
-  .stats-overview {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 1rem;
-    padding: 2rem;
-    margin-bottom: 2rem;
-  }
-
-  .quick-access {
-    background: #f8f9fa;
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-  }
-</style>
-{% endblock %}
+{% block page_title %}Mes Évaluations{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <div class="d-flex justify-content-between align-items-center">
-    <div>
-      <h1 class="h3 mb-1"><i class="fas fa-clipboard-check text-primary me-2"></i>Mes Évaluations</h1>
-      <p class="text-muted mb-0">Consultez vos évaluations et soumettez vos compositions</p>
+<div class="student-evaluations">
+    <!-- Header -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Évaluations</span>
+            </div>
+            <h1>Mes Évaluations</h1>
+        </div>
     </div>
-    <div class="d-flex gap-2">
-      <a href="{% url 'evaluations:mes_notes' %}" class="btn btn-outline-primary">
-        <i class="fas fa-chart-line me-2"></i>Mes Notes
-      </a>
-      <button class="btn btn-outline-secondary" onclick="actualiserPage()">
-        <i class="fas fa-sync-alt me-2"></i>Actualiser
-      </button>
-    </div>
-  </div>
-</div>
 
-<!-- Statistiques personnelles -->
-<div class="stats-overview">
-  <div class="row text-center">
-    <div class="col-md-3 col-6">
-      <div class="h3 mb-1">{{ stats_personnelles.total_evaluations }}</div>
-      <div class="small">Total évaluations</div>
-    </div>
-    <div class="col-md-3 col-6">
-      <div class="h3 mb-1">{{ stats_personnelles.en_cours }}</div>
-      <div class="small">En cours</div>
-    </div>
-    <div class="col-md-3 col-6">
-      <div class="h3 mb-1">{{ stats_personnelles.compositions_soumises }}</div>
-      <div class="small">Soumises</div>
-    </div>
-    <div class="col-md-3 col-6">
-      <div class="h3 mb-1">{{ stats_personnelles.compositions_corrigees }}</div>
-      <div class="small">Corrigées</div>
-    </div>
-  </div>
-</div>
-
-<!-- Accès rapide -->
-<div class="quick-access">
-  <div class="row">
-    <div class="col-md-3">
-      <label class="form-label">Rechercher</label>
-      {{ form.titre }}
-    </div>
-    <div class="col-md-3">
-      <label class="form-label">Type</label>
-      {{ form.type_evaluation }}
-    </div>
-    <div class="col-md-3">
-      <label class="form-label">Matière</label>
-      {{ form.matiere }}
-    </div>
-    <div class="col-md-3">
-      <label class="form-label">&nbsp;</label>
-      <div class="d-grid">
-        <button type="button" onclick="filtrerEvaluations()" class="btn btn-primary">
-          <i class="fas fa-filter"></i> Filtrer
+    <!-- Filtres tabs -->
+    <div class="filters-tabs-section">
+        <button class="filter-tab active" onclick="filterEvals('all')" data-filter="all">
+            Toutes ({{ evaluations|length }})
         </button>
-      </div>
+        <button class="filter-tab" onclick="filterEvals('a_faire')" data-filter="a_faire">
+            À faire
+        </button>
+        <button class="filter-tab" onclick="filterEvals('soumises')" data-filter="soumises">
+            Soumises
+        </button>
+        <button class="filter-tab" onclick="filterEvals('corrigees')" data-filter="corrigees">
+            Corrigées
+        </button>
     </div>
-  </div>
-</div>
 
-<!-- Liste des évaluations -->
-<div class="row">
-  {% for info in evaluations_avec_info %}
-  {% with evaluation=info.evaluation composition=info.composition disponibilite=info.disponibilite temps_restant=info.temps_restant note=info.note %}
-  <div class="col-12">
-    <div class="evaluation-card {% if evaluation.statut == 'EN_COURS' and disponibilite.peut_composer %}active{% elif evaluation.statut == 'TERMINEE' %}terminee{% elif evaluation.statut == 'PROGRAMMEE' %}programmee{% elif composition and composition.est_en_retard %}en-retard{% endif %}">
-      <div class="row align-items-center">
-        <!-- Informations de l'évaluation -->
-        <div class="col-lg-6">
-          <div class="d-flex align-items-start">
-            <div class="flex-grow-1">
-              <h5 class="mb-2">
-                <a href="{% url 'evaluations:detail_apprenant' evaluation.pk %}"
-                   class="text-decoration-none text-dark">
-                  {{ evaluation.titre }}
-                </a>
-              </h5>
+    <!-- Liste des évaluations -->
+    <div class="evaluations-grid">
+        {% for eval in evaluations %}
+        <div class="eval-card"
+             data-status="{% if eval.ma_composition %}{% if eval.ma_composition.statut == 'CORRIGEE' %}corrigees{% elif eval.ma_composition.statut in 'SOUMISE,EN_RETARD' %}soumises{% else %}a_faire{% endif %}{% else %}a_faire{% endif %}">
 
-              <p class="text-muted mb-2">
-                <i class="fas fa-book me-1"></i>
-                {{ evaluation.matiere_module.matiere.nom }} - {{ evaluation.matiere_module.module.nom }}
-              </p>
-
-              <p class="text-muted small mb-2">
-                <i class="fas fa-user me-1"></i>
-                Prof. {{ evaluation.enseignant.get_full_name }}
-              </p>
-
-              <div class="d-flex align-items-center gap-3">
-                <span class="status-badge bg-{% if evaluation.statut == 'EN_COURS' %}success{% elif evaluation.statut == 'PROGRAMMEE' %}info{% elif evaluation.statut == 'TERMINEE' %}secondary{% else %}warning{% endif %} text-white">
-                  {{ evaluation.get_statut_display }}
-                </span>
-
-                <small class="text-muted">
-                  <i class="fas fa-calendar me-1"></i>
-                  {{ evaluation.date_debut|date:"d/m/Y H:i" }}
-                </small>
-
-                <small class="text-muted">
-                  <i class="fas fa-star me-1"></i>
-                  Coeff: {{ evaluation.coefficient }}
-                </small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Statut de la composition -->
-        <div class="col-lg-3">
-          <div class="text-center">
-            {% if composition %}
-              {% if composition.statut == 'EN_COURS' %}
-                <div class="text-warning">
-                  <i class="fas fa-clock fa-2x mb-2"></i>
-                  <div class="fw-bold">En cours</div>
-                  <small class="text-muted">Composition ouverte</small>
+            <div class="eval-header">
+                <div class="eval-title-section">
+                    <h3>{{ eval.titre }}</h3>
+                    <div class="eval-meta">
+                        <span class="meta-tag type-{{ eval.type_evaluation|lower }}">
+                            {{ eval.get_type_evaluation_display }}
+                        </span>
+                        <span class="meta-tag matiere">
+                            {{ eval.matiere.nom }}
+                        </span>
+                    </div>
                 </div>
-              {% elif composition.statut == 'SOUMISE' %}
-                <div class="text-success">
-                  <i class="fas fa-check-circle fa-2x mb-2"></i>
-                  <div class="fw-bold">Soumise</div>
-                  <small class="text-muted">{{ composition.date_soumission|date:"d/m H:i" }}</small>
-                </div>
-              {% elif composition.statut == 'EN_RETARD' %}
-                <div class="text-danger">
-                  <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                  <div class="fw-bold">En retard</div>
-                  <small class="text-muted">{{ composition.date_soumission|date:"d/m H:i" }}</small>
-                </div>
-              {% elif composition.statut == 'CORRIGEE' %}
-                <div class="text-info">
-                  <i class="fas fa-medal fa-2x mb-2"></i>
-                  <div class="fw-bold">Corrigée</div>
-                  {% if note %}
-                    <div class="h5 text-primary mb-0">{{ note.valeur }}/{{ note.note_sur }}</div>
-                  {% endif %}
-                </div>
-              {% endif %}
-            {% else %}
-              <div class="text-muted">
-                <i class="fas fa-file-alt fa-2x mb-2"></i>
-                <div class="fw-bold">Non démarrée</div>
-                <small>Cliquez pour commencer</small>
-              </div>
-            {% endif %}
-          </div>
-        </div>
 
-        <!-- Actions et temps restant -->
-        <div class="col-lg-3 text-end">
-          {% if evaluation.statut == 'EN_COURS' and disponibilite.peut_composer %}
-            {% if temps_restant > 0 %}
-              <div class="countdown-badge mb-2" data-end-time="{{ evaluation.date_fin.isoformat }}">
-                --:--:--
-              </div>
-            {% endif %}
-
-            <div class="d-grid gap-2">
-              <a href="{% url 'evaluations:detail_apprenant' evaluation.pk %}"
-                 class="btn btn-primary">
-                {% if composition and composition.statut == 'EN_COURS' %}
-                  <i class="fas fa-edit me-2"></i>Continuer
+                {% if eval.ma_composition %}
+                    {% if eval.ma_composition.statut == 'CORRIGEE' %}
+                        <span class="status-badge success">
+                            <i class="fas fa-check-circle"></i> Corrigée
+                        </span>
+                    {% elif eval.ma_composition.statut == 'EN_RETARD' %}
+                        <span class="status-badge warning">
+                            <i class="fas fa-exclamation-triangle"></i> En retard
+                        </span>
+                    {% elif eval.ma_composition.statut == 'SOUMISE' %}
+                        <span class="status-badge info">
+                            <i class="fas fa-paper-plane"></i> Soumise
+                        </span>
+                    {% else %}
+                        <span class="status-badge pending">
+                            <i class="fas fa-hourglass-half"></i> En cours
+                        </span>
+                    {% endif %}
                 {% else %}
-                  <i class="fas fa-play me-2"></i>Commencer
+                    <span class="status-badge new">
+                        <i class="fas fa-star"></i> Nouvelle
+                    </span>
                 {% endif %}
-              </a>
             </div>
 
-          {% elif evaluation.statut == 'PROGRAMMEE' %}
-            <div class="text-center">
-              <div class="text-muted">
-                <i class="fas fa-clock me-1"></i>
-                Commence le
-              </div>
-              <div class="fw-bold">{{ evaluation.date_debut|date:"d/m/Y à H:i" }}</div>
+            <div class="eval-body">
+                <div class="eval-info-grid">
+                    <div class="info-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>{{ eval.date_debut|date:"d/m/Y" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-clock"></i>
+                        <span>{{ eval.date_debut|date:"H:i" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-hourglass"></i>
+                        <span>{{ eval.duree_minutes }} min</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-star"></i>
+                        <span>/ {{ eval.note_maximale }}</span>
+                    </div>
+                </div>
+
+                {% if eval.ma_composition and eval.ma_composition.statut == 'CORRIGEE' %}
+                <div class="eval-note">
+                    <div class="note-display">
+                        <span class="note-value">{{ eval.ma_composition.note_obtenue }}</span>
+                        <span class="note-max">/ {{ eval.note_maximale }}</span>
+                    </div>
+                    {% if eval.ma_composition.note_avec_penalite != eval.ma_composition.note_obtenue %}
+                    <small class="penalite-info">
+                        ({{ eval.ma_composition.note_avec_penalite }} après pénalité)
+                    </small>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Barre de temps -->
+                {% if eval.statut == 'EN_COURS' %}
+                <div class="time-remaining">
+                    <div class="time-info">
+                        <i class="fas fa-clock"></i>
+                        <span>Temps restant</span>
+                    </div>
+                    <div class="countdown" data-end="{{ eval.date_fin|date:'Y-m-d H:i:s' }}">
+                        Calcul en cours...
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
-          {% elif evaluation.statut == 'TERMINEE' %}
-            <div class="d-grid gap-2">
-              <a href="{% url 'evaluations:detail_apprenant' evaluation.pk %}"
-                 class="btn btn-outline-secondary">
-                <i class="fas fa-eye me-2"></i>Voir résultats
-              </a>
-
-              {% if evaluation.correction_visible %}
-                <a href="{% url 'evaluations:voir_fichier' 'correction' evaluation.pk %}"
-                   class="btn btn-outline-success"
-                   data-bs-toggle="modal"
-                   data-bs-target="#fileViewerModal">
-                  <i class="fas fa-file-check me-2"></i>Correction
+            <div class="eval-footer">
+                <a href="{% url 'evaluations:evaluation_detail_apprenant' eval.pk %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-eye"></i> Voir détails
                 </a>
-              {% endif %}
-            </div>
-          {% endif %}
-        </div>
-      </div>
 
-      <!-- Barre de progression si composition en cours -->
-      {% if composition and composition.statut == 'EN_COURS' and temps_restant > 0 %}
-      <div class="mt-3">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <small class="text-muted">Progression</small>
-          <small class="text-muted">{{ composition.fichiers_composition.count }} fichier{{ composition.fichiers_composition.count|pluralize }} uploadé{{ composition.fichiers_composition.count|pluralize }}</small>
+                {% if eval.ma_composition %}
+                    {% if eval.ma_composition.peut_soumettre %}
+                        <a href="{% url 'evaluations:evaluation_detail_apprenant' eval.pk %}" class="btn btn-sm btn-success">
+                            <i class="fas fa-upload"></i> Composer
+                        </a>
+                    {% endif %}
+                {% endif %}
+
+                {% if eval.fichier_evaluation %}
+                <a href="{% url 'evaluations:telecharger_evaluation' eval.pk %}"
+                   class="btn btn-sm btn-outline" target="_blank">
+                    <i class="fas fa-download"></i> Sujet
+                </a>
+                {% endif %}
+
+                {% if eval.correction_visible and eval.fichier_correction %}
+                <a href="{% url 'evaluations:telecharger_fichier_correction' eval.pk %}"
+                   class="btn btn-sm btn-info">
+                    <i class="fas fa-file-alt"></i> Correction
+                </a>
+                {% endif %}
+            </div>
         </div>
-        <div class="progress-bar-custom">
-          <div class="progress-bar-fill bg-primary"
-               style="width: {% if composition.fichiers_composition.count > 0 %}50%{% else %}10%{% endif %}"></div>
+        {% empty %}
+        <div class="empty-state-full">
+            <i class="fas fa-clipboard-list fa-3x"></i>
+            <h3>Aucune évaluation</h3>
+            <p>Vous n'avez pas d'évaluation pour le moment</p>
         </div>
-      </div>
-      {% endif %}
+        {% endfor %}
     </div>
-  </div>
-  {% endwith %}
-  {% empty %}
-  <div class="col-12">
-    <div class="text-center py-5">
-      <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
-      <h4 class="text-muted">Aucune évaluation disponible</h4>
-      <p class="text-muted">Vos évaluations apparaîtront ici dès qu'elles seront programmées par vos enseignants.</p>
-    </div>
-  </div>
-  {% endfor %}
 </div>
 
-<!-- Modal pour visualiser les fichiers -->
-<div class="modal fade" id="fileViewerModal" tabindex="-1">
-  <div class="modal-dialog modal-xl modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Visualisation du fichier</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body p-0">
-        <div id="fileViewerContent" style="height: 70vh;">
-          <div class="d-flex justify-content-center align-items-center h-100">
-            <div class="spinner-border" role="status">
-              <span class="visually-hidden">Chargement...</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-        <a href="#" class="btn btn-primary" id="downloadFileBtn">
-          <i class="fas fa-download"></i> Télécharger
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
-{% endblock %}
+<style>
+.student-evaluations { padding: 12px; }
+.page-header-compact { padding: 12px; background: white; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); margin-bottom: 12px; }
+.breadcrumb-nav { font-size: 10px; color: #6b7280; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+.breadcrumb-nav .current { color: #2563eb; font-weight: 500; }
+.header-content h1 { margin: 0; font-size: 16px; font-weight: 600; color: #1f2937; }
+.filters-tabs-section { display: flex; gap: 6px; margin-bottom: 12px; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.filter-tab { padding: 6px 12px; border: none; background: #f3f4f6; color: #6b7280; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.3s; }
+.filter-tab.active { background: #2563eb; color: white; }
+.evaluations-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 12px; }
+.eval-card { background: white; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; overflow: hidden; transition: all 0.2s; }
+.eval-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.eval-header { padding: 12px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.eval-title-section h3 { margin: 0 0 6px 0; font-size: 14px; font-weight: 600; color: #1f2937; }
+.eval-meta { display: flex; gap: 5px; flex-wrap: wrap; }
+.meta-tag { padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 500; }
+.meta-tag.type-devoir { background: #dbeafe; color: #1e40af; }
+.meta-tag.type-composition { background: #fef3c7; color: #92400e; }
+.meta-tag.type-tp { background: #d1fae5; color: #065f46; }
+.meta-tag.type-projet { background: #e0e7ff; color: #3730a3; }
+.meta-tag.type-examen { background: #fee2e2; color: #991b1b; }
+.meta-tag.type-quiz { background: #e0e7ff; color: #3730a3; }
+.meta-tag.matiere { background: #f3f4f6; color: #1f2937; }
+.status-badge { padding: 4px 10px; border-radius: 10px; font-size: 10px; font-weight: 500; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.status-badge.success { background: #d1fae5; color: #065f46; }
+.status-badge.warning { background: #fef3c7; color: #92400e; }
+.status-badge.info { background: #dbeafe; color: #1e40af; }
+.status-badge.pending { background: #f3f4f6; color: #6b7280; }
+.status-badge.new { background: #e0e7ff; color: #3730a3; }
+.eval-body { padding: 12px; }
+.eval-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
+.info-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #6b7280; }
+.info-item i { width: 12px; color: #9ca3af; }
+.eval-note { padding: 10px; background: #f0f9ff; border-radius: 6px; text-align: center; margin-top: 10px; }
+.note-display { display: flex; align-items: baseline; justify-content: center; gap: 3px; }
+.note-value { font-size: 28px; font-weight: 700; color: #2563eb; }
+.note-max { font-size: 16px; color: #6b7280; }
+.penalite-info { display: block; margin-top: 4px; color: #f59e0b; font-size: 10px; }
+.time-remaining { margin-top: 10px; padding: 8px; background: #fef3c7; border-radius: 6px; }
+.time-info { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #92400e; margin-bottom: 4px; }
+.countdown { font-size: 13px; font-weight: 600; color: #92400e; }
+.eval-footer { padding: 10px 12px; border-top: 1px solid #e5e7eb; display: flex; gap: 5px; flex-wrap: wrap; background: #fafbfc; }
+.btn { padding: 5px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 11px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
+.btn-sm { padding: 5px 10px; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-success { background: #10b981; color: white; }
+.btn-success:hover { background: #059669; }
+.btn-info { background: #3b82f6; color: white; }
+.btn-info:hover { background: #2563eb; }
+.btn-outline { background: white; border: 1px solid #e5e7eb; color: #1f2937; }
+.btn-outline:hover { background: #f3f4f6; }
+.empty-state-full { grid-column: 1 / -1; text-align: center; padding: 50px 20px; background: white; border-radius: 6px; }
+.empty-state-full i { color: #d1d5db; margin-bottom: 15px; }
+.empty-state-full h3 { margin: 0 0 8px 0; color: #1f2937; font-size: 16px; }
+.empty-state-full p { color: #6b7280; margin: 0; }
 
-{% block extra_js %}
+@media (max-width: 768px) {
+    .evaluations-grid { grid-template-columns: 1fr; }
+}
+</style>
+
 <script>
-// Mise à jour des compteurs de temps
-function updateCountdowns() {
-    document.querySelectorAll('[data-end-time]').forEach(element => {
-        const endTime = new Date(element.dataset.endTime);
-        const now = new Date();
-        const diff = endTime - now;
+function filterEvals(filter) {
+    const cards = document.querySelectorAll('.eval-card');
+    const tabs = document.querySelectorAll('.filter-tab');
 
-        if (diff > 0) {
-            const hours = Math.floor(diff / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    tabs.forEach(tab => tab.classList.remove('active'));
+    event.target.classList.add('active');
 
-            element.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-            // Changer la couleur selon le temps restant
-            if (diff < 300000) { // Moins de 5 minutes
-                element.style.background = 'linear-gradient(45deg, #dc3545, #c82333)';
-            } else if (diff < 900000) { // Moins de 15 minutes
-                element.style.background = 'linear-gradient(45deg, #ffc107, #e0a800)';
-            }
+    cards.forEach(card => {
+        if (filter === 'all' || card.dataset.status === filter) {
+            card.style.display = 'block';
         } else {
-            element.textContent = 'Terminé';
-            element.style.background = '#6c757d';
+            card.style.display = 'none';
         }
     });
 }
 
-function filtrerEvaluations() {
-    const titre = document.querySelector('[name="titre"]').value;
-    const type = document.querySelector('[name="type_evaluation"]').value;
-    const matiere = document.querySelector('[name="matiere"]').value;
+// Countdown timer
+document.querySelectorAll('.countdown').forEach(el => {
+    const endDate = new Date(el.dataset.end).getTime();
 
-    const params = new URLSearchParams();
-    if (titre) params.append('titre', titre);
-    if (type) params.append('type_evaluation', type);
-    if (matiere) params.append('matiere', matiere);
+    function updateCountdown() {
+        const now = new Date().getTime();
+        const distance = endDate - now;
 
-    window.location.href = '?' + params.toString();
-}
-
-function actualiserPage() {
-    location.reload();
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    updateCountdowns();
-    setInterval(updateCountdowns, 1000);
-
-    // Actualisation automatique toutes les 30 secondes
-    setInterval(function() {
-        // Uniquement si une évaluation est en cours
-        if (document.querySelector('.evaluation-card.active')) {
-            location.reload();
+        if (distance < 0) {
+            el.textContent = 'Terminée';
+            return;
         }
-    }, 30000);
-});
 
-// Gestion du modal de visualisation de fichiers
-document.addEventListener('click', function(e) {
-    if (e.target.matches('[data-bs-target="#fileViewerModal"]') || e.target.closest('[data-bs-target="#fileViewerModal"]')) {
-        const link = e.target.matches('a') ? e.target : e.target.closest('a');
-        const fileUrl = link.href;
-        const fileName = link.textContent.trim();
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        document.getElementById('fileViewerContent').innerHTML = `
-            <iframe src="${fileUrl}" style="width: 100%; height: 100%; border: none;"></iframe>
-        `;
+        let text = '';
+        if (days > 0) text += `${days}j `;
+        text += `${hours}h ${minutes}m ${seconds}s`;
 
-        document.getElementById('downloadFileBtn').href = fileUrl;
-        document.querySelector('#fileViewerModal .modal-title').textContent = `Visualisation - ${fileName}`;
-
-        e.preventDefault();
+        el.textContent = text;
     }
+
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
 });
 </script>
 {% endblock %}

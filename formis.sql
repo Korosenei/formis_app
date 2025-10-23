@@ -1,0 +1,5963 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 15.6
+-- Dumped by pg_dump version 15.6
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: academique_classe; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.academique_classe (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(100) NOT NULL,
+    code character varying(20) NOT NULL,
+    capacite_maximale integer,
+    effectif_actuel integer NOT NULL,
+    est_active boolean NOT NULL,
+    annee_academique_id uuid NOT NULL,
+    etablissement_id uuid NOT NULL,
+    professeur_principal_id uuid,
+    salle_principale_id uuid,
+    niveau_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.academique_classe OWNER TO postgres;
+
+--
+-- Name: academique_departement; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.academique_departement (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(200) NOT NULL,
+    code character varying(20) NOT NULL,
+    description text,
+    telephone character varying(20),
+    email character varying(254),
+    bureau character varying(100),
+    est_actif boolean NOT NULL,
+    chef_id uuid,
+    etablissement_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.academique_departement OWNER TO postgres;
+
+--
+-- Name: academique_filiere; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.academique_filiere (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(200) NOT NULL,
+    code character varying(20) NOT NULL,
+    description text,
+    duree_annees integer NOT NULL,
+    nom_diplome character varying(200) NOT NULL,
+    type_filiere character varying(20) NOT NULL,
+    prerequis text,
+    frais_scolarite numeric(10,2) NOT NULL,
+    capacite_maximale integer,
+    est_active boolean NOT NULL,
+    departement_id uuid,
+    etablissement_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.academique_filiere OWNER TO postgres;
+
+--
+-- Name: academique_niveau; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.academique_niveau (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(100) NOT NULL,
+    code character varying(20) NOT NULL,
+    ordre integer NOT NULL,
+    description text,
+    frais_scolarite numeric(10,2),
+    est_actif boolean NOT NULL,
+    filiere_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.academique_niveau OWNER TO postgres;
+
+--
+-- Name: academique_periode; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.academique_periode (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(100) NOT NULL,
+    code character varying(20) NOT NULL,
+    type_periode character varying(20) NOT NULL,
+    ordre integer NOT NULL,
+    date_debut date NOT NULL,
+    date_fin date NOT NULL,
+    date_limite_inscription date,
+    date_debut_examens date,
+    date_fin_examens date,
+    date_publication_resultats date,
+    est_courante boolean NOT NULL,
+    est_active boolean NOT NULL,
+    annee_academique_id uuid NOT NULL,
+    etablissement_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.academique_periode OWNER TO postgres;
+
+--
+-- Name: academique_programme; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.academique_programme (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(200) NOT NULL,
+    description text NOT NULL,
+    objectifs text NOT NULL,
+    competences text NOT NULL,
+    debouches text,
+    credits_totaux integer,
+    date_derniere_revision date NOT NULL,
+    date_approbation date,
+    est_actif boolean NOT NULL,
+    approuve_par_id uuid,
+    filiere_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.academique_programme OWNER TO postgres;
+
+--
+-- Name: auth_group; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.auth_group (
+    id integer NOT NULL,
+    name character varying(150) NOT NULL
+);
+
+
+ALTER TABLE public.auth_group OWNER TO postgres;
+
+--
+-- Name: auth_group_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.auth_group ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_group_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: auth_group_permissions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.auth_group_permissions (
+    id bigint NOT NULL,
+    group_id integer NOT NULL,
+    permission_id integer NOT NULL
+);
+
+
+ALTER TABLE public.auth_group_permissions OWNER TO postgres;
+
+--
+-- Name: auth_group_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.auth_group_permissions ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_group_permissions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: auth_permission; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.auth_permission (
+    id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    content_type_id integer NOT NULL,
+    codename character varying(100) NOT NULL
+);
+
+
+ALTER TABLE public.auth_permission OWNER TO postgres;
+
+--
+-- Name: auth_permission_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.auth_permission ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_permission_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: comptes_password_reset_token; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.comptes_password_reset_token (
+    id bigint NOT NULL,
+    token character varying(100) NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    used boolean NOT NULL,
+    user_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.comptes_password_reset_token OWNER TO postgres;
+
+--
+-- Name: comptes_password_reset_token_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.comptes_password_reset_token ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.comptes_password_reset_token_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: comptes_profil_apprenant; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.comptes_profil_apprenant (
+    id bigint NOT NULL,
+    statut_paiement character varying(20) NOT NULL,
+    nom_pere character varying(100),
+    telephone_pere character varying(20),
+    profession_pere character varying(100),
+    nom_mere character varying(100),
+    telephone_mere character varying(20),
+    profession_mere character varying(100),
+    nom_tuteur character varying(100),
+    telephone_tuteur character varying(20),
+    relation_tuteur character varying(50),
+    annee_academique_id uuid,
+    classe_actuelle_id uuid,
+    niveau_actuel_id uuid,
+    utilisateur_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.comptes_profil_apprenant OWNER TO postgres;
+
+--
+-- Name: comptes_profil_apprenant_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.comptes_profil_apprenant ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.comptes_profil_apprenant_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: comptes_profil_enseignant; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.comptes_profil_enseignant (
+    id bigint NOT NULL,
+    id_employe character varying(20),
+    date_embauche date,
+    specialisation character varying(100),
+    qualifications text,
+    est_permanent boolean NOT NULL,
+    est_principal boolean NOT NULL,
+    utilisateur_id uuid NOT NULL,
+    est_chef_departement boolean NOT NULL,
+    type_enseignant character varying(20) NOT NULL
+);
+
+
+ALTER TABLE public.comptes_profil_enseignant OWNER TO postgres;
+
+--
+-- Name: comptes_profil_enseignant_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.comptes_profil_enseignant ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.comptes_profil_enseignant_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: comptes_profil_enseignant_matieres; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.comptes_profil_enseignant_matieres (
+    id bigint NOT NULL,
+    profilenseignant_id bigint NOT NULL,
+    matiere_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.comptes_profil_enseignant_matieres OWNER TO postgres;
+
+--
+-- Name: comptes_profil_enseignant_matieres_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.comptes_profil_enseignant_matieres ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.comptes_profil_enseignant_matieres_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: comptes_profil_utilisateur; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.comptes_profil_utilisateur (
+    id bigint NOT NULL,
+    nom_contact_urgence character varying(100),
+    telephone_contact_urgence character varying(20),
+    relation_contact_urgence character varying(50),
+    groupe_sanguin character varying(5),
+    conditions_medicales text,
+    langue character varying(10) NOT NULL,
+    fuseau_horaire character varying(50) NOT NULL,
+    recevoir_notifications boolean NOT NULL,
+    recevoir_notifications_email boolean NOT NULL,
+    utilisateur_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.comptes_profil_utilisateur OWNER TO postgres;
+
+--
+-- Name: comptes_profil_utilisateur_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.comptes_profil_utilisateur ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.comptes_profil_utilisateur_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: comptes_utilisateur; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.comptes_utilisateur (
+    password character varying(128) NOT NULL,
+    last_login timestamp with time zone,
+    is_superuser boolean NOT NULL,
+    username character varying(150) NOT NULL,
+    first_name character varying(150) NOT NULL,
+    last_name character varying(150) NOT NULL,
+    email character varying(254) NOT NULL,
+    is_staff boolean NOT NULL,
+    is_active boolean NOT NULL,
+    date_joined timestamp with time zone NOT NULL,
+    id uuid NOT NULL,
+    role character varying(20) NOT NULL,
+    matricule character varying(20),
+    prenom character varying(100) NOT NULL,
+    nom character varying(100) NOT NULL,
+    date_naissance date,
+    lieu_naissance character varying(100),
+    genre character varying(1),
+    telephone character varying(20),
+    adresse text,
+    est_actif boolean NOT NULL,
+    date_creation timestamp with time zone NOT NULL,
+    date_mise_a_jour timestamp with time zone NOT NULL,
+    photo_profil character varying(100),
+    cree_par_id uuid,
+    departement_id uuid,
+    etablissement_id uuid
+);
+
+
+ALTER TABLE public.comptes_utilisateur OWNER TO postgres;
+
+--
+-- Name: comptes_utilisateur_departements_intervention; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.comptes_utilisateur_departements_intervention (
+    id bigint NOT NULL,
+    utilisateur_id uuid NOT NULL,
+    departement_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.comptes_utilisateur_departements_intervention OWNER TO postgres;
+
+--
+-- Name: comptes_utilisateur_departements_intervention_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.comptes_utilisateur_departements_intervention ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.comptes_utilisateur_departements_intervention_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: comptes_utilisateur_groups; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.comptes_utilisateur_groups (
+    id bigint NOT NULL,
+    utilisateur_id uuid NOT NULL,
+    group_id integer NOT NULL
+);
+
+
+ALTER TABLE public.comptes_utilisateur_groups OWNER TO postgres;
+
+--
+-- Name: comptes_utilisateur_groups_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.comptes_utilisateur_groups ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.comptes_utilisateur_groups_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: comptes_utilisateur_user_permissions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.comptes_utilisateur_user_permissions (
+    id bigint NOT NULL,
+    utilisateur_id uuid NOT NULL,
+    permission_id integer NOT NULL
+);
+
+
+ALTER TABLE public.comptes_utilisateur_user_permissions OWNER TO postgres;
+
+--
+-- Name: comptes_utilisateur_user_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.comptes_utilisateur_user_permissions ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.comptes_utilisateur_user_permissions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: courses_cahier_texte; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.courses_cahier_texte (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    travail_fait text NOT NULL,
+    travail_donne text,
+    date_travail_pour date,
+    observations text,
+    date_saisie timestamp with time zone NOT NULL,
+    modifie_le timestamp with time zone NOT NULL,
+    rempli_par_id uuid NOT NULL,
+    cours_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.courses_cahier_texte OWNER TO postgres;
+
+--
+-- Name: courses_cours; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.courses_cours (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    titre character varying(200) NOT NULL,
+    description text,
+    type_cours character varying(20) NOT NULL,
+    statut character varying(20) NOT NULL,
+    date_prevue date NOT NULL,
+    heure_debut_prevue time without time zone NOT NULL,
+    heure_fin_prevue time without time zone NOT NULL,
+    date_effective date,
+    heure_debut_effective time without time zone,
+    heure_fin_effective time without time zone,
+    objectifs text,
+    contenu text,
+    cours_en_ligne boolean NOT NULL,
+    url_streaming character varying(200),
+    presence_prise boolean NOT NULL,
+    actif boolean NOT NULL,
+    classe_id uuid NOT NULL,
+    enseignant_id uuid NOT NULL,
+    periode_academique_id uuid NOT NULL,
+    salle_id uuid,
+    matiere_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.courses_cours OWNER TO postgres;
+
+--
+-- Name: courses_creneau_emploi_du_temps; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.courses_creneau_emploi_du_temps (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    jour_semaine integer NOT NULL,
+    heure_debut time without time zone NOT NULL,
+    heure_fin time without time zone NOT NULL,
+    cours_id uuid NOT NULL,
+    emploi_du_temps_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.courses_creneau_emploi_du_temps OWNER TO postgres;
+
+--
+-- Name: courses_creneau_horaire; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.courses_creneau_horaire (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    jour character varying(10) NOT NULL,
+    heure_debut time without time zone NOT NULL,
+    heure_fin time without time zone NOT NULL,
+    type_cours character varying(20) NOT NULL,
+    recurrent boolean NOT NULL,
+    dates_exception text,
+    enseignant_id uuid NOT NULL,
+    salle_id uuid,
+    emploi_du_temps_id uuid NOT NULL,
+    matiere_module_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.courses_creneau_horaire OWNER TO postgres;
+
+--
+-- Name: courses_emploi_du_temps; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.courses_emploi_du_temps (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(200) NOT NULL,
+    semaine_debut date NOT NULL,
+    semaine_fin date NOT NULL,
+    publie boolean NOT NULL,
+    actuel boolean NOT NULL,
+    classe_id uuid,
+    cree_par_id uuid,
+    enseignant_id uuid,
+    periode_academique_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.courses_emploi_du_temps OWNER TO postgres;
+
+--
+-- Name: courses_matiere; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.courses_matiere (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(200) NOT NULL,
+    code character varying(20) NOT NULL,
+    description text,
+    heures_cours_magistral integer NOT NULL,
+    heures_travaux_diriges integer NOT NULL,
+    heures_travaux_pratiques integer NOT NULL,
+    coefficient numeric(5,2) NOT NULL,
+    credits_ects numeric(5,2) NOT NULL,
+    couleur character varying(7) NOT NULL,
+    actif boolean NOT NULL,
+    enseignant_responsable_id uuid,
+    niveau_id uuid NOT NULL,
+    module_id uuid
+);
+
+
+ALTER TABLE public.courses_matiere OWNER TO postgres;
+
+--
+-- Name: courses_matiere_module; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.courses_matiere_module (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    heures_theorie integer NOT NULL,
+    heures_pratique integer NOT NULL,
+    heures_td integer NOT NULL,
+    coefficient numeric(5,2) NOT NULL,
+    enseignant_id uuid,
+    matiere_id uuid NOT NULL,
+    module_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.courses_matiere_module OWNER TO postgres;
+
+--
+-- Name: courses_module; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.courses_module (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(200) NOT NULL,
+    code character varying(20) NOT NULL,
+    description text,
+    actif boolean NOT NULL,
+    coordinateur_id uuid,
+    niveau_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.courses_module OWNER TO postgres;
+
+--
+-- Name: courses_module_prerequis; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.courses_module_prerequis (
+    id bigint NOT NULL,
+    from_module_id uuid NOT NULL,
+    to_module_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.courses_module_prerequis OWNER TO postgres;
+
+--
+-- Name: courses_module_prerequis_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.courses_module_prerequis ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.courses_module_prerequis_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: courses_presence; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.courses_presence (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    statut character varying(20) NOT NULL,
+    heure_arrivee time without time zone,
+    motif_absence text,
+    document_justificatif character varying(100),
+    valide boolean NOT NULL,
+    date_validation timestamp with time zone,
+    notes_enseignant text,
+    cours_id uuid NOT NULL,
+    etudiant_id uuid NOT NULL,
+    valide_par_id uuid
+);
+
+
+ALTER TABLE public.courses_presence OWNER TO postgres;
+
+--
+-- Name: courses_ressource; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.courses_ressource (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    titre character varying(200) NOT NULL,
+    description text,
+    type_ressource character varying(20) NOT NULL,
+    fichier character varying(100),
+    url character varying(200),
+    taille_fichier bigint,
+    obligatoire boolean NOT NULL,
+    telechargeable boolean NOT NULL,
+    public boolean NOT NULL,
+    disponible_a_partir_de timestamp with time zone,
+    disponible_jusqua timestamp with time zone,
+    nombre_telechargements integer NOT NULL,
+    nombre_vues integer NOT NULL,
+    cours_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.courses_ressource OWNER TO postgres;
+
+--
+-- Name: django_admin_log; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.django_admin_log (
+    id integer NOT NULL,
+    action_time timestamp with time zone NOT NULL,
+    object_id text,
+    object_repr character varying(200) NOT NULL,
+    action_flag smallint NOT NULL,
+    change_message text NOT NULL,
+    content_type_id integer,
+    user_id uuid NOT NULL,
+    CONSTRAINT django_admin_log_action_flag_check CHECK ((action_flag >= 0))
+);
+
+
+ALTER TABLE public.django_admin_log OWNER TO postgres;
+
+--
+-- Name: django_admin_log_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.django_admin_log ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.django_admin_log_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: django_content_type; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.django_content_type (
+    id integer NOT NULL,
+    app_label character varying(100) NOT NULL,
+    model character varying(100) NOT NULL
+);
+
+
+ALTER TABLE public.django_content_type OWNER TO postgres;
+
+--
+-- Name: django_content_type_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.django_content_type ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.django_content_type_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: django_migrations; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.django_migrations (
+    id bigint NOT NULL,
+    app character varying(255) NOT NULL,
+    name character varying(255) NOT NULL,
+    applied timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE public.django_migrations OWNER TO postgres;
+
+--
+-- Name: django_migrations_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.django_migrations ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.django_migrations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: django_session; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.django_session (
+    session_key character varying(40) NOT NULL,
+    session_data text NOT NULL,
+    expire_date timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE public.django_session OWNER TO postgres;
+
+--
+-- Name: enrollment_abandon; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.enrollment_abandon (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    date_abandon date NOT NULL,
+    date_effet date NOT NULL,
+    type_abandon character varying(30) NOT NULL,
+    motif text NOT NULL,
+    eligible_remboursement boolean NOT NULL,
+    montant_remboursable numeric(10,2) NOT NULL,
+    remboursement_traite boolean NOT NULL,
+    date_remboursement date,
+    documents_retournes boolean NOT NULL,
+    materiel_retourne boolean NOT NULL,
+    traite_par_id uuid,
+    inscription_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.enrollment_abandon OWNER TO postgres;
+
+--
+-- Name: enrollment_candidature; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.enrollment_candidature (
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    id uuid NOT NULL,
+    numero_candidature character varying(20) NOT NULL,
+    prenom character varying(100) NOT NULL,
+    nom character varying(100) NOT NULL,
+    date_naissance date NOT NULL,
+    lieu_naissance character varying(100) NOT NULL,
+    genre character varying(1) NOT NULL,
+    telephone character varying(20) NOT NULL,
+    email character varying(254) NOT NULL,
+    adresse text NOT NULL,
+    nom_pere character varying(100),
+    telephone_pere character varying(20),
+    nom_mere character varying(100),
+    telephone_mere character varying(20),
+    nom_tuteur character varying(100),
+    telephone_tuteur character varying(20),
+    ecole_precedente character varying(200),
+    dernier_diplome character varying(200),
+    annee_obtention integer,
+    statut character varying(20) NOT NULL,
+    date_soumission timestamp with time zone,
+    date_examen timestamp with time zone,
+    date_decision timestamp with time zone,
+    motif_rejet text,
+    notes_approbation text,
+    frais_dossier_requis boolean NOT NULL,
+    montant_frais_dossier numeric(10,2),
+    frais_dossier_payes boolean NOT NULL,
+    date_paiement_frais timestamp with time zone,
+    annee_academique_id uuid NOT NULL,
+    etablissement_id uuid NOT NULL,
+    examine_par_id uuid,
+    filiere_id uuid NOT NULL,
+    niveau_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.enrollment_candidature OWNER TO postgres;
+
+--
+-- Name: enrollment_document_candidature; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.enrollment_document_candidature (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    type_document character varying(30) NOT NULL,
+    nom character varying(200) NOT NULL,
+    description text,
+    fichier character varying(100) NOT NULL,
+    taille_fichier bigint NOT NULL,
+    format_fichier character varying(10) NOT NULL,
+    est_valide boolean NOT NULL,
+    date_validation timestamp with time zone,
+    notes_validation text,
+    candidature_id uuid NOT NULL,
+    valide_par_id uuid
+);
+
+
+ALTER TABLE public.enrollment_document_candidature OWNER TO postgres;
+
+--
+-- Name: enrollment_document_requis; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.enrollment_document_requis (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(200) NOT NULL,
+    description text,
+    type_document character varying(30) NOT NULL,
+    est_obligatoire boolean NOT NULL,
+    taille_maximale integer NOT NULL,
+    formats_autorises character varying(100) NOT NULL,
+    ordre_affichage integer NOT NULL,
+    filiere_id uuid NOT NULL,
+    niveau_id uuid
+);
+
+
+ALTER TABLE public.enrollment_document_requis OWNER TO postgres;
+
+--
+-- Name: enrollment_historique; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.enrollment_historique (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    type_action character varying(20) NOT NULL,
+    ancienne_valeur character varying(200),
+    nouvelle_valeur character varying(200),
+    motif text,
+    effectue_par_id uuid,
+    inscription_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.enrollment_historique OWNER TO postgres;
+
+--
+-- Name: enrollment_inscription; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.enrollment_inscription (
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    id uuid NOT NULL,
+    numero_inscription character varying(20) NOT NULL,
+    date_inscription date NOT NULL,
+    statut character varying(20) NOT NULL,
+    date_debut date NOT NULL,
+    date_fin_prevue date NOT NULL,
+    date_fin_reelle date,
+    frais_scolarite numeric(10,2) NOT NULL,
+    statut_paiement character varying(20) NOT NULL,
+    total_paye numeric(10,2) NOT NULL,
+    solde numeric(10,2) NOT NULL,
+    notes text,
+    apprenant_id uuid NOT NULL,
+    candidature_id uuid NOT NULL,
+    classe_assignee_id uuid,
+    cree_par_id uuid
+);
+
+
+ALTER TABLE public.enrollment_inscription OWNER TO postgres;
+
+--
+-- Name: enrollment_periode_candidature; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.enrollment_periode_candidature (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(200) NOT NULL,
+    description text,
+    date_debut date NOT NULL,
+    date_fin date NOT NULL,
+    est_active boolean NOT NULL,
+    annee_academique_id uuid NOT NULL,
+    etablissement_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.enrollment_periode_candidature OWNER TO postgres;
+
+--
+-- Name: enrollment_periode_candidature_filieres; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.enrollment_periode_candidature_filieres (
+    id bigint NOT NULL,
+    periodecandidature_id uuid NOT NULL,
+    filiere_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.enrollment_periode_candidature_filieres OWNER TO postgres;
+
+--
+-- Name: enrollment_periode_candidature_filieres_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.enrollment_periode_candidature_filieres ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.enrollment_periode_candidature_filieres_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: enrollment_transfert; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.enrollment_transfert (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    date_transfert date NOT NULL,
+    date_effet date NOT NULL,
+    motif text NOT NULL,
+    statut character varying(20) NOT NULL,
+    date_approbation timestamp with time zone,
+    notes_approbation text,
+    approuve_par_id uuid,
+    classe_destination_id uuid NOT NULL,
+    classe_origine_id uuid NOT NULL,
+    demande_par_id uuid,
+    inscription_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.enrollment_transfert OWNER TO postgres;
+
+--
+-- Name: establishments_annee_academique; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.establishments_annee_academique (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(20) NOT NULL,
+    date_debut date NOT NULL,
+    date_fin date NOT NULL,
+    debut_inscriptions date,
+    fin_inscriptions date,
+    debut_cours date,
+    fin_cours date,
+    debut_examens_premier_semestre date,
+    fin_examens_premier_semestre date,
+    debut_examens_second_semestre date,
+    fin_examens_second_semestre date,
+    debut_vacances_hiver date,
+    fin_vacances_hiver date,
+    debut_vacances_ete date,
+    fin_vacances_ete date,
+    est_courante boolean NOT NULL,
+    est_active boolean NOT NULL,
+    etablissement_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.establishments_annee_academique OWNER TO postgres;
+
+--
+-- Name: establishments_bareme_notation; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.establishments_bareme_notation (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(100) NOT NULL,
+    note_minimale numeric(5,2) NOT NULL,
+    note_maximale numeric(5,2) NOT NULL,
+    note_passage numeric(5,2) NOT NULL,
+    est_defaut boolean NOT NULL,
+    description text,
+    etablissement_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.establishments_bareme_notation OWNER TO postgres;
+
+--
+-- Name: establishments_campus; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.establishments_campus (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(100) NOT NULL,
+    code character varying(20) NOT NULL,
+    adresse text NOT NULL,
+    latitude numeric(9,6),
+    longitude numeric(9,6),
+    description text,
+    superficie_totale numeric(10,2),
+    bibliotheque boolean NOT NULL,
+    cafeteria boolean NOT NULL,
+    parking boolean NOT NULL,
+    internat boolean NOT NULL,
+    installations_sportives boolean NOT NULL,
+    infirmerie boolean NOT NULL,
+    telephone character varying(20),
+    email character varying(254),
+    est_campus_principal boolean NOT NULL,
+    est_actif boolean NOT NULL,
+    responsable_campus_id uuid,
+    etablissement_id uuid NOT NULL,
+    localite_id uuid
+);
+
+
+ALTER TABLE public.establishments_campus OWNER TO postgres;
+
+--
+-- Name: establishments_etablissement; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.establishments_etablissement (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(200) NOT NULL,
+    sigle character varying(20),
+    code character varying(20) NOT NULL,
+    adresse text NOT NULL,
+    telephone character varying(20),
+    email character varying(254),
+    site_web character varying(200),
+    nom_directeur character varying(100),
+    numero_enregistrement character varying(50),
+    date_creation date,
+    logo character varying(100),
+    image_couverture character varying(100),
+    description text,
+    mission text,
+    vision text,
+    actif boolean NOT NULL,
+    public boolean NOT NULL,
+    capacite_totale integer NOT NULL,
+    etudiants_actuels integer NOT NULL,
+    localite_id uuid NOT NULL,
+    type_etablissement_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.establishments_etablissement OWNER TO postgres;
+
+--
+-- Name: establishments_jour_ferie; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.establishments_jour_ferie (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(100) NOT NULL,
+    date_debut date NOT NULL,
+    date_fin date NOT NULL,
+    type_jour_ferie character varying(20) NOT NULL,
+    description text,
+    est_recurrent boolean NOT NULL,
+    modele_recurrence character varying(20),
+    affecte_cours boolean NOT NULL,
+    affecte_examens boolean NOT NULL,
+    affecte_inscriptions boolean NOT NULL,
+    couleur character varying(7) NOT NULL,
+    etablissement_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.establishments_jour_ferie OWNER TO postgres;
+
+--
+-- Name: establishments_localite; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.establishments_localite (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(100) NOT NULL,
+    region character varying(100),
+    pays character varying(100) NOT NULL,
+    code_postal character varying(10)
+);
+
+
+ALTER TABLE public.establishments_localite OWNER TO postgres;
+
+--
+-- Name: establishments_niveau_note; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.establishments_niveau_note (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(50) NOT NULL,
+    note_minimale numeric(5,2) NOT NULL,
+    note_maximale numeric(5,2) NOT NULL,
+    couleur character varying(7) NOT NULL,
+    description character varying(200),
+    points_gpa numeric(4,2) NOT NULL,
+    bareme_notation_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.establishments_niveau_note OWNER TO postgres;
+
+--
+-- Name: establishments_parametres; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.establishments_parametres (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    structure_academique character varying(20) NOT NULL,
+    frais_dossier_requis boolean NOT NULL,
+    montant_frais_dossier numeric(10,2) NOT NULL,
+    "date_limite_inscription_anticipée" date,
+    date_limite_inscription_normale date,
+    date_limite_inscription_tardive date,
+    paiement_echelonne_autorise boolean NOT NULL,
+    nombre_maximum_tranches integer NOT NULL,
+    frais_echelonnement numeric(10,2) NOT NULL,
+    taux_penalite_retard numeric(5,2) NOT NULL,
+    taux_presence_minimum numeric(5,2) NOT NULL,
+    points_bonus_autorises boolean NOT NULL,
+    points_bonus_maximum numeric(5,2) NOT NULL,
+    notifications_sms boolean NOT NULL,
+    notifications_email boolean NOT NULL,
+    jours_avant_reset_mot_de_passe integer NOT NULL,
+    tentatives_connexion_max integer NOT NULL,
+    examens_rattrapage_autorises boolean NOT NULL,
+    frais_examen_rattrapage numeric(10,2) NOT NULL,
+    couleur_primaire character varying(7) NOT NULL,
+    couleur_secondaire character varying(7) NOT NULL,
+    bareme_notation_defaut_id uuid,
+    etablissement_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.establishments_parametres OWNER TO postgres;
+
+--
+-- Name: establishments_salle; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.establishments_salle (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(100) NOT NULL,
+    code character varying(20) NOT NULL,
+    type_salle character varying(20) NOT NULL,
+    capacite integer NOT NULL,
+    etage character varying(20),
+    batiment character varying(100),
+    longueur numeric(6,2),
+    largeur numeric(6,2),
+    projecteur boolean NOT NULL,
+    ordinateur boolean NOT NULL,
+    climatisation boolean NOT NULL,
+    wifi boolean NOT NULL,
+    tableau_blanc boolean NOT NULL,
+    systeme_audio boolean NOT NULL,
+    accessible_pmr boolean NOT NULL,
+    etat character varying(20) NOT NULL,
+    description text,
+    notes text,
+    est_active boolean NOT NULL,
+    etablissement_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.establishments_salle OWNER TO postgres;
+
+--
+-- Name: establishments_type_etablissement; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.establishments_type_etablissement (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(100) NOT NULL,
+    description text,
+    code character varying(10) NOT NULL,
+    structure_academique_defaut character varying(20) NOT NULL,
+    icone character varying(50) NOT NULL,
+    actif boolean NOT NULL
+);
+
+
+ALTER TABLE public.establishments_type_etablissement OWNER TO postgres;
+
+--
+-- Name: evaluation_composition; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.evaluation_composition (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    date_debut timestamp with time zone NOT NULL,
+    date_soumission timestamp with time zone,
+    note_obtenue numeric(5,2),
+    commentaire_correction text,
+    fichier_correction_personnalise character varying(100),
+    statut character varying(15) NOT NULL,
+    date_correction timestamp with time zone,
+    apprenant_id uuid NOT NULL,
+    corrigee_par_id uuid,
+    evaluation_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.evaluation_composition OWNER TO postgres;
+
+--
+-- Name: evaluation_composition_fichiers_composition; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.evaluation_composition_fichiers_composition (
+    id bigint NOT NULL,
+    composition_id uuid NOT NULL,
+    fichiercomposition_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.evaluation_composition_fichiers_composition OWNER TO postgres;
+
+--
+-- Name: evaluation_composition_fichiers_composition_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.evaluation_composition_fichiers_composition ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.evaluation_composition_fichiers_composition_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: evaluation_evaluation; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.evaluation_evaluation (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    titre character varying(200) NOT NULL,
+    description text,
+    type_evaluation character varying(15) NOT NULL,
+    coefficient numeric(5,2) NOT NULL,
+    note_maximale numeric(5,2) NOT NULL,
+    date_debut timestamp with time zone NOT NULL,
+    date_fin timestamp with time zone NOT NULL,
+    duree_minutes integer,
+    fichier_evaluation character varying(100),
+    fichier_correction character varying(100),
+    correction_visible_immediatement boolean NOT NULL,
+    date_publication_correction timestamp with time zone,
+    autorise_retard boolean NOT NULL,
+    penalite_retard numeric(5,2) NOT NULL,
+    statut character varying(15) NOT NULL,
+    enseignant_id uuid NOT NULL,
+    matiere_id uuid NOT NULL,
+    CONSTRAINT evaluation_evaluation_duree_minutes_check CHECK ((duree_minutes >= 0))
+);
+
+
+ALTER TABLE public.evaluation_evaluation OWNER TO postgres;
+
+--
+-- Name: evaluation_evaluation_classes; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.evaluation_evaluation_classes (
+    id bigint NOT NULL,
+    evaluation_id uuid NOT NULL,
+    classe_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.evaluation_evaluation_classes OWNER TO postgres;
+
+--
+-- Name: evaluation_evaluation_classes_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.evaluation_evaluation_classes ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.evaluation_evaluation_classes_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: evaluation_fichier_composition; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.evaluation_fichier_composition (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom_original character varying(255) NOT NULL,
+    fichier character varying(100) NOT NULL,
+    taille integer NOT NULL,
+    type_mime character varying(100) NOT NULL,
+    uploade_par_id uuid NOT NULL,
+    CONSTRAINT evaluation_fichier_composition_taille_check CHECK ((taille >= 0))
+);
+
+
+ALTER TABLE public.evaluation_fichier_composition OWNER TO postgres;
+
+--
+-- Name: evaluation_note; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.evaluation_note (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    valeur numeric(5,2) NOT NULL,
+    note_sur numeric(5,2) NOT NULL,
+    date_attribution timestamp with time zone NOT NULL,
+    commentaire text,
+    apprenant_id uuid NOT NULL,
+    attribuee_par_id uuid,
+    composition_id uuid,
+    evaluation_id uuid NOT NULL,
+    matiere_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.evaluation_note OWNER TO postgres;
+
+--
+-- Name: notifications_message; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.notifications_message (
+    id bigint NOT NULL,
+    subject character varying(200) NOT NULL,
+    content text NOT NULL,
+    read boolean NOT NULL,
+    sent_at timestamp with time zone NOT NULL,
+    recipient_id uuid NOT NULL,
+    sender_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.notifications_message OWNER TO postgres;
+
+--
+-- Name: notifications_message_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.notifications_message ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.notifications_message_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: notifications_notification; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.notifications_notification (
+    id bigint NOT NULL,
+    title character varying(200) NOT NULL,
+    message text NOT NULL,
+    icon character varying(50) NOT NULL,
+    url character varying(200),
+    read boolean NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    user_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.notifications_notification OWNER TO postgres;
+
+--
+-- Name: notifications_notification_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.notifications_notification ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.notifications_notification_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: payments_historique_paiement; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.payments_historique_paiement (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    type_action character varying(20) NOT NULL,
+    ancien_statut character varying(20),
+    nouveau_statut character varying(20),
+    details text,
+    donnees_supplementaires jsonb NOT NULL,
+    adresse_ip inet,
+    utilisateur_id uuid,
+    paiement_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.payments_historique_paiement OWNER TO postgres;
+
+--
+-- Name: payments_inscription_paiement; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.payments_inscription_paiement (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    type_paiement character varying(20) NOT NULL,
+    montant_total_du numeric(10,2) NOT NULL,
+    montant_total_paye numeric(10,2) NOT NULL,
+    statut character varying(20) NOT NULL,
+    date_premier_paiement timestamp with time zone,
+    date_solde timestamp with time zone,
+    inscription_id uuid NOT NULL,
+    plan_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.payments_inscription_paiement OWNER TO postgres;
+
+--
+-- Name: payments_paiement; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.payments_paiement (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    numero_transaction character varying(50) NOT NULL,
+    reference_externe character varying(100),
+    montant numeric(10,2) NOT NULL,
+    frais_transaction numeric(10,2) NOT NULL,
+    montant_net numeric(10,2) NOT NULL,
+    methode_paiement character varying(20) NOT NULL,
+    statut character varying(20) NOT NULL,
+    date_paiement timestamp with time zone NOT NULL,
+    date_confirmation timestamp with time zone,
+    date_echeance date,
+    description text,
+    notes_admin text,
+    donnees_transaction jsonb NOT NULL,
+    inscription_paiement_id uuid NOT NULL,
+    traite_par_id uuid,
+    tranche_id uuid
+);
+
+
+ALTER TABLE public.payments_paiement OWNER TO postgres;
+
+--
+-- Name: payments_plan_paiement; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.payments_plan_paiement (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    nom character varying(200) NOT NULL,
+    description text,
+    montant_total numeric(10,2) NOT NULL,
+    paiement_unique_possible boolean NOT NULL,
+    paiement_echelonne_possible boolean NOT NULL,
+    remise_paiement_unique numeric(5,2) NOT NULL,
+    frais_echelonnement numeric(10,2) NOT NULL,
+    est_actif boolean NOT NULL,
+    annee_academique_id uuid NOT NULL,
+    cree_par_id uuid,
+    filiere_id uuid NOT NULL,
+    niveau_id uuid
+);
+
+
+ALTER TABLE public.payments_plan_paiement OWNER TO postgres;
+
+--
+-- Name: payments_remboursement_paiement; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.payments_remboursement_paiement (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    montant_rembourse numeric(10,2) NOT NULL,
+    motif text NOT NULL,
+    statut character varying(20) NOT NULL,
+    date_demande timestamp with time zone NOT NULL,
+    date_traitement timestamp with time zone,
+    notes text,
+    demande_par_id uuid,
+    paiement_original_id uuid NOT NULL,
+    traite_par_id uuid
+);
+
+
+ALTER TABLE public.payments_remboursement_paiement OWNER TO postgres;
+
+--
+-- Name: payments_tranche_paiement; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.payments_tranche_paiement (
+    id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    numero integer NOT NULL,
+    nom character varying(100) NOT NULL,
+    montant numeric(10,2) NOT NULL,
+    date_limite date,
+    est_premiere_tranche boolean NOT NULL,
+    penalite_retard numeric(5,2) NOT NULL,
+    plan_id uuid NOT NULL
+);
+
+
+ALTER TABLE public.payments_tranche_paiement OWNER TO postgres;
+
+--
+-- Data for Name: academique_classe; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.academique_classe (id, created_at, updated_at, nom, code, capacite_maximale, effectif_actuel, est_active, annee_academique_id, etablissement_id, professeur_principal_id, salle_principale_id, niveau_id) FROM stdin;
+0dfe538e-1422-4e39-8b77-277b628242b2	2025-10-05 05:30:52.98905+00	2025-10-05 05:30:52.98905+00	Licence 1 - MIAGE	L1/MIAGE/IBAM	\N	0	t	3765f173-1086-41cc-ae7e-b403cbaf1e18	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f	\N	\N	79cb0dc3-ab14-46a3-960d-1ef262c3fa31
+\.
+
+
+--
+-- Data for Name: academique_departement; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.academique_departement (id, created_at, updated_at, nom, code, description, telephone, email, bureau, est_actif, chef_id, etablissement_id) FROM stdin;
+075af644-72bd-4d54-b30f-e96a3b5defbe	2025-10-04 03:01:10.142251+00	2025-10-04 03:01:10.142251+00	Sciences de la Vie de la Terre	SVT	L'UFR Sciences de la Vie et de la Terre (SVT) de l'Université Ouaga 1 Pr Joseph Ki-ZERBO, offre les formations suivantes : Chimie, Biologie, Géologie, Sciences et Technologies (ST).	+22625307064	contact@ujkz.bf	UFR SVT	t	\N	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+9d6519d1-8e06-430d-b442-81c48fa0da5b	2025-10-04 02:51:08.792442+00	2025-10-04 03:01:29.707584+00	Sciences Exactes et Appliquées	SEA	L'UFR Sciences Exactes et Appliquées (SEA) de l'Université Ouaga 1 Pr Joseph Ki-ZERBO, offre les formations suivantes : Mathématique, Physique, Chimie, Informatique	+22625307064	contact@ujkz.bf	UFR SEA	t	\N	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+4409c3b1-24d4-40f0-967a-56ab9b4f1a11	2025-10-04 02:54:35.88837+00	2025-10-07 02:07:10.648691+00	Institut Burkinabè des Arts et Métiers	IBAM	L'Institut Burkinabè des Arts et des Métiers (IBAM) de l'Université Ouaga 1, offre les formations suivantes : Comptabilité-Contrôle-Audit, Assurance-Banque-Finance, Marketing et Gestion, Assistance de Direction Bilingue et Méthodes Informatiques Appliquées à la Gestion	+22671882020	ibam@gmail.com	Somgandé	t	4d7c3e36-c754-45f0-ba8c-1ed7430939d8	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+\.
+
+
+--
+-- Data for Name: academique_filiere; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.academique_filiere (id, created_at, updated_at, nom, code, description, duree_annees, nom_diplome, type_filiere, prerequis, frais_scolarite, capacite_maximale, est_active, departement_id, etablissement_id) FROM stdin;
+b99794fa-a292-4036-ae01-7ef9003beed0	2025-10-04 02:58:45.589343+00	2025-10-04 02:58:45.589343+00	Assurance, Banque et Finance	ABF		3	Licence Professionnelle en ABF	PROFESSIONNEL	BAC séries C, D, E, A, G1, Bureautique professionnel.	400000.00	80	t	4409c3b1-24d4-40f0-967a-56ab9b4f1a11	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+8f00d34c-03aa-40dd-a1d9-2e1765d0f587	2025-10-04 02:56:38.220829+00	2025-10-04 02:59:04.063739+00	Méthodes Informatiques Appliquées à la Gestion	MIAGE		3	Licence Professionnelle en MIAGE	PROFESSIONNEL	BAC séries C, D, E, A, G1, Bureautique professionnel.	800000.00	50	t	4409c3b1-24d4-40f0-967a-56ab9b4f1a11	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+c1b566fe-56ff-40b7-84f0-e7f63345893a	2025-10-04 03:03:22.234125+00	2025-10-04 03:03:22.234125+00	Biologie Générale	Biologie		3	Licence en Biologie	UNIVERSITAIRE	Baccalauréat Séries C, D, et E toute mention.	150000.00	200	t	075af644-72bd-4d54-b30f-e96a3b5defbe	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+faa8d711-8867-4445-b270-e2170bfa96f7	2025-10-04 03:04:43.342421+00	2025-10-04 03:04:43.342421+00	Sciences et Technologies	ST		3	Licence en Sciences et Technologies	UNIVERSITAIRE	Baccalauréat Séries C, D, et E toute mention.	150000.00	200	t	075af644-72bd-4d54-b30f-e96a3b5defbe	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+cf4b1d28-3f2a-41f3-9a40-55867ed314cb	2025-10-04 03:06:19.538053+00	2025-10-04 03:06:19.538053+00	Mathématiques	MATH		3	Licence en Mathématique	UNIVERSITAIRE	BAC Séries C, D, F, H, et E.	200000.00	100	t	9d6519d1-8e06-430d-b442-81c48fa0da5b	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+\.
+
+
+--
+-- Data for Name: academique_niveau; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.academique_niveau (id, created_at, updated_at, nom, code, ordre, description, frais_scolarite, est_actif, filiere_id) FROM stdin;
+630e9243-a081-419d-a246-fc688299a3a8	2025-10-04 03:10:22.389348+00	2025-10-04 03:10:22.389348+00	Licence 2	L2	2		\N	t	8f00d34c-03aa-40dd-a1d9-2e1765d0f587
+79cb0dc3-ab14-46a3-960d-1ef262c3fa31	2025-10-04 03:09:36.142453+00	2025-10-04 03:10:36.904777+00	Licence 1	L1	1		\N	t	8f00d34c-03aa-40dd-a1d9-2e1765d0f587
+bbf3e03d-7dde-45f3-bce0-7152ebd52f8a	2025-10-04 03:11:12.153599+00	2025-10-04 03:11:12.153599+00	Licence 3	L3	3		\N	t	8f00d34c-03aa-40dd-a1d9-2e1765d0f587
+c1b5a81d-ee34-4fa1-baee-496093599efb	2025-10-04 03:11:43.37774+00	2025-10-04 03:11:43.37774+00	Licence 1	L1	1		\N	t	b99794fa-a292-4036-ae01-7ef9003beed0
+53594e17-88cb-4bb9-a628-5c3983c2a2b2	2025-10-04 03:12:06.803955+00	2025-10-04 03:12:06.803955+00	Licence 2	L2	2		\N	t	b99794fa-a292-4036-ae01-7ef9003beed0
+a857a47c-636c-4ce9-a7f7-2d0e0c7603bf	2025-10-04 03:12:29.432104+00	2025-10-04 03:12:29.432104+00	Licence 3	L3	3		\N	t	b99794fa-a292-4036-ae01-7ef9003beed0
+7c84b5ee-8a9a-4c85-ad9a-d011301322aa	2025-10-04 03:12:54.356917+00	2025-10-04 03:12:54.356917+00	Licence 1	L1	1		\N	t	c1b566fe-56ff-40b7-84f0-e7f63345893a
+e7bf8382-1b04-4d7b-a606-fa8095319eff	2025-10-04 03:13:09.570864+00	2025-10-04 03:13:09.570864+00	Licence 1	L1	1		\N	t	cf4b1d28-3f2a-41f3-9a40-55867ed314cb
+6cb25929-c52e-4a99-b61d-ee4980ed5938	2025-10-04 03:13:26.715843+00	2025-10-04 03:13:26.715843+00	Licence 1	L1	1		\N	t	faa8d711-8867-4445-b270-e2170bfa96f7
+084395d8-7d1b-489a-8caa-fa8f142c8dfa	2025-10-04 03:14:16.167344+00	2025-10-04 03:14:16.167344+00	Licence 2	L2	2		\N	t	c1b566fe-56ff-40b7-84f0-e7f63345893a
+9b39a7e4-52fe-4838-a9a7-61b49beaa599	2025-10-04 03:14:30.593257+00	2025-10-04 03:14:30.593257+00	Licence 2	L2	2		\N	t	cf4b1d28-3f2a-41f3-9a40-55867ed314cb
+4f1f7482-1524-4605-9113-22002a7c7923	2025-10-04 03:14:48.448743+00	2025-10-04 03:14:48.448743+00	Licence 2	L2	2		\N	t	faa8d711-8867-4445-b270-e2170bfa96f7
+e4af3e9d-51a7-4e32-9975-0e9868a65204	2025-10-04 03:15:10.437701+00	2025-10-04 03:15:10.437701+00	Licence 3	L3	3		\N	t	c1b566fe-56ff-40b7-84f0-e7f63345893a
+957f29b8-8ae9-4ce4-87d4-f126d775f6cd	2025-10-04 03:15:27.659713+00	2025-10-04 03:15:27.659713+00	Licence 3	L3	3		\N	t	cf4b1d28-3f2a-41f3-9a40-55867ed314cb
+a41de858-932d-4e44-b3d2-693fa9e0bbc9	2025-10-04 03:15:41.495033+00	2025-10-04 03:15:41.495033+00	Licence 3	L3	3		\N	t	faa8d711-8867-4445-b270-e2170bfa96f7
+\.
+
+
+--
+-- Data for Name: academique_periode; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.academique_periode (id, created_at, updated_at, nom, code, type_periode, ordre, date_debut, date_fin, date_limite_inscription, date_debut_examens, date_fin_examens, date_publication_resultats, est_courante, est_active, annee_academique_id, etablissement_id) FROM stdin;
+9a33a55a-0f3a-451b-8429-c582fff128d0	2025-10-05 05:32:53.099918+00	2025-10-05 05:32:53.099918+00	Semestre 1	S1	SEMESTRE	1	2025-10-01	2026-02-20	\N	\N	\N	\N	t	t	3765f173-1086-41cc-ae7e-b403cbaf1e18	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+\.
+
+
+--
+-- Data for Name: academique_programme; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.academique_programme (id, created_at, updated_at, nom, description, objectifs, competences, debouches, credits_totaux, date_derniere_revision, date_approbation, est_actif, approuve_par_id, filiere_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: auth_group; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.auth_group (id, name) FROM stdin;
+\.
+
+
+--
+-- Data for Name: auth_group_permissions; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.auth_group_permissions (id, group_id, permission_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: auth_permission; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
+1	Can add log entry	1	add_logentry
+2	Can change log entry	1	change_logentry
+3	Can delete log entry	1	delete_logentry
+4	Can view log entry	1	view_logentry
+5	Can add permission	2	add_permission
+6	Can change permission	2	change_permission
+7	Can delete permission	2	delete_permission
+8	Can view permission	2	view_permission
+9	Can add group	3	add_group
+10	Can change group	3	change_group
+11	Can delete group	3	delete_group
+12	Can view group	3	view_group
+13	Can add content type	4	add_contenttype
+14	Can change content type	4	change_contenttype
+15	Can delete content type	4	delete_contenttype
+16	Can view content type	4	view_contenttype
+17	Can add session	5	add_session
+18	Can change session	5	change_session
+19	Can delete session	5	delete_session
+20	Can view session	5	view_session
+21	Can add Classe	6	add_classe
+22	Can change Classe	6	change_classe
+23	Can delete Classe	6	delete_classe
+24	Can view Classe	6	view_classe
+25	Can add Département	7	add_departement
+26	Can change Département	7	change_departement
+27	Can delete Département	7	delete_departement
+28	Can view Département	7	view_departement
+29	Can add Filière	8	add_filiere
+30	Can change Filière	8	change_filiere
+31	Can delete Filière	8	delete_filiere
+32	Can view Filière	8	view_filiere
+33	Can add Niveau	9	add_niveau
+34	Can change Niveau	9	change_niveau
+35	Can delete Niveau	9	delete_niveau
+36	Can view Niveau	9	view_niveau
+37	Can add Période académique	10	add_periodeacademique
+38	Can change Période académique	10	change_periodeacademique
+39	Can delete Période académique	10	delete_periodeacademique
+40	Can view Période académique	10	view_periodeacademique
+41	Can add Programme	11	add_programme
+42	Can change Programme	11	change_programme
+43	Can delete Programme	11	delete_programme
+44	Can view Programme	11	view_programme
+45	Can add Token de réinitialisation	12	add_passwordresettoken
+46	Can change Token de réinitialisation	12	change_passwordresettoken
+47	Can delete Token de réinitialisation	12	delete_passwordresettoken
+48	Can view Token de réinitialisation	12	view_passwordresettoken
+49	Can add Profil apprenant	13	add_profilapprenant
+50	Can change Profil apprenant	13	change_profilapprenant
+51	Can delete Profil apprenant	13	delete_profilapprenant
+52	Can view Profil apprenant	13	view_profilapprenant
+53	Can add Profil enseignant	14	add_profilenseignant
+54	Can change Profil enseignant	14	change_profilenseignant
+55	Can delete Profil enseignant	14	delete_profilenseignant
+56	Can view Profil enseignant	14	view_profilenseignant
+57	Can add Profil utilisateur	15	add_profilutilisateur
+58	Can change Profil utilisateur	15	change_profilutilisateur
+59	Can delete Profil utilisateur	15	delete_profilutilisateur
+60	Can view Profil utilisateur	15	view_profilutilisateur
+61	Can add Utilisateur	16	add_utilisateur
+62	Can change Utilisateur	16	change_utilisateur
+63	Can delete Utilisateur	16	delete_utilisateur
+64	Can view Utilisateur	16	view_utilisateur
+65	Can add Cours	17	add_cours
+66	Can change Cours	17	change_cours
+67	Can delete Cours	17	delete_cours
+68	Can view Cours	17	view_cours
+69	Can add Cahier de texte	18	add_cahiertexte
+70	Can change Cahier de texte	18	change_cahiertexte
+71	Can delete Cahier de texte	18	delete_cahiertexte
+72	Can view Cahier de texte	18	view_cahiertexte
+73	Can add Emploi du temps	19	add_emploidutemps
+74	Can change Emploi du temps	19	change_emploidutemps
+75	Can delete Emploi du temps	19	delete_emploidutemps
+76	Can view Emploi du temps	19	view_emploidutemps
+77	Can add Créneau emploi du temps	20	add_creneauemploidutemps
+78	Can change Créneau emploi du temps	20	change_creneauemploidutemps
+79	Can delete Créneau emploi du temps	20	delete_creneauemploidutemps
+80	Can view Créneau emploi du temps	20	view_creneauemploidutemps
+81	Can add Matière	21	add_matiere
+82	Can change Matière	21	change_matiere
+83	Can delete Matière	21	delete_matiere
+84	Can view Matière	21	view_matiere
+85	Can add Module	22	add_module
+86	Can change Module	22	change_module
+87	Can delete Module	22	delete_module
+88	Can view Module	22	view_module
+89	Can add Présence	23	add_presence
+90	Can change Présence	23	change_presence
+91	Can delete Présence	23	delete_presence
+92	Can view Présence	23	view_presence
+93	Can add Ressource	24	add_ressource
+94	Can change Ressource	24	change_ressource
+95	Can delete Ressource	24	delete_ressource
+96	Can view Ressource	24	view_ressource
+97	Can add Candidature	25	add_candidature
+98	Can change Candidature	25	change_candidature
+99	Can delete Candidature	25	delete_candidature
+100	Can view Candidature	25	view_candidature
+101	Can add Document de candidature	26	add_documentcandidature
+102	Can change Document de candidature	26	change_documentcandidature
+103	Can delete Document de candidature	26	delete_documentcandidature
+104	Can view Document de candidature	26	view_documentcandidature
+105	Can add Document requis	27	add_documentrequis
+106	Can change Document requis	27	change_documentrequis
+107	Can delete Document requis	27	delete_documentrequis
+108	Can view Document requis	27	view_documentrequis
+109	Can add Inscription	28	add_inscription
+110	Can change Inscription	28	change_inscription
+111	Can delete Inscription	28	delete_inscription
+112	Can view Inscription	28	view_inscription
+113	Can add Historique d'inscription	29	add_historiqueinscription
+114	Can change Historique d'inscription	29	change_historiqueinscription
+115	Can delete Historique d'inscription	29	delete_historiqueinscription
+116	Can view Historique d'inscription	29	view_historiqueinscription
+117	Can add Abandon	30	add_abandon
+118	Can change Abandon	30	change_abandon
+119	Can delete Abandon	30	delete_abandon
+120	Can view Abandon	30	view_abandon
+121	Can add Période de candidature	31	add_periodecandidature
+122	Can change Période de candidature	31	change_periodecandidature
+123	Can delete Période de candidature	31	delete_periodecandidature
+124	Can view Période de candidature	31	view_periodecandidature
+125	Can add Transfert	32	add_transfert
+126	Can change Transfert	32	change_transfert
+127	Can delete Transfert	32	delete_transfert
+128	Can view Transfert	32	view_transfert
+129	Can add Établissement	33	add_etablissement
+130	Can change Établissement	33	change_etablissement
+131	Can delete Établissement	33	delete_etablissement
+132	Can view Établissement	33	view_etablissement
+133	Can add Localité	34	add_localite
+134	Can change Localité	34	change_localite
+135	Can delete Localité	34	delete_localite
+136	Can view Localité	34	view_localite
+137	Can add Type d'établissement	35	add_typeetablissement
+138	Can change Type d'établissement	35	change_typeetablissement
+139	Can delete Type d'établissement	35	delete_typeetablissement
+140	Can view Type d'établissement	35	view_typeetablissement
+141	Can add Barème de notation	36	add_baremenotation
+142	Can change Barème de notation	36	change_baremenotation
+143	Can delete Barème de notation	36	delete_baremenotation
+144	Can view Barème de notation	36	view_baremenotation
+145	Can add Jour férié/Vacances	37	add_jourferie
+146	Can change Jour férié/Vacances	37	change_jourferie
+147	Can delete Jour férié/Vacances	37	delete_jourferie
+148	Can view Jour férié/Vacances	37	view_jourferie
+149	Can add Niveau de note	38	add_niveaunote
+150	Can change Niveau de note	38	change_niveaunote
+151	Can delete Niveau de note	38	delete_niveaunote
+152	Can view Niveau de note	38	view_niveaunote
+153	Can add Paramètres d'établissement	39	add_parametresetablissement
+154	Can change Paramètres d'établissement	39	change_parametresetablissement
+155	Can delete Paramètres d'établissement	39	delete_parametresetablissement
+156	Can view Paramètres d'établissement	39	view_parametresetablissement
+157	Can add Année académique	40	add_anneeacademique
+158	Can change Année académique	40	change_anneeacademique
+159	Can delete Année académique	40	delete_anneeacademique
+160	Can view Année académique	40	view_anneeacademique
+161	Can add Campus	41	add_campus
+162	Can change Campus	41	change_campus
+163	Can delete Campus	41	delete_campus
+164	Can view Campus	41	view_campus
+165	Can add Salle	42	add_salle
+166	Can change Salle	42	change_salle
+167	Can delete Salle	42	delete_salle
+168	Can view Salle	42	view_salle
+169	Can add Évaluation	43	add_evaluation
+170	Can change Évaluation	43	change_evaluation
+171	Can delete Évaluation	43	delete_evaluation
+172	Can view Évaluation	43	view_evaluation
+173	Can add Fichier de composition	44	add_fichiercomposition
+174	Can change Fichier de composition	44	change_fichiercomposition
+175	Can delete Fichier de composition	44	delete_fichiercomposition
+176	Can view Fichier de composition	44	view_fichiercomposition
+177	Can add Composition	45	add_composition
+178	Can change Composition	45	change_composition
+179	Can delete Composition	45	delete_composition
+180	Can view Composition	45	view_composition
+181	Can add Moyenne de module	46	add_moyennemodule
+182	Can change Moyenne de module	46	change_moyennemodule
+183	Can delete Moyenne de module	46	delete_moyennemodule
+184	Can view Moyenne de module	46	view_moyennemodule
+185	Can add Note	47	add_note
+186	Can change Note	47	change_note
+187	Can delete Note	47	delete_note
+188	Can view Note	47	view_note
+189	Can add message	48	add_message
+190	Can change message	48	change_message
+191	Can delete message	48	delete_message
+192	Can view message	48	view_message
+193	Can add notification	49	add_notification
+194	Can change notification	49	change_notification
+195	Can delete notification	49	delete_notification
+196	Can view notification	49	view_notification
+197	Can add Paiement d'inscription	50	add_inscriptionpaiement
+198	Can change Paiement d'inscription	50	change_inscriptionpaiement
+199	Can delete Paiement d'inscription	50	delete_inscriptionpaiement
+200	Can view Paiement d'inscription	50	view_inscriptionpaiement
+201	Can add Paiement	51	add_paiement
+202	Can change Paiement	51	change_paiement
+203	Can delete Paiement	51	delete_paiement
+204	Can view Paiement	51	view_paiement
+205	Can add Historique de paiement	52	add_historiquepaiement
+206	Can change Historique de paiement	52	change_historiquepaiement
+207	Can delete Historique de paiement	52	delete_historiquepaiement
+208	Can view Historique de paiement	52	view_historiquepaiement
+209	Can add Plan de paiement	53	add_planpaiement
+210	Can change Plan de paiement	53	change_planpaiement
+211	Can delete Plan de paiement	53	delete_planpaiement
+212	Can view Plan de paiement	53	view_planpaiement
+213	Can add Remboursement	54	add_remboursementpaiement
+214	Can change Remboursement	54	change_remboursementpaiement
+215	Can delete Remboursement	54	delete_remboursementpaiement
+216	Can view Remboursement	54	view_remboursementpaiement
+217	Can add Tranche de paiement	55	add_tranchepaiement
+218	Can change Tranche de paiement	55	change_tranchepaiement
+219	Can delete Tranche de paiement	55	delete_tranchepaiement
+220	Can view Tranche de paiement	55	view_tranchepaiement
+\.
+
+
+--
+-- Data for Name: comptes_password_reset_token; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.comptes_password_reset_token (id, token, created_at, expires_at, used, user_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: comptes_profil_apprenant; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.comptes_profil_apprenant (id, statut_paiement, nom_pere, telephone_pere, profession_pere, nom_mere, telephone_mere, profession_mere, nom_tuteur, telephone_tuteur, relation_tuteur, annee_academique_id, classe_actuelle_id, niveau_actuel_id, utilisateur_id) FROM stdin;
+4	PARTIEL	\N	\N	\N	\N	\N	\N	\N	\N	\N	3765f173-1086-41cc-ae7e-b403cbaf1e18	0dfe538e-1422-4e39-8b77-277b628242b2	79cb0dc3-ab14-46a3-960d-1ef262c3fa31	c8650759-c373-467e-86c3-7a50585be1f6
+\.
+
+
+--
+-- Data for Name: comptes_profil_enseignant; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.comptes_profil_enseignant (id, id_employe, date_embauche, specialisation, qualifications, est_permanent, est_principal, utilisateur_id, est_chef_departement, type_enseignant) FROM stdin;
+2	\N	\N	Informatique		f	f	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	f	VACATAIRE
+5	\N	\N	Informatique	Docteur en informatique	t	f	e9d52f2e-b312-452c-9feb-d6e6e46501df	f	PERMANENT
+\.
+
+
+--
+-- Data for Name: comptes_profil_enseignant_matieres; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.comptes_profil_enseignant_matieres (id, profilenseignant_id, matiere_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: comptes_profil_utilisateur; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.comptes_profil_utilisateur (id, nom_contact_urgence, telephone_contact_urgence, relation_contact_urgence, groupe_sanguin, conditions_medicales, langue, fuseau_horaire, recevoir_notifications, recevoir_notifications_email, utilisateur_id) FROM stdin;
+2				\N	\N	fr	UTC	t	t	067a5518-5309-4bd6-ab9c-1d0fad15fdd1
+6	UJKZ	71882020	Université	\N	\N	fr	UTC	t	t	e9d52f2e-b312-452c-9feb-d6e6e46501df
+\.
+
+
+--
+-- Data for Name: comptes_utilisateur; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.comptes_utilisateur (password, last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined, id, role, matricule, prenom, nom, date_naissance, lieu_naissance, genre, telephone, adresse, est_actif, date_creation, date_mise_a_jour, photo_profil, cree_par_id, departement_id, etablissement_id) FROM stdin;
+pbkdf2_sha256$1000000$qBVfjOrKXiYpxqk7TCY1od$KnuLVgRoOXO3rdVJtZlxieihW/LrE2ospx01VtJ/e1Q=	2025-10-18 17:26:33.768468+00	f	AP20250003			roxi07@gmail.com	f	t	2025-10-09 03:35:43.973662+00	c8650759-c373-467e-86c3-7a50585be1f6	APPRENANT	AP20250003	Patricia	Nombré	\N	\N	\N	\N	\N	t	2025-10-09 03:35:45.620504+00	2025-10-09 03:35:45.620504+00		\N	\N	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+pbkdf2_sha256$1000000$5VLVzeUs9Jr9ztnaYVnPpY$tyzXcggPPV2vy2zYrlYBRHNrqbv27Nv1//Ggh0HLfck=	2025-10-20 01:10:50.360844+00	t	Frankenstein			leandrebenilde07@gmail.com	t	t	2025-10-03 18:55:19.935012+00	4d7c3e36-c754-45f0-ba8c-1ed7430939d8	CHEF_DEPARTEMENT	AP20250001	Léandre Bénilde	Paré	2000-10-07	Ouagadougu	M	54129936	Ouagadougou	t	2025-10-03 18:55:21.445006+00	2025-10-07 02:02:56.774282+00	profils/IMG_20211223_151546_741.jpg	\N	4409c3b1-24d4-40f0-967a-56ab9b4f1a11	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+pbkdf2_sha256$1000000$9bn5RUaibEcHQM6TvAcFPy$fl4njB8Zs2MQRSZipHJJJQSqDr0coYNCul0MTWpxSCc=	2025-10-21 09:08:58.559733+00	f	AD20250001			admin_uo@gmail.com	f	t	2025-10-03 18:59:02.039274+00	fe6a4503-514e-49dc-b8c3-1dee632a6a70	ADMIN	AD20250001	Admin_uo	UJKZ	2000-10-03	Ouagadougu	M	25307060		t	2025-10-03 18:59:03.999285+00	2025-10-03 19:00:50.449345+00	profils/IMG-20220507-WA0018.jpg	4d7c3e36-c754-45f0-ba8c-1ed7430939d8	\N	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+pbkdf2_sha256$1000000$CizK09a6cGlQ6NWn4cLECe$75vufZP4TyCLy7kEsaE/PfFs4FRv1fOYS+XYpYkI/jk=	2025-10-09 04:35:59.374059+00	f	AP20250002			ks@gmail.com	f	t	2025-10-03 19:16:58.773784+00	bef338e5-bc07-4ad4-8c7f-27baec3096fb	APPRENANT	AP20250002	Kevine	Sawadogo	2001-01-08	Ouagadougu	F	25307060	03 BP 7021	t	2025-10-03 19:17:02.152786+00	2025-10-06 23:26:49.435664+00	profils/IMG-20220507-WA0030_qeI1OYS.jpg	fe6a4503-514e-49dc-b8c3-1dee632a6a70	\N	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+pbkdf2_sha256$1000000$afU9OZ3R8aW8bQz7ZbOXEW$5itg7wXx06LTfXfbBnKcNHNCLkdPWm82i6BkKToP/0s=	2025-10-09 04:44:58.204027+00	f	EN20250001			kontamaleandrebenilde@gmail.com	f	t	2025-10-03 19:09:33.238122+00	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	ENSEIGNANT	EN20250001	YIDIAN	BAZIE	1970-01-08	Ouagadougu	M	25307060	03 BP 7021	t	2025-10-03 19:09:36.365921+00	2025-10-08 04:09:05.671733+00	profils/IMG-20220507-WA0015.jpg	fe6a4503-514e-49dc-b8c3-1dee632a6a70	4409c3b1-24d4-40f0-967a-56ab9b4f1a11	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+pbkdf2_sha256$1000000$Egont0rbB6QE8w1VLGNHO6$GMLZya7KpKF2DBT9A6jvnowTTNGZuxmANGtc6hDyKjE=	2025-10-22 10:29:54.806882+00	f	EN20250002			testuser.testeur@gmail.com	f	t	2025-10-22 10:27:05.608222+00	e9d52f2e-b312-452c-9feb-d6e6e46501df	ENSEIGNANT	EN20250002	Dimitri	OUATTARA	1900-10-22	BOBO	M	71882020	ODG	t	2025-10-22 10:27:09.64619+00	2025-10-22 10:27:09.695755+00	profils/IMG-20220520-WA0007_FjejcY1.jpg	fe6a4503-514e-49dc-b8c3-1dee632a6a70	\N	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+\.
+
+
+--
+-- Data for Name: comptes_utilisateur_departements_intervention; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.comptes_utilisateur_departements_intervention (id, utilisateur_id, departement_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: comptes_utilisateur_groups; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.comptes_utilisateur_groups (id, utilisateur_id, group_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: comptes_utilisateur_user_permissions; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.comptes_utilisateur_user_permissions (id, utilisateur_id, permission_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: courses_cahier_texte; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.courses_cahier_texte (id, created_at, updated_at, travail_fait, travail_donne, date_travail_pour, observations, date_saisie, modifie_le, rempli_par_id, cours_id) FROM stdin;
+2739120a-d1d8-4343-a8b0-41557c6db1fe	2025-10-07 00:33:12.575944+00	2025-10-07 00:33:12.575944+00	Présentation générale de Windows 10 et 11.\r\nExplication de l’architecture du système : noyau, interface utilisateur, gestion des processus et de la mémoire.\r\nTravaux pratiques : utilisation du gestionnaire des tâches et du panneau de configuration.	Préparer un rapport court expliquant la différence entre un processus et un service Windows.\r\nInstaller VirtualBox et créer une machine virtuelle Windows 10 avant la prochaine séance.	2025-10-11	Séance bien suivie. Quelques étudiants ont rencontré des difficultés à naviguer dans le gestionnaire des périphériques, une révision est prévue.	2025-10-07 00:33:12.575944+00	2025-10-07 00:33:12.575944+00	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	8adeb677-fadf-4718-a821-fde972b4fe9c
+\.
+
+
+--
+-- Data for Name: courses_cours; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.courses_cours (id, created_at, updated_at, titre, description, type_cours, statut, date_prevue, heure_debut_prevue, heure_fin_prevue, date_effective, heure_debut_effective, heure_fin_effective, objectifs, contenu, cours_en_ligne, url_streaming, presence_prise, actif, classe_id, enseignant_id, periode_academique_id, salle_id, matiere_id) FROM stdin;
+8adeb677-fadf-4718-a821-fde972b4fe9c	2025-10-05 23:36:25.358649+00	2025-10-07 00:51:11.685963+00	Cours de SE		CM	TERMINE	2025-10-06	07:30:00	12:30:00	2025-10-07	00:27:29.650096	00:51:11.684963		\N	t	https://us05web.zoom.us/j/83210394261?pwd=i5D5bsbxReQBnkDSVrjKb7aldhfdK3.1	f	t	0dfe538e-1422-4e39-8b77-277b628242b2	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	9a33a55a-0f3a-451b-8429-c582fff128d0	c8ae8a3c-dd11-4f95-8f93-09df7ea73b2a	3f21fae7-5abb-4acb-ad19-4870eb93c075
+0904fbdb-b6f3-44fe-bd3a-d1248ed8322c	2025-10-09 04:42:33.82486+00	2025-10-09 04:42:33.82486+00	SE Linux		CM	PROGRAMME	2025-10-09	07:30:00	12:30:00	\N	\N	\N		\N	f	\N	f	t	0dfe538e-1422-4e39-8b77-277b628242b2	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	9a33a55a-0f3a-451b-8429-c582fff128d0	c8ae8a3c-dd11-4f95-8f93-09df7ea73b2a	943f4916-7e3a-4abb-839f-101ca908967e
+\.
+
+
+--
+-- Data for Name: courses_creneau_emploi_du_temps; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.courses_creneau_emploi_du_temps (id, created_at, updated_at, jour_semaine, heure_debut, heure_fin, cours_id, emploi_du_temps_id) FROM stdin;
+76d08c72-dee1-4fe0-a23a-ad0a7998a48d	2025-10-05 23:41:43.531302+00	2025-10-05 23:41:43.531302+00	0	07:30:00	12:30:00	8adeb677-fadf-4718-a821-fde972b4fe9c	9edff55d-2b7d-438c-99e4-2b3744cedec9
+6de39514-f7e5-45be-9a86-6e92e2590228	2025-10-09 04:43:17.685349+00	2025-10-09 04:43:17.685349+00	3	07:30:00	12:30:00	0904fbdb-b6f3-44fe-bd3a-d1248ed8322c	f800bf7c-1e85-47dc-92bb-849ef7dca8b2
+426fa315-f274-42df-ab46-1feddf91c5c2	2025-10-09 04:43:17.68835+00	2025-10-09 04:43:17.68835+00	0	07:30:00	12:30:00	8adeb677-fadf-4718-a821-fde972b4fe9c	f800bf7c-1e85-47dc-92bb-849ef7dca8b2
+\.
+
+
+--
+-- Data for Name: courses_creneau_horaire; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.courses_creneau_horaire (id, created_at, updated_at, jour, heure_debut, heure_fin, type_cours, recurrent, dates_exception, enseignant_id, salle_id, emploi_du_temps_id, matiere_module_id) FROM stdin;
+dfba1f09-55f6-4ee5-b9a3-a09d203bfb48	2025-09-30 01:23:05.435033+00	2025-09-30 01:23:05.435033+00	LUNDI	07:30:00	12:30:00	COURS	t		a75585be-3481-4708-880a-1ea0f532aba1	a49bf1ab-6992-4baf-8508-6e4a1b260c0a	a6183ca2-47a8-4a22-8046-c06551a2c463	f6daf06e-2e57-4600-a338-307b5ced0247
+de789368-60ab-4bad-b1a5-2459823aa695	2025-09-30 01:23:05.44045+00	2025-09-30 01:23:05.44045+00	LUNDI	13:30:00	18:30:00	COURS	t		a75585be-3481-4708-880a-1ea0f532aba1	a49bf1ab-6992-4baf-8508-6e4a1b260c0a	a6183ca2-47a8-4a22-8046-c06551a2c463	f6daf06e-2e57-4600-a338-307b5ced0247
+\.
+
+
+--
+-- Data for Name: courses_emploi_du_temps; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.courses_emploi_du_temps (id, created_at, updated_at, nom, semaine_debut, semaine_fin, publie, actuel, classe_id, cree_par_id, enseignant_id, periode_academique_id) FROM stdin;
+7a3ae76a-6d80-4a96-ae04-b32b309260f3	2025-10-05 05:35:27.30434+00	2025-10-05 05:35:27.30434+00	EDT Licence 1 MAIGE - Semaine du 06/10/2025	2025-10-06	2025-10-11	t	f	0dfe538e-1422-4e39-8b77-277b628242b2	fe6a4503-514e-49dc-b8c3-1dee632a6a70	\N	9a33a55a-0f3a-451b-8429-c582fff128d0
+9edff55d-2b7d-438c-99e4-2b3744cedec9	2025-10-05 23:41:43.508304+00	2025-10-09 02:57:24.800433+00	EDT Licence 1 - MIAGE - Semaine du 06/10/2025	2025-10-06	2025-10-11	t	t	0dfe538e-1422-4e39-8b77-277b628242b2	fe6a4503-514e-49dc-b8c3-1dee632a6a70	\N	9a33a55a-0f3a-451b-8429-c582fff128d0
+f800bf7c-1e85-47dc-92bb-849ef7dca8b2	2025-10-09 04:43:17.654348+00	2025-10-09 04:43:48.926904+00	EDT YIDIAN BAZIE - Semaine du 06/10/2025	2025-10-06	2025-10-12	t	f	\N	4d7c3e36-c754-45f0-ba8c-1ed7430939d8	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	9a33a55a-0f3a-451b-8429-c582fff128d0
+\.
+
+
+--
+-- Data for Name: courses_matiere; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.courses_matiere (id, created_at, updated_at, nom, code, description, heures_cours_magistral, heures_travaux_diriges, heures_travaux_pratiques, coefficient, credits_ects, couleur, actif, enseignant_responsable_id, niveau_id, module_id) FROM stdin;
+943f4916-7e3a-4abb-839f-101ca908967e	2025-10-05 17:58:37.062107+00	2025-10-05 18:02:06.970442+00	SE Linux	Linux		20	10	10	2.00	0.00	#b18181	t	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	79cb0dc3-ab14-46a3-960d-1ef262c3fa31	a799a7ae-0572-4fee-8dc3-4abb5dda6345
+3f21fae7-5abb-4acb-ad19-4870eb93c075	2025-10-05 17:56:34.480793+00	2025-10-05 18:02:18.582208+00	SE Windows	Windows		20	10	10	2.00	0.00	#3498db	t	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	79cb0dc3-ab14-46a3-960d-1ef262c3fa31	a799a7ae-0572-4fee-8dc3-4abb5dda6345
+\.
+
+
+--
+-- Data for Name: courses_matiere_module; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.courses_matiere_module (id, created_at, updated_at, heures_theorie, heures_pratique, heures_td, coefficient, enseignant_id, matiere_id, module_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: courses_module; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.courses_module (id, created_at, updated_at, nom, code, description, actif, coordinateur_id, niveau_id) FROM stdin;
+a799a7ae-0572-4fee-8dc3-4abb5dda6345	2025-10-05 16:16:32.856702+00	2025-10-05 16:16:32.856702+00	Introduction aux systèmes d’exploitation	SE	Un système d’exploitation (S.E.) est un logiciel de base qui assure l’interface entre le matériel de l’ordinateur (hardware) et les programmes applicatifs (software).	t	\N	79cb0dc3-ab14-46a3-960d-1ef262c3fa31
+\.
+
+
+--
+-- Data for Name: courses_module_prerequis; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.courses_module_prerequis (id, from_module_id, to_module_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: courses_presence; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.courses_presence (id, created_at, updated_at, statut, heure_arrivee, motif_absence, document_justificatif, valide, date_validation, notes_enseignant, cours_id, etudiant_id, valide_par_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: courses_ressource; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.courses_ressource (id, created_at, updated_at, titre, description, type_ressource, fichier, url, taille_fichier, obligatoire, telechargeable, public, disponible_a_partir_de, disponible_jusqua, nombre_telechargements, nombre_vues, cours_id) FROM stdin;
+ee59792a-9f86-4864-9692-6f52d6174ffe	2025-10-07 00:44:41.463454+00	2025-10-07 00:44:41.463454+00	Introduction à Windows 	Introduction au système d'exploitation Windows 	PDF	ressources_cours/5eme-evangile.pdf		6243311	t	t	t	\N	\N	15	7	8adeb677-fadf-4718-a821-fde972b4fe9c
+\.
+
+
+--
+-- Data for Name: django_admin_log; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.django_admin_log (id, action_time, object_id, object_repr, action_flag, change_message, content_type_id, user_id) FROM stdin;
+53	2025-10-03 18:58:05.652497+00	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f	Université Joseph KI-ZERBO	1	[{"added": {}}]	33	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+54	2025-10-03 18:59:04.001278+00	fe6a4503-514e-49dc-b8c3-1dee632a6a70	Admin_uo UJKZ (AD20250001)	1	[{"added": {}}]	16	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+55	2025-10-03 19:00:50.470347+00	fe6a4503-514e-49dc-b8c3-1dee632a6a70	Admin_uo UJKZ (AD20250001)	2	[{"changed": {"fields": ["Date de naissance", "Lieu de naissance", "Genre", "T\\u00e9l\\u00e9phone", "Photo profil", "Cree par"]}}]	16	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+56	2025-10-04 03:22:42.563545+00	3765f173-1086-41cc-ae7e-b403cbaf1e18	Université Joseph KI-ZERBO - 2025 - 2026	1	[{"added": {}}]	40	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+57	2025-10-05 05:30:52.999054+00	0dfe538e-1422-4e39-8b77-277b628242b2	Licence 1 - MIAGE - Méthodes Informatiques Appliquées à la Gestion (2025 - 2026)	1	[{"added": {}}]	6	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+58	2025-10-05 05:32:53.101906+00	9a33a55a-0f3a-451b-8429-c582fff128d0	Semestre 1 - 2025 - 2026	1	[{"added": {}}]	10	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+59	2025-10-05 23:28:31.482054+00	c8ae8a3c-dd11-4f95-8f93-09df7ea73b2a	Salle de cours 1 (Université Joseph KI-ZERBO)	1	[{"added": {}}]	42	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+60	2025-10-06 20:19:08.103386+00	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	YIDIAN BAZIE (EN20250001)	2	[{"changed": {"fields": ["D\\u00e9partement"]}}]	16	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+61	2025-10-06 20:20:22.862793+00	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	YIDIAN BAZIE (EN20250001)	2	[{"changed": {"fields": ["password"]}}]	16	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+62	2025-10-06 23:26:49.441666+00	bef338e5-bc07-4ad4-8c7f-27baec3096fb	Kevine Sawadogo (AP20250002)	2	[{"changed": {"fields": ["password"]}}]	16	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+63	2025-10-07 02:01:33.161603+00	4d7c3e36-c754-45f0-ba8c-1ed7430939d8	Léandre Bénilde Paré (AP20250001)	2	[{"changed": {"fields": ["Pr\\u00e9nom", "Nom", "Date de naissance", "Lieu de naissance", "Genre", "T\\u00e9l\\u00e9phone", "Adresse", "Photo profil", "Role", "\\u00c9tablissement", "D\\u00e9partement"]}}]	16	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+64	2025-10-07 02:02:56.77629+00	4d7c3e36-c754-45f0-ba8c-1ed7430939d8	Léandre Bénilde Paré (AP20250001)	2	[{"changed": {"fields": ["password"]}}]	16	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+65	2025-10-08 03:38:13.138151+00	2	Profil apprenant de Kevine Sawadogo	2	[{"changed": {"fields": ["Niveau actuel", "Classe actuelle", "Annee academique", "Statut paiement"]}}]	13	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+66	2025-10-08 03:40:14.135612+00	2	Profil apprenant de Kevine Sawadogo	3		13	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+67	2025-10-08 03:45:56.442856+00	7c2275ac-dc73-4461-886c-6795768178f4	Diplome ou Attestation de BAC D ou C - Méthodes Informatiques Appliquées à la Gestion	1	[{"added": {}}]	27	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+68	2025-10-08 03:46:27.483415+00	120dd501-eb40-4fb6-959c-23527d528eaa	CNIB - Méthodes Informatiques Appliquées à la Gestion	1	[{"added": {}}]	27	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+69	2025-10-08 03:46:47.142896+00	837beb2b-ec4a-485d-a655-ae3fad4aa09e	Acte de naissance - Méthodes Informatiques Appliquées à la Gestion	1	[{"added": {}}]	27	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+70	2025-10-08 03:47:31.174271+00	81f10d34-d256-4e3c-97da-61305ed66036	Relevé de notes - Méthodes Informatiques Appliquées à la Gestion	1	[{"added": {}}]	27	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+71	2025-10-08 03:47:56.74023+00	41a0ba69-6b77-4bdd-9853-967385c5e79f	Photo d'identité - Méthodes Informatiques Appliquées à la Gestion	1	[{"added": {}}]	27	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+72	2025-10-08 03:51:20.468272+00	077876a1-6c24-4695-ad51-e9db245b4f36	CAND2025 UOMIAGE0001 - Zango Boubacar	1	[{"added": {}}]	25	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+73	2025-10-08 03:53:37.827638+00	79ac208f-4c18-4462-936f-9a79a75f659c	CAND2025 UOMIAGE0001 - CNIB	1	[{"added": {}}]	26	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+74	2025-10-08 03:54:02.032584+00	2964b811-7b83-4ed2-87ee-34369cac75e2	CAND2025 UOMIAGE0001 - Acte de naissance	1	[{"added": {}}]	26	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+75	2025-10-08 03:54:22.281612+00	c8472ad9-f7de-46cb-8703-b953f8cd65d4	CAND2025 UOMIAGE0001 - Diplome ou Attestation de BAC D ou C	1	[{"added": {}}]	26	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+76	2025-10-08 03:54:46.150582+00	8be5962d-6136-44d5-88e2-4beeaf9c8771	CAND2025 UOMIAGE0001 - Relevé de notes du BAC	1	[{"added": {}}]	26	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+77	2025-10-08 03:55:31.441632+00	e3a85957-134a-43b3-9242-1556c6e88eb0	CAND2025 UOMIAGE0001 - Photo d'identité	1	[{"added": {}}]	26	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+78	2025-10-08 03:56:55.159105+00	077876a1-6c24-4695-ad51-e9db245b4f36	CAND2025 UOMIAGE0001 - Zango Boubacar	2	[{"changed": {"fields": ["Statut", "Date de d\\u00e9cision", "Examin\\u00e9 par"]}}, {"changed": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0001 - Acte de naissance", "fields": ["Valid\\u00e9", "Notes de validation"]}}, {"changed": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0001 - Diplome ou Attestation de BAC D ou C", "fields": ["Valid\\u00e9", "Notes de validation"]}}, {"changed": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0001 - Photo d'identit\\u00e9", "fields": ["Valid\\u00e9", "Notes de validation"]}}, {"changed": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0001 - CNIB", "fields": ["Valid\\u00e9", "Notes de validation"]}}, {"changed": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0001 - Relev\\u00e9 de notes du BAC", "fields": ["Valid\\u00e9", "Notes de validation"]}}]	25	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+79	2025-10-08 04:01:19.656175+00	7667bda8-4a69-4456-8c55-8ca8ab253165	INS2025UO00001 - Kevine Sawadogo	1	[{"added": {}}]	28	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+80	2025-10-08 04:02:12.429623+00	3	Profil apprenant de Kevine Sawadogo	1	[{"added": {}}]	13	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+81	2025-10-08 04:07:18.104953+00	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	YIDIAN BAZIE (EN20250001)	2	[{"changed": {"fields": ["Role"]}}]	16	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+82	2025-10-08 04:09:05.684733+00	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	YIDIAN BAZIE (EN20250001)	2	[{"changed": {"fields": ["Role"]}}]	16	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+83	2025-10-09 03:31:28.034306+00	1155fd65-eb3a-4d6c-be78-19595fa192da	CAND2025 UOMIAGE0002 - Patricia Nombré	1	[{"added": {}}, {"added": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0002 - CNIB"}}, {"added": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0002 - Acte de naissance"}}, {"added": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0002 - Dipl\\u00f4me de Bac"}}, {"added": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0002 - Relev\\u00e9 de notes"}}, {"added": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0002 - Photo"}}]	25	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+84	2025-10-09 03:33:00.510171+00	1155fd65-eb3a-4d6c-be78-19595fa192da	CAND2025 UOMIAGE0002 - Patricia Nombré	2	[{"changed": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0002 - Acte de naissance", "fields": ["Valid\\u00e9", "Notes de validation"]}}, {"changed": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0002 - Dipl\\u00f4me de Bac", "fields": ["Valid\\u00e9", "Notes de validation"]}}, {"changed": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0002 - Photo", "fields": ["Valid\\u00e9", "Notes de validation"]}}, {"changed": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0002 - CNIB", "fields": ["Valid\\u00e9", "Notes de validation"]}}, {"changed": {"name": "Document de candidature", "object": "CAND2025 UOMIAGE0002 - Relev\\u00e9 de notes", "fields": ["Valid\\u00e9", "Notes de validation"]}}]	25	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+85	2025-10-09 03:33:35.449802+00	1155fd65-eb3a-4d6c-be78-19595fa192da	CAND2025 UOMIAGE0002 - Patricia Nombré	2	[{"changed": {"fields": ["Statut"]}}]	25	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+86	2025-10-09 03:35:45.629515+00	c8650759-c373-467e-86c3-7a50585be1f6	Patricia Nombré (AP20250003)	1	[{"added": {}}]	16	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+87	2025-10-09 03:36:38.776117+00	4	Profil apprenant de Patricia Nombré	1	[{"added": {}}]	13	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+88	2025-10-09 03:42:53.231016+00	9b467075-6f8f-42c7-8092-aeb9d382c417	Méthodes Informatiques Appliquées à la Gestion - Licence 1 (2025 - 2026)	1	[{"added": {}}, {"added": {"name": "Tranche de paiement", "object": "M\\u00e9thodes Informatiques Appliqu\\u00e9es \\u00e0 la Gestion - Licence 1 (2025 - 2026) - Tranche 1: Tranche 1"}}, {"added": {"name": "Tranche de paiement", "object": "M\\u00e9thodes Informatiques Appliqu\\u00e9es \\u00e0 la Gestion - Licence 1 (2025 - 2026) - Tranche 2: Tranche 2"}}, {"added": {"name": "Tranche de paiement", "object": "M\\u00e9thodes Informatiques Appliqu\\u00e9es \\u00e0 la Gestion - Licence 1 (2025 - 2026) - Tranche 3: Tranche 3"}}]	53	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+89	2025-10-09 03:43:35.078971+00	59a9263b-22f1-4abe-a53e-b59a9543ad5c	INS2025UO00002 - Patricia Nombré	1	[{"added": {}}, {"added": {"name": "Historique d'inscription", "object": "INS2025UO00002 - Cr\\u00e9ation"}}, {"added": {"name": "Paiement d'inscription", "object": "Paiement Patricia Nombr\\u00e9 - Paiement \\u00e9chelonn\\u00e9"}}]	28	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+90	2025-10-09 03:45:40.242731+00	687d41ff-c409-4c42-8811-0d72ba466a47	PAY202510090345404EA798 - 300000€ (Confirmé)	1	[{"added": {}}]	51	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+91	2025-10-20 01:11:37.739974+00	3	Profil enseignant de Constant KY	3		14	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+92	2025-10-20 01:11:54.006494+00	4	Profil de Constant KY	3		15	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+93	2025-10-22 09:05:37.66758+00	5	Profil de Dimitri OUATTARA	3		15	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+94	2025-10-22 09:05:37.66758+00	3	Profil de Kevine Sawadogo	3		15	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+95	2025-10-22 09:05:50.947724+00	4	Profil enseignant de Dimitri OUATTARA	3		14	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+96	2025-10-22 09:06:17.877534+00	3	Profil apprenant de Kevine Sawadogo	3		13	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+97	2025-10-22 09:06:58.001257+00	7377421f-4933-4aef-b69d-5a12fc4e2425	Kevine Sawadogo - Devoir 1	3		45	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+98	2025-10-22 09:06:58.001257+00	94b1a689-1136-43dd-8792-d38945c1c2b8	Kevine Sawadogo - Devoir 1	3		45	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+99	2025-10-22 09:06:58.001257+00	f71b05fb-1a71-4d60-b30a-56043d2619ec	Kevine Sawadogo - Devoir 1	3		45	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+100	2025-10-22 09:06:58.001257+00	7ecd4e8e-817f-4288-a212-b7272f92c700	Kevine Sawadogo - Devoir 1	3		45	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+101	2025-10-22 09:07:28.717129+00	077876a1-6c24-4695-ad51-e9db245b4f36	CAND2025 UOMIAGE0001 - Zango Boubacar	3		25	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+102	2025-10-22 12:43:47.863432+00	5	Profil enseignant de Dimitri OUATTARA	2	[{"changed": {"fields": ["Type d'enseignant", "Est permanent"]}}]	14	4d7c3e36-c754-45f0-ba8c-1ed7430939d8
+\.
+
+
+--
+-- Data for Name: django_content_type; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.django_content_type (id, app_label, model) FROM stdin;
+1	admin	logentry
+2	auth	permission
+3	auth	group
+4	contenttypes	contenttype
+5	sessions	session
+6	academic	classe
+7	academic	departement
+8	academic	filiere
+9	academic	niveau
+10	academic	periodeacademique
+11	academic	programme
+12	accounts	passwordresettoken
+13	accounts	profilapprenant
+14	accounts	profilenseignant
+15	accounts	profilutilisateur
+16	accounts	utilisateur
+17	courses	cours
+18	courses	cahiertexte
+19	courses	emploidutemps
+20	courses	creneauemploidutemps
+21	courses	matiere
+22	courses	module
+23	courses	presence
+24	courses	ressource
+25	enrollment	candidature
+26	enrollment	documentcandidature
+27	enrollment	documentrequis
+28	enrollment	inscription
+29	enrollment	historiqueinscription
+30	enrollment	abandon
+31	enrollment	periodecandidature
+32	enrollment	transfert
+33	establishments	etablissement
+34	establishments	localite
+35	establishments	typeetablissement
+36	establishments	baremenotation
+37	establishments	jourferie
+38	establishments	niveaunote
+39	establishments	parametresetablissement
+40	establishments	anneeacademique
+41	establishments	campus
+42	establishments	salle
+43	evaluations	evaluation
+44	evaluations	fichiercomposition
+45	evaluations	composition
+46	evaluations	moyennemodule
+47	evaluations	note
+48	notifications	message
+49	notifications	notification
+50	payments	inscriptionpaiement
+51	payments	paiement
+52	payments	historiquepaiement
+53	payments	planpaiement
+54	payments	remboursementpaiement
+55	payments	tranchepaiement
+\.
+
+
+--
+-- Data for Name: django_migrations; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.django_migrations (id, app, name, applied) FROM stdin;
+1	academic	0001_initial	2025-10-03 18:42:06.776558+00
+2	accounts	0001_initial	2025-10-03 18:42:06.982557+00
+3	establishments	0001_initial	2025-10-03 18:42:07.635074+00
+4	academic	0002_initial	2025-10-03 18:42:09.478604+00
+5	courses	0001_initial	2025-10-03 18:42:11.618773+00
+6	contenttypes	0001_initial	2025-10-03 18:42:11.655767+00
+7	contenttypes	0002_remove_content_type_name	2025-10-03 18:42:12.075766+00
+8	auth	0001_initial	2025-10-03 18:42:12.210767+00
+9	auth	0002_alter_permission_name_max_length	2025-10-03 18:42:12.23477+00
+10	auth	0003_alter_user_email_max_length	2025-10-03 18:42:12.257768+00
+11	auth	0004_alter_user_username_opts	2025-10-03 18:42:12.289767+00
+12	auth	0005_alter_user_last_login_null	2025-10-03 18:42:12.321786+00
+13	auth	0006_require_contenttypes_0002	2025-10-03 18:42:12.325767+00
+14	auth	0007_alter_validators_add_error_messages	2025-10-03 18:42:12.355769+00
+15	auth	0008_alter_user_username_max_length	2025-10-03 18:42:12.392769+00
+16	auth	0009_alter_user_last_name_max_length	2025-10-03 18:42:12.418767+00
+17	auth	0010_alter_group_name_max_length	2025-10-03 18:42:12.45377+00
+18	auth	0011_update_proxy_permissions	2025-10-03 18:42:12.641768+00
+19	auth	0012_alter_user_first_name_max_length	2025-10-03 18:42:12.660767+00
+20	accounts	0002_initial	2025-10-03 18:42:14.625768+00
+21	admin	0001_initial	2025-10-03 18:42:14.871818+00
+22	admin	0002_logentry_remove_auto_add	2025-10-03 18:42:15.05377+00
+23	admin	0003_logentry_add_action_flag_choices	2025-10-03 18:42:15.18577+00
+24	enrollment	0001_initial	2025-10-03 18:42:19.744839+00
+25	evaluations	0001_initial	2025-10-03 18:42:21.426394+00
+26	notifications	0001_initial	2025-10-03 18:42:22.042393+00
+27	payments	0001_initial	2025-10-03 18:42:24.42457+00
+28	sessions	0001_initial	2025-10-03 18:42:24.465571+00
+35	evaluations	0002_alter_evaluation_coefficient_and_more	2025-10-07 21:54:12.678426+00
+36	accounts	0003_profilenseignant_est_chef_departement_and_more	2025-10-22 12:43:16.159945+00
+\.
+
+
+--
+-- Data for Name: django_session; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.django_session (session_key, session_data, expire_date) FROM stdin;
+5sncf9nsnsld3612besacglua4eiiunn	.eJxVjEsOgjAQQO_StZC2004pS_eegUzbQVBDDYVEY7y7krDQ9fu8REfrMnRr4bkbk2hFz0jGSqisMlwZn2IVmgiVSswImpCcFIffLFC88rS16ULTOdcxT8s8hnpT6p2W-pQT3467-zcYqAzfmg0EqR03lDBEZZx1iFZFr512yhsgGSRSsipAQB17D-hRYdQGGg1mmxYuZcxTx4_7OD9FK98fNn9HJQ:1v4l3P:mt3gPKAINRIY_WOg54_DuVWNCi9QD8SSgkyeiSgcvm4	2025-10-17 19:02:55.77927+00
+guvm1g7nhqd9am82t3bo2srnt5podxaz	.eJxVjEsOgjAQQO_StZCWdtri0r1nIDPTqaAGDNVEY7y7kLDQ9fu8VYePe989iszdkNRecfSgA7QV22Ar54NU0bOtAoKGCCQme7X7zQj5IuPapjOOp6nmabzPA9WrUm-01McpyfWwuX-DHku_1DE0ibAVggTgnTMOrTORODdkWFqBxNEkZBHMGnOyuiEJ5HJ0ix_XaZFShmns5Hkb5pfa688XCbBIxQ:1v6hgW:qHfqZpIPnnqe0D_lg6s6KwB4Ht_AFVs776M7iguLAyg	2025-10-23 03:51:20.814664+00
+ncibdi517i6epi7xi84cpilgrumuz7v5	.eJxVjUGuwjAMBe-SNa2cFDsJy7_nDJUdJ7SA2q8GJBDi7qiIBazfzLyH6fl6GfprzUs_qtkZIM-INjTYQWy2otSwxNRYhcJqsahas_nWhNMpT6urR54Oc5vm6bKM0q5I-1lru581n_8-7E9g4Dq8n8U5CtsuJsJQcnLoCloHoDY5H7tMIXgh5yUDkgQAFgwQySemktZozbWO89Tn2_-43M0Oni8fL0eN:1v6iWQ:Y7RM7K-QhFTBDNxsV_ioCvphuTFSBJYxgYHptbblTcs	2025-10-23 04:44:58.20602+00
+kybxqtqnnxkh3t0wj6bwag4apzm5w1e6	.eJxVjEsOgjAQQO_StZCWdtri0r1nIDPTqaAGDNVEY7y7kLDQ9fu8VYePe989iszdkNRecfSgA7QV22Ar54NU0bOtAoKGCCQme7X7zQj5IuPapjOOp6nmabzPA9WrUm-01McpyfWwuX-DHku_1DE0ibAVggTgnTMOrTORODdkWFqBxNEkZBHMGnOyuiEJ5HJ0ix_XaZFShmns5Hkb5pfa688XCbBIxQ:1v8MXd:0Y64jj_Suy_e7iZVxuHHaH0xIUeotauSdlFQbXBcA9g	2025-10-27 17:41:01.899248+00
+jxg63mhucvpymtxqro01909ozyh12odc	.eJxVjEsOgjAQQO_StZC2004pS_eegUzbQVBDDYVEY7y7krDQ9fu8REfrMnRr4bkbk2hFz0jGSqisMlwZn2IVmgiVSswImpCcFIffLFC88rS16ULTOdcxT8s8hnpT6p2W-pQT3467-zcYqAzfmg0EqR03lDBEZZx1iFZFr512yhsgGSRSsipAQB17D-hRYdQGGg1mmxYuZcxTx4_7OD9FK98fNn9HJQ:1vAAdr:_w8E7dH1bblGjEGiMSdZic0l7lYdBFseOoo-AzGO6qg	2025-11-01 17:22:55.421512+00
+hswnoj7j4tvsf4lsb3z9b0ajavzbijq1	.eJxVjMsOgjAQRf-layGFPqZl6d5vIO3MIKihhkKiMf67YFjo7ib3nPMSbVjmvl0yT-1AohGaABUrWyAYXWjTySIGh0XFBFpJrzw5cfjVYsArj5tLlzCeU4lpnKchlhtS7m8uT4n4dtzZv0Afcr_axlbSd6yixdpytDV0YJwEJAtOOkuwDqlqz15rE6sOCSKaKMGh4eobzZzzkMaWH_dheopGvj8d5kfp:1vAeQE:jGEHsSt3R7Bqo4HT-tNOsM-4K6_Fd5sSemrFDM9LgXk	2025-11-03 01:10:50.367848+00
+xlf4aq4y016xn1l6fx8koaf8tcdy6vej	.eJxVjEsOgjAQQO_StZC2004pS_eegUzbQVBDDYVEY7y7krDQ9fu8REfrMnRr4bkbk2hFz0jGSqisMlwZn2IVmgiVSswImpCcFIffLFC88rS16ULTOdcxT8s8hnpT6p2W-pQT3467-zcYqAzfmg0EqR03lDBEZZx1iFZFr512yhsgGSRSsipAQB17D-hRYdQGGg1mmxYuZcxTx4_7OD9FK98fNn9HJQ:1vB8MU:YW3UMT4YoVg448Q681plqnib2NampXAd_9jKXhac_cI	2025-11-04 09:08:58.598719+00
+et122l060o4swtof341jxlb81ds5swj5	.eJxVjEsOgjAQQO_StZC2004pS_eegUzbQVBDDYVEY7y7krDQ9fu8REfrMnRr4bkbk2hFz0jGSqisMlwZn2IVmgiVSswImpCcFIffLFC88rS16ULTOdcxT8s8hnpT6p2W-pQT3467-zcYqAzfmg0EqR03lDBEZZx1iFZFr512yhsgGSRSsipAQB17D-hRYdQGGg1mmxYuZcxTx4_7OD9FK98fNn9HJQ:1v6L66:W86r53gBNVTywvT1JEMe_1Y-KHoYrCoEnMIitQMerUE	2025-10-22 03:44:14.255509+00
+\.
+
+
+--
+-- Data for Name: enrollment_abandon; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.enrollment_abandon (id, created_at, updated_at, date_abandon, date_effet, type_abandon, motif, eligible_remboursement, montant_remboursable, remboursement_traite, date_remboursement, documents_retournes, materiel_retourne, traite_par_id, inscription_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: enrollment_candidature; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.enrollment_candidature (created_at, updated_at, id, numero_candidature, prenom, nom, date_naissance, lieu_naissance, genre, telephone, email, adresse, nom_pere, telephone_pere, nom_mere, telephone_mere, nom_tuteur, telephone_tuteur, ecole_precedente, dernier_diplome, annee_obtention, statut, date_soumission, date_examen, date_decision, motif_rejet, notes_approbation, frais_dossier_requis, montant_frais_dossier, frais_dossier_payes, date_paiement_frais, annee_academique_id, etablissement_id, examine_par_id, filiere_id, niveau_id) FROM stdin;
+2025-10-09 03:31:27.965303+00	2025-10-09 03:33:35.4468+00	1155fd65-eb3a-4d6c-be78-19595fa192da	CAND2025 UOMIAGE0002	Patricia	Nombré	2001-05-29	Marine Ford	F	+22671882020	roxi07@gmail.com	OUAGADOUGOU	Papa Nombré	25364138	Maman Nombré	25364138	Tonton Nombré	25364138	East Blue	Meguwara	2019	APPROUVEE	\N	2025-10-06 03:29:16+00	2025-10-09 03:29:19+00			f	\N	f	\N	3765f173-1086-41cc-ae7e-b403cbaf1e18	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f	fe6a4503-514e-49dc-b8c3-1dee632a6a70	8f00d34c-03aa-40dd-a1d9-2e1765d0f587	79cb0dc3-ab14-46a3-960d-1ef262c3fa31
+\.
+
+
+--
+-- Data for Name: enrollment_document_candidature; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.enrollment_document_candidature (id, created_at, updated_at, type_document, nom, description, fichier, taille_fichier, format_fichier, est_valide, date_validation, notes_validation, candidature_id, valide_par_id) FROM stdin;
+e8ee3a64-62c1-4678-ac70-89b4c5aac151	2025-10-09 03:31:27.975305+00	2025-10-09 03:33:00.498169+00	ACTE_NAISSANCE	Acte de naissance	\N	candidature/documents/enaref_B_zrFor1R.pdf	200207	pdf	t	\N	10	1155fd65-eb3a-4d6c-be78-19595fa192da	\N
+ef70e7a6-c6ac-4956-b70c-11e8cad5eb5f	2025-10-09 03:31:27.980305+00	2025-10-09 03:33:00.500172+00	DIPLOME	Diplôme de Bac	\N	candidature/documents/enaref_B_P07gNYN.pdf	200207	pdf	t	\N	10	1155fd65-eb3a-4d6c-be78-19595fa192da	\N
+f2b1865f-d998-4dc5-aa72-ecf6e6587b9f	2025-10-09 03:31:28.029345+00	2025-10-09 03:33:00.501172+00	PHOTO_IDENTITE	Photo	\N	candidature/documents/WhatsApp_Image_2025-03-19_à_20.32.56_fc2ae8b1.jpg	51499	jpg	t	\N	10	1155fd65-eb3a-4d6c-be78-19595fa192da	\N
+27e123c2-53c6-49b4-825c-a53f30075eb7	2025-10-09 03:31:27.97031+00	2025-10-09 03:33:00.503171+00	PIECE_IDENTITE	CNIB	\N	candidature/documents/enaref_B_7EktVVe.pdf	200207	pdf	t	\N	10	1155fd65-eb3a-4d6c-be78-19595fa192da	\N
+01c0eae4-9e2e-4067-b68a-9bf9d219800d	2025-10-09 03:31:28.024305+00	2025-10-09 03:33:00.507174+00	RELEVE_NOTES	Relevé de notes	\N	candidature/documents/enaref_B_ltDrVjD.pdf	200207	pdf	t	\N	10	1155fd65-eb3a-4d6c-be78-19595fa192da	\N
+\.
+
+
+--
+-- Data for Name: enrollment_document_requis; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.enrollment_document_requis (id, created_at, updated_at, nom, description, type_document, est_obligatoire, taille_maximale, formats_autorises, ordre_affichage, filiere_id, niveau_id) FROM stdin;
+7c2275ac-dc73-4461-886c-6795768178f4	2025-10-08 03:45:56.437856+00	2025-10-08 03:45:56.437856+00	Diplome ou Attestation de BAC D ou C		DIPLOME	t	5242880	pdf,jpg,jpeg,png	1	8f00d34c-03aa-40dd-a1d9-2e1765d0f587	79cb0dc3-ab14-46a3-960d-1ef262c3fa31
+120dd501-eb40-4fb6-959c-23527d528eaa	2025-10-08 03:46:27.481419+00	2025-10-08 03:46:27.481419+00	CNIB		PIECE_IDENTITE	t	5242880	pdf,jpg,jpeg,png	1	8f00d34c-03aa-40dd-a1d9-2e1765d0f587	79cb0dc3-ab14-46a3-960d-1ef262c3fa31
+837beb2b-ec4a-485d-a655-ae3fad4aa09e	2025-10-08 03:46:47.137896+00	2025-10-08 03:46:47.137896+00	Acte de naissance		ACTE_NAISSANCE	t	5242880	pdf,jpg,jpeg,png	3	8f00d34c-03aa-40dd-a1d9-2e1765d0f587	79cb0dc3-ab14-46a3-960d-1ef262c3fa31
+81f10d34-d256-4e3c-97da-61305ed66036	2025-10-08 03:47:31.173272+00	2025-10-08 03:47:31.173272+00	Relevé de notes		RELEVE_NOTES	t	5242880	pdf,jpg,jpeg,png	4	8f00d34c-03aa-40dd-a1d9-2e1765d0f587	79cb0dc3-ab14-46a3-960d-1ef262c3fa31
+41a0ba69-6b77-4bdd-9853-967385c5e79f	2025-10-08 03:47:56.732233+00	2025-10-08 03:47:56.732233+00	Photo d'identité		PHOTO_IDENTITE	t	5242880	pdf,jpg,jpeg,png	5	8f00d34c-03aa-40dd-a1d9-2e1765d0f587	79cb0dc3-ab14-46a3-960d-1ef262c3fa31
+\.
+
+
+--
+-- Data for Name: enrollment_historique; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.enrollment_historique (id, created_at, updated_at, type_action, ancienne_valeur, nouvelle_valeur, motif, effectue_par_id, inscription_id) FROM stdin;
+c09da9fb-b5fa-4e3b-9252-d3ffd2d0dae3	2025-10-09 03:43:35.065971+00	2025-10-09 03:43:35.065971+00	CREATION	\N	ACTIVE	\N	c8650759-c373-467e-86c3-7a50585be1f6	59a9263b-22f1-4abe-a53e-b59a9543ad5c
+94a84b00-7945-40eb-93f9-9e30fa8828de	2025-10-09 03:43:35.068969+00	2025-10-09 03:43:35.068969+00	CREATION	\N	Inscription	Inscription	c8650759-c373-467e-86c3-7a50585be1f6	59a9263b-22f1-4abe-a53e-b59a9543ad5c
+\.
+
+
+--
+-- Data for Name: enrollment_inscription; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.enrollment_inscription (created_at, updated_at, id, numero_inscription, date_inscription, statut, date_debut, date_fin_prevue, date_fin_reelle, frais_scolarite, statut_paiement, total_paye, solde, notes, apprenant_id, candidature_id, classe_assignee_id, cree_par_id) FROM stdin;
+2025-10-09 03:43:35.059969+00	2025-10-09 03:43:35.059969+00	59a9263b-22f1-4abe-a53e-b59a9543ad5c	INS2025UO00002	2025-10-09	ACTIVE	2025-10-09	2025-10-09	2025-10-09	800000.00	PARTIAL	300000.00	500000.00		c8650759-c373-467e-86c3-7a50585be1f6	1155fd65-eb3a-4d6c-be78-19595fa192da	0dfe538e-1422-4e39-8b77-277b628242b2	c8650759-c373-467e-86c3-7a50585be1f6
+\.
+
+
+--
+-- Data for Name: enrollment_periode_candidature; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.enrollment_periode_candidature (id, created_at, updated_at, nom, description, date_debut, date_fin, est_active, annee_academique_id, etablissement_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: enrollment_periode_candidature_filieres; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.enrollment_periode_candidature_filieres (id, periodecandidature_id, filiere_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: enrollment_transfert; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.enrollment_transfert (id, created_at, updated_at, date_transfert, date_effet, motif, statut, date_approbation, notes_approbation, approuve_par_id, classe_destination_id, classe_origine_id, demande_par_id, inscription_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: establishments_annee_academique; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.establishments_annee_academique (id, created_at, updated_at, nom, date_debut, date_fin, debut_inscriptions, fin_inscriptions, debut_cours, fin_cours, debut_examens_premier_semestre, fin_examens_premier_semestre, debut_examens_second_semestre, fin_examens_second_semestre, debut_vacances_hiver, fin_vacances_hiver, debut_vacances_ete, fin_vacances_ete, est_courante, est_active, etablissement_id) FROM stdin;
+3765f173-1086-41cc-ae7e-b403cbaf1e18	2025-10-04 03:22:42.558547+00	2025-10-04 03:22:42.558547+00	2025 - 2026	2025-10-01	2026-07-31	2025-11-01	2026-07-31	2025-10-01	2026-05-30	\N	\N	\N	\N	\N	\N	\N	\N	t	t	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+\.
+
+
+--
+-- Data for Name: establishments_bareme_notation; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.establishments_bareme_notation (id, created_at, updated_at, nom, note_minimale, note_maximale, note_passage, est_defaut, description, etablissement_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: establishments_campus; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.establishments_campus (id, created_at, updated_at, nom, code, adresse, latitude, longitude, description, superficie_totale, bibliotheque, cafeteria, parking, internat, installations_sportives, infirmerie, telephone, email, est_campus_principal, est_actif, responsable_campus_id, etablissement_id, localite_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: establishments_etablissement; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.establishments_etablissement (id, created_at, updated_at, nom, sigle, code, adresse, telephone, email, site_web, nom_directeur, numero_enregistrement, date_creation, logo, image_couverture, description, mission, vision, actif, public, capacite_totale, etudiants_actuels, localite_id, type_etablissement_id) FROM stdin;
+66b3697d-1eeb-4fe5-8c28-91b9caf2b84f	2025-10-03 18:58:05.647499+00	2025-10-03 18:58:05.647499+00	Université Joseph KI-ZERBO	UJKZ	UO	03 BP 7021	25307060	contact@ujkz.bf	https://www.ujkz.bf/	\N	\N	\N						t	t	0	0	ad9f5e87-1c2a-487d-8ef6-1fdf6d8a694f	ca5dab54-26df-4e09-8c27-46667f81da4a
+\.
+
+
+--
+-- Data for Name: establishments_jour_ferie; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.establishments_jour_ferie (id, created_at, updated_at, nom, date_debut, date_fin, type_jour_ferie, description, est_recurrent, modele_recurrence, affecte_cours, affecte_examens, affecte_inscriptions, couleur, etablissement_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: establishments_localite; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.establishments_localite (id, created_at, updated_at, nom, region, pays, code_postal) FROM stdin;
+ad9f5e87-1c2a-487d-8ef6-1fdf6d8a694f	2025-09-25 01:57:19.706847+00	2025-09-25 01:57:19.706847+00	Ouagadougou	Kadiogo	Burkina Faso	03 BP 7021
+\.
+
+
+--
+-- Data for Name: establishments_niveau_note; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.establishments_niveau_note (id, created_at, updated_at, nom, note_minimale, note_maximale, couleur, description, points_gpa, bareme_notation_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: establishments_parametres; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.establishments_parametres (id, created_at, updated_at, structure_academique, frais_dossier_requis, montant_frais_dossier, "date_limite_inscription_anticipée", date_limite_inscription_normale, date_limite_inscription_tardive, paiement_echelonne_autorise, nombre_maximum_tranches, frais_echelonnement, taux_penalite_retard, taux_presence_minimum, points_bonus_autorises, points_bonus_maximum, notifications_sms, notifications_email, jours_avant_reset_mot_de_passe, tentatives_connexion_max, examens_rattrapage_autorises, frais_examen_rattrapage, couleur_primaire, couleur_secondaire, bareme_notation_defaut_id, etablissement_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: establishments_salle; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.establishments_salle (id, created_at, updated_at, nom, code, type_salle, capacite, etage, batiment, longueur, largeur, projecteur, ordinateur, climatisation, wifi, tableau_blanc, systeme_audio, accessible_pmr, etat, description, notes, est_active, etablissement_id) FROM stdin;
+c8ae8a3c-dd11-4f95-8f93-09df7ea73b2a	2025-10-05 23:28:31.476058+00	2025-10-05 23:28:31.476058+00	Salle de cours 1	SC1	SALLE_CLASSE	60	1	Bâtiment A	\N	\N	t	t	t	t	t	f	t	EXCELLENT			t	66b3697d-1eeb-4fe5-8c28-91b9caf2b84f
+\.
+
+
+--
+-- Data for Name: establishments_type_etablissement; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.establishments_type_etablissement (id, created_at, updated_at, nom, description, code, structure_academique_defaut, icone, actif) FROM stdin;
+ca5dab54-26df-4e09-8c27-46667f81da4a	2025-09-25 01:57:02.710154+00	2025-09-25 01:57:02.710154+00	Université		UO	SEMESTRE	fas fa-building	t
+\.
+
+
+--
+-- Data for Name: evaluation_composition; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.evaluation_composition (id, created_at, updated_at, date_debut, date_soumission, note_obtenue, commentaire_correction, fichier_correction_personnalise, statut, date_correction, apprenant_id, corrigee_par_id, evaluation_id) FROM stdin;
+c3484818-1954-45e5-9cb8-a415e0adc62b	2025-10-09 04:07:51.436255+00	2025-10-09 04:18:54.677724+00	2025-10-09 04:07:51.436255+00	2025-10-09 04:13:39.882012+00	18.00	Excellent	evaluations/corrections_personnalisees/2025/10/ressources_cours-5eme-evangile.pdf	CORRIGEE	2025-10-09 04:18:54.677724+00	c8650759-c373-467e-86c3-7a50585be1f6	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	71f71cef-7f39-4fb2-8350-ab7cd79c7e46
+92af19d2-94f8-4578-9dde-f8278cd823c8	2025-10-09 04:21:23.904656+00	2025-10-09 04:54:48.810938+00	2025-10-09 04:21:23.904656+00	2025-10-09 04:22:27.989626+00	19.75			CORRIGEE	2025-10-09 04:54:48.810938+00	c8650759-c373-467e-86c3-7a50585be1f6	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	a3595dfa-0d49-4929-9cf4-11cbffa8dbda
+d3b4dad4-516d-4000-9175-c98527fe1378	2025-10-09 04:24:08.971606+00	2025-10-09 04:56:00.835938+00	2025-10-09 04:24:08.971606+00	2025-10-09 04:24:22.269395+00	18.00			CORRIGEE	2025-10-09 04:56:00.835938+00	c8650759-c373-467e-86c3-7a50585be1f6	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	16b717df-e89f-4542-8ec8-29d7b3410a0d
+b6c29758-0be4-4a55-b034-c611067653f1	2025-10-09 04:24:45.760251+00	2025-10-09 04:57:08.503848+00	2025-10-09 04:24:45.760251+00	2025-10-09 04:24:57.500488+00	8.75			CORRIGEE	2025-10-09 04:57:08.503848+00	c8650759-c373-467e-86c3-7a50585be1f6	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	f85d7a1a-b6de-43e3-9ecd-523e801246db
+\.
+
+
+--
+-- Data for Name: evaluation_composition_fichiers_composition; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.evaluation_composition_fichiers_composition (id, composition_id, fichiercomposition_id) FROM stdin;
+1	c3484818-1954-45e5-9cb8-a415e0adc62b	6942ec39-6bd4-4209-a3ee-63f76b7674d3
+2	92af19d2-94f8-4578-9dde-f8278cd823c8	7c92bf97-92a9-431c-b868-9f33de824bfb
+3	92af19d2-94f8-4578-9dde-f8278cd823c8	86f2159b-fb45-44fa-9255-ab88ca57c088
+4	d3b4dad4-516d-4000-9175-c98527fe1378	77abfcc8-27ad-43d8-a097-23040decaf27
+5	b6c29758-0be4-4a55-b034-c611067653f1	c2b7d558-ef79-41c8-a634-6ef3dedc8a1b
+\.
+
+
+--
+-- Data for Name: evaluation_evaluation; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.evaluation_evaluation (id, created_at, updated_at, titre, description, type_evaluation, coefficient, note_maximale, date_debut, date_fin, duree_minutes, fichier_evaluation, fichier_correction, correction_visible_immediatement, date_publication_correction, autorise_retard, penalite_retard, statut, enseignant_id, matiere_id) FROM stdin;
+f85d7a1a-b6de-43e3-9ecd-523e801246db	2025-10-09 01:56:44.944249+00	2025-10-09 01:56:45.000261+00	Devoir 1	Généralités sur le système d'exploitation Windows.	DEVOIR	1.00	20.00	2025-10-09 02:00:00+00	2025-10-10 10:30:00+00	120	evaluations/sujets/2025/10/PreTest1.pdf		t	\N	t	10.00	PROGRAMMEE	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	3f21fae7-5abb-4acb-ad19-4870eb93c075
+16b717df-e89f-4542-8ec8-29d7b3410a0d	2025-10-09 02:00:46.530529+00	2025-10-09 02:00:46.55253+00	Devoir 1	Généralités sur le système d'exploitation Windows.	DEVOIR	1.00	20.00	2025-10-09 02:00:00+00	2025-10-10 10:30:00+00	120	evaluations/sujets/2025/10/PreTest1_C8L9uZb.pdf		t	\N	t	10.00	PROGRAMMEE	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	3f21fae7-5abb-4acb-ad19-4870eb93c075
+71f71cef-7f39-4fb2-8350-ab7cd79c7e46	2025-10-09 04:05:42.971993+00	2025-10-09 04:05:42.985014+00	Devoir 1	Généralité sur le système d'exploitation linux	DEVOIR	1.00	20.00	2025-10-09 04:10:00+00	2025-10-09 10:00:00+00	119	evaluations/sujets/2025/10/PreTest1_hPR5KMq.pdf		t	\N	t	10.00	PROGRAMMEE	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	943f4916-7e3a-4abb-839f-101ca908967e
+a3595dfa-0d49-4929-9cf4-11cbffa8dbda	2025-10-09 04:07:09.204644+00	2025-10-09 04:07:09.227644+00	Devoir 1	Généralité sur le système d'exploitation linux	DEVOIR	1.00	20.00	2025-10-09 04:10:00+00	2025-10-09 10:00:00+00	119	evaluations/sujets/2025/10/PreTest1_I72DlHL.pdf		t	\N	t	10.00	PROGRAMMEE	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	943f4916-7e3a-4abb-839f-101ca908967e
+\.
+
+
+--
+-- Data for Name: evaluation_evaluation_classes; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.evaluation_evaluation_classes (id, evaluation_id, classe_id) FROM stdin;
+1	f85d7a1a-b6de-43e3-9ecd-523e801246db	0dfe538e-1422-4e39-8b77-277b628242b2
+2	16b717df-e89f-4542-8ec8-29d7b3410a0d	0dfe538e-1422-4e39-8b77-277b628242b2
+3	71f71cef-7f39-4fb2-8350-ab7cd79c7e46	0dfe538e-1422-4e39-8b77-277b628242b2
+4	a3595dfa-0d49-4929-9cf4-11cbffa8dbda	0dfe538e-1422-4e39-8b77-277b628242b2
+\.
+
+
+--
+-- Data for Name: evaluation_fichier_composition; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.evaluation_fichier_composition (id, created_at, updated_at, nom_original, fichier, taille, type_mime, uploade_par_id) FROM stdin;
+6942ec39-6bd4-4209-a3ee-63f76b7674d3	2025-10-09 04:13:35.352039+00	2025-10-09 04:13:35.352039+00	livret-priere-en-famille.pdf	evaluations/compositions/2025/10/livret-priere-en-famille.pdf	376778	application/pdf	c8650759-c373-467e-86c3-7a50585be1f6
+7c92bf97-92a9-431c-b868-9f33de824bfb	2025-10-09 04:22:06.150065+00	2025-10-09 04:22:06.150065+00	factureONEA.docx	evaluations/compositions/2025/10/factureONEA.docx	23938	application/vnd.openxmlformats-officedocument.wordprocessingml.document	c8650759-c373-467e-86c3-7a50585be1f6
+86f2159b-fb45-44fa-9255-ab88ca57c088	2025-10-09 04:22:23.420725+00	2025-10-09 04:22:23.420725+00	livret-priere-en-famille.pdf	evaluations/compositions/2025/10/livret-priere-en-famille_2vIwKY5.pdf	376778	application/pdf	c8650759-c373-467e-86c3-7a50585be1f6
+77abfcc8-27ad-43d8-a097-23040decaf27	2025-10-09 04:24:19.569394+00	2025-10-09 04:24:19.569394+00	enaref_B.pdf	evaluations/compositions/2025/10/enaref_B.pdf	200207	application/pdf	c8650759-c373-467e-86c3-7a50585be1f6
+c2b7d558-ef79-41c8-a634-6ef3dedc8a1b	2025-10-09 04:24:54.462037+00	2025-10-09 04:24:54.462037+00	livret-priere-en-famille.pdf	evaluations/compositions/2025/10/livret-priere-en-famille_KVgop0B.pdf	376778	application/pdf	c8650759-c373-467e-86c3-7a50585be1f6
+0ae0dd23-7488-4cfc-aeda-453dc3ca51f3	2025-10-09 04:36:44.35006+00	2025-10-09 04:36:44.35006+00	ressources_cours-5eme-evangile.pdf	evaluations/compositions/2025/10/ressources_cours-5eme-evangile.pdf	6243311	application/pdf	bef338e5-bc07-4ad4-8c7f-27baec3096fb
+9ace45a1-87ec-4eff-baad-67a8c9686e8a	2025-10-09 04:37:07.944776+00	2025-10-09 04:37:07.944776+00	ressources_cours-5eme-evangile.pdf	evaluations/compositions/2025/10/ressources_cours-5eme-evangile_6RtwkyV.pdf	6243311	application/pdf	bef338e5-bc07-4ad4-8c7f-27baec3096fb
+b6bcbe61-9e6e-4db4-a2a0-68b05b3b20df	2025-10-09 04:38:02.884239+00	2025-10-09 04:38:02.884239+00	ressources_cours-5eme-evangile.pdf	evaluations/compositions/2025/10/ressources_cours-5eme-evangile_ggteiEG.pdf	6243311	application/pdf	bef338e5-bc07-4ad4-8c7f-27baec3096fb
+b427b38f-a959-4488-9068-594d5c6cb4cc	2025-10-09 04:38:22.702968+00	2025-10-09 04:38:22.702968+00	ressources_cours-5eme-evangile.pdf	evaluations/compositions/2025/10/ressources_cours-5eme-evangile_LcfPowh.pdf	6243311	application/pdf	bef338e5-bc07-4ad4-8c7f-27baec3096fb
+\.
+
+
+--
+-- Data for Name: evaluation_note; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.evaluation_note (id, created_at, updated_at, valeur, note_sur, date_attribution, commentaire, apprenant_id, attribuee_par_id, composition_id, evaluation_id, matiere_id) FROM stdin;
+e9f2f8c6-744a-405a-a53b-6eb08182ce94	2025-10-09 04:18:54.738729+00	2025-10-09 04:18:54.738729+00	18.00	20.00	2025-10-09 04:18:54.738729+00	Excellent	c8650759-c373-467e-86c3-7a50585be1f6	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	c3484818-1954-45e5-9cb8-a415e0adc62b	71f71cef-7f39-4fb2-8350-ab7cd79c7e46	943f4916-7e3a-4abb-839f-101ca908967e
+d5da761d-aa53-4336-b7d6-f7b2742b85ec	2025-10-09 04:54:48.822937+00	2025-10-09 04:54:48.822937+00	19.75	20.00	2025-10-09 04:54:48.822937+00		c8650759-c373-467e-86c3-7a50585be1f6	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	92af19d2-94f8-4578-9dde-f8278cd823c8	a3595dfa-0d49-4929-9cf4-11cbffa8dbda	943f4916-7e3a-4abb-839f-101ca908967e
+da739c93-6d17-4adf-a375-173781b68ccb	2025-10-09 04:55:55.779378+00	2025-10-09 04:56:00.859939+00	18.00	20.00	2025-10-09 04:55:55.779378+00		c8650759-c373-467e-86c3-7a50585be1f6	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	d3b4dad4-516d-4000-9175-c98527fe1378	16b717df-e89f-4542-8ec8-29d7b3410a0d	3f21fae7-5abb-4acb-ad19-4870eb93c075
+218e7c38-6052-45bb-97f5-7e203dce39b3	2025-10-09 04:57:03.117143+00	2025-10-09 04:57:08.518831+00	8.75	20.00	2025-10-09 04:57:03.117143+00		c8650759-c373-467e-86c3-7a50585be1f6	067a5518-5309-4bd6-ab9c-1d0fad15fdd1	b6c29758-0be4-4a55-b034-c611067653f1	f85d7a1a-b6de-43e3-9ecd-523e801246db	3f21fae7-5abb-4acb-ad19-4870eb93c075
+\.
+
+
+--
+-- Data for Name: notifications_message; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.notifications_message (id, subject, content, read, sent_at, recipient_id, sender_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: notifications_notification; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.notifications_notification (id, title, message, icon, url, read, created_at, user_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: payments_historique_paiement; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.payments_historique_paiement (id, created_at, updated_at, type_action, ancien_statut, nouveau_statut, details, donnees_supplementaires, adresse_ip, utilisateur_id, paiement_id) FROM stdin;
+eb34b678-cfa8-4370-92b0-644d91a0a3de	2025-10-09 03:45:40.225733+00	2025-10-09 03:45:40.225733+00	CREATION	\N	CONFIRME	Paiement créé: 300000 XOF via LigdiCash	{}	\N	\N	687d41ff-c409-4c42-8811-0d72ba466a47
+\.
+
+
+--
+-- Data for Name: payments_inscription_paiement; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.payments_inscription_paiement (id, created_at, updated_at, type_paiement, montant_total_du, montant_total_paye, statut, date_premier_paiement, date_solde, inscription_id, plan_id) FROM stdin;
+4ba8f790-010f-437c-8eb8-9b8a8090e581	2025-10-09 03:43:35.071973+00	2025-10-09 03:45:40.240733+00	ECHELONNE	800000.00	300000.00	PARTIEL	2025-10-09 03:44:47+00	\N	59a9263b-22f1-4abe-a53e-b59a9543ad5c	9b467075-6f8f-42c7-8092-aeb9d382c417
+\.
+
+
+--
+-- Data for Name: payments_paiement; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.payments_paiement (id, created_at, updated_at, numero_transaction, reference_externe, montant, frais_transaction, montant_net, methode_paiement, statut, date_paiement, date_confirmation, date_echeance, description, notes_admin, donnees_transaction, inscription_paiement_id, traite_par_id, tranche_id) FROM stdin;
+687d41ff-c409-4c42-8811-0d72ba466a47	2025-10-09 03:45:40.222731+00	2025-10-09 03:45:40.222731+00	PAY202510090345404EA798	\N	300000.00	0.00	300000.00	LIGDICASH	CONFIRME	2025-10-09 03:45:40.222731+00	2025-10-09 03:44:47+00	\N			{}	4ba8f790-010f-437c-8eb8-9b8a8090e581	\N	0a894415-d8eb-46c8-ae20-abfd504c75ee
+\.
+
+
+--
+-- Data for Name: payments_plan_paiement; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.payments_plan_paiement (id, created_at, updated_at, nom, description, montant_total, paiement_unique_possible, paiement_echelonne_possible, remise_paiement_unique, frais_echelonnement, est_actif, annee_academique_id, cree_par_id, filiere_id, niveau_id) FROM stdin;
+9b467075-6f8f-42c7-8092-aeb9d382c417	2025-10-09 03:42:53.222013+00	2025-10-09 03:42:53.222013+00	Plan MIAGE		800000.00	t	t	0.00	0.00	t	3765f173-1086-41cc-ae7e-b403cbaf1e18	4d7c3e36-c754-45f0-ba8c-1ed7430939d8	8f00d34c-03aa-40dd-a1d9-2e1765d0f587	79cb0dc3-ab14-46a3-960d-1ef262c3fa31
+\.
+
+
+--
+-- Data for Name: payments_remboursement_paiement; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.payments_remboursement_paiement (id, created_at, updated_at, montant_rembourse, motif, statut, date_demande, date_traitement, notes, demande_par_id, paiement_original_id, traite_par_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: payments_tranche_paiement; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.payments_tranche_paiement (id, created_at, updated_at, numero, nom, montant, date_limite, est_premiere_tranche, penalite_retard, plan_id) FROM stdin;
+0a894415-d8eb-46c8-ae20-abfd504c75ee	2025-10-09 03:42:53.228021+00	2025-10-09 03:42:53.228021+00	1	Tranche 1	300000.00	2025-12-31	t	0.00	9b467075-6f8f-42c7-8092-aeb9d382c417
+3e609b11-97fd-433a-a2fd-e012c4b28b73	2025-10-09 03:42:53.230015+00	2025-10-09 03:42:53.230015+00	2	Tranche 2	300000.00	2026-05-10	f	0.00	9b467075-6f8f-42c7-8092-aeb9d382c417
+a7c4710b-c04d-44aa-866f-54adf1db2862	2025-10-09 03:42:53.231016+00	2025-10-09 03:42:53.231016+00	3	Tranche 3	200000.00	2026-07-31	f	0.00	9b467075-6f8f-42c7-8092-aeb9d382c417
+\.
+
+
+--
+-- Name: auth_group_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.auth_group_id_seq', 1, false);
+
+
+--
+-- Name: auth_group_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
+
+
+--
+-- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 248, true);
+
+
+--
+-- Name: comptes_password_reset_token_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.comptes_password_reset_token_id_seq', 1, false);
+
+
+--
+-- Name: comptes_profil_apprenant_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.comptes_profil_apprenant_id_seq', 4, true);
+
+
+--
+-- Name: comptes_profil_enseignant_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.comptes_profil_enseignant_id_seq', 5, true);
+
+
+--
+-- Name: comptes_profil_enseignant_matieres_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.comptes_profil_enseignant_matieres_id_seq', 1, false);
+
+
+--
+-- Name: comptes_profil_utilisateur_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.comptes_profil_utilisateur_id_seq', 6, true);
+
+
+--
+-- Name: comptes_utilisateur_departements_intervention_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.comptes_utilisateur_departements_intervention_id_seq', 1, false);
+
+
+--
+-- Name: comptes_utilisateur_groups_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.comptes_utilisateur_groups_id_seq', 1, false);
+
+
+--
+-- Name: comptes_utilisateur_user_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.comptes_utilisateur_user_permissions_id_seq', 4, true);
+
+
+--
+-- Name: courses_module_prerequis_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.courses_module_prerequis_id_seq', 1, false);
+
+
+--
+-- Name: django_admin_log_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.django_admin_log_id_seq', 102, true);
+
+
+--
+-- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 62, true);
+
+
+--
+-- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 36, true);
+
+
+--
+-- Name: enrollment_periode_candidature_filieres_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.enrollment_periode_candidature_filieres_id_seq', 1, false);
+
+
+--
+-- Name: evaluation_composition_fichiers_composition_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.evaluation_composition_fichiers_composition_id_seq', 9, true);
+
+
+--
+-- Name: evaluation_evaluation_classes_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.evaluation_evaluation_classes_id_seq', 4, true);
+
+
+--
+-- Name: notifications_message_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.notifications_message_id_seq', 1, false);
+
+
+--
+-- Name: notifications_notification_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.notifications_notification_id_seq', 1, false);
+
+
+--
+-- Name: academique_classe academique_classe_etablissement_id_annee_a_4d89a29d_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_classe
+    ADD CONSTRAINT academique_classe_etablissement_id_annee_a_4d89a29d_uniq UNIQUE (etablissement_id, annee_academique_id, code);
+
+
+--
+-- Name: academique_classe academique_classe_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_classe
+    ADD CONSTRAINT academique_classe_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: academique_departement academique_departement_etablissement_id_code_7652dc7f_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_departement
+    ADD CONSTRAINT academique_departement_etablissement_id_code_7652dc7f_uniq UNIQUE (etablissement_id, code);
+
+
+--
+-- Name: academique_departement academique_departement_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_departement
+    ADD CONSTRAINT academique_departement_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: academique_filiere academique_filiere_etablissement_id_code_33c965b6_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_filiere
+    ADD CONSTRAINT academique_filiere_etablissement_id_code_33c965b6_uniq UNIQUE (etablissement_id, code);
+
+
+--
+-- Name: academique_filiere academique_filiere_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_filiere
+    ADD CONSTRAINT academique_filiere_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: academique_niveau academique_niveau_filiere_id_code_3746e810_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_niveau
+    ADD CONSTRAINT academique_niveau_filiere_id_code_3746e810_uniq UNIQUE (filiere_id, code);
+
+
+--
+-- Name: academique_niveau academique_niveau_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_niveau
+    ADD CONSTRAINT academique_niveau_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: academique_periode academique_periode_etablissement_id_annee_a_2c5bf862_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_periode
+    ADD CONSTRAINT academique_periode_etablissement_id_annee_a_2c5bf862_uniq UNIQUE (etablissement_id, annee_academique_id, code);
+
+
+--
+-- Name: academique_periode academique_periode_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_periode
+    ADD CONSTRAINT academique_periode_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: academique_programme academique_programme_filiere_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_programme
+    ADD CONSTRAINT academique_programme_filiere_id_key UNIQUE (filiere_id);
+
+
+--
+-- Name: academique_programme academique_programme_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_programme
+    ADD CONSTRAINT academique_programme_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: auth_group auth_group_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auth_group
+    ADD CONSTRAINT auth_group_name_key UNIQUE (name);
+
+
+--
+-- Name: auth_group_permissions auth_group_permissions_group_id_permission_id_0cd325b0_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auth_group_permissions
+    ADD CONSTRAINT auth_group_permissions_group_id_permission_id_0cd325b0_uniq UNIQUE (group_id, permission_id);
+
+
+--
+-- Name: auth_group_permissions auth_group_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auth_group_permissions
+    ADD CONSTRAINT auth_group_permissions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: auth_group auth_group_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auth_group
+    ADD CONSTRAINT auth_group_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: auth_permission auth_permission_content_type_id_codename_01ab375a_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auth_permission
+    ADD CONSTRAINT auth_permission_content_type_id_codename_01ab375a_uniq UNIQUE (content_type_id, codename);
+
+
+--
+-- Name: auth_permission auth_permission_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auth_permission
+    ADD CONSTRAINT auth_permission_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: comptes_password_reset_token comptes_password_reset_token_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_password_reset_token
+    ADD CONSTRAINT comptes_password_reset_token_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: comptes_password_reset_token comptes_password_reset_token_token_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_password_reset_token
+    ADD CONSTRAINT comptes_password_reset_token_token_key UNIQUE (token);
+
+
+--
+-- Name: comptes_password_reset_token comptes_password_reset_token_user_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_password_reset_token
+    ADD CONSTRAINT comptes_password_reset_token_user_id_key UNIQUE (user_id);
+
+
+--
+-- Name: comptes_profil_apprenant comptes_profil_apprenant_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_apprenant
+    ADD CONSTRAINT comptes_profil_apprenant_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: comptes_profil_apprenant comptes_profil_apprenant_utilisateur_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_apprenant
+    ADD CONSTRAINT comptes_profil_apprenant_utilisateur_id_key UNIQUE (utilisateur_id);
+
+
+--
+-- Name: comptes_profil_enseignant_matieres comptes_profil_enseignan_profilenseignant_id_mati_2505eed8_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_enseignant_matieres
+    ADD CONSTRAINT comptes_profil_enseignan_profilenseignant_id_mati_2505eed8_uniq UNIQUE (profilenseignant_id, matiere_id);
+
+
+--
+-- Name: comptes_profil_enseignant comptes_profil_enseignant_id_employe_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_enseignant
+    ADD CONSTRAINT comptes_profil_enseignant_id_employe_key UNIQUE (id_employe);
+
+
+--
+-- Name: comptes_profil_enseignant_matieres comptes_profil_enseignant_matieres_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_enseignant_matieres
+    ADD CONSTRAINT comptes_profil_enseignant_matieres_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: comptes_profil_enseignant comptes_profil_enseignant_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_enseignant
+    ADD CONSTRAINT comptes_profil_enseignant_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: comptes_profil_enseignant comptes_profil_enseignant_utilisateur_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_enseignant
+    ADD CONSTRAINT comptes_profil_enseignant_utilisateur_id_key UNIQUE (utilisateur_id);
+
+
+--
+-- Name: comptes_profil_utilisateur comptes_profil_utilisateur_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_utilisateur
+    ADD CONSTRAINT comptes_profil_utilisateur_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: comptes_profil_utilisateur comptes_profil_utilisateur_utilisateur_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_utilisateur
+    ADD CONSTRAINT comptes_profil_utilisateur_utilisateur_id_key UNIQUE (utilisateur_id);
+
+
+--
+-- Name: comptes_utilisateur_departements_intervention comptes_utilisateur_depa_utilisateur_id_departeme_15894452_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur_departements_intervention
+    ADD CONSTRAINT comptes_utilisateur_depa_utilisateur_id_departeme_15894452_uniq UNIQUE (utilisateur_id, departement_id);
+
+
+--
+-- Name: comptes_utilisateur_departements_intervention comptes_utilisateur_departements_intervention_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur_departements_intervention
+    ADD CONSTRAINT comptes_utilisateur_departements_intervention_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: comptes_utilisateur_groups comptes_utilisateur_grou_utilisateur_id_group_id_f6703be7_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur_groups
+    ADD CONSTRAINT comptes_utilisateur_grou_utilisateur_id_group_id_f6703be7_uniq UNIQUE (utilisateur_id, group_id);
+
+
+--
+-- Name: comptes_utilisateur_groups comptes_utilisateur_groups_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur_groups
+    ADD CONSTRAINT comptes_utilisateur_groups_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: comptes_utilisateur comptes_utilisateur_matricule_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur
+    ADD CONSTRAINT comptes_utilisateur_matricule_key UNIQUE (matricule);
+
+
+--
+-- Name: comptes_utilisateur comptes_utilisateur_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur
+    ADD CONSTRAINT comptes_utilisateur_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: comptes_utilisateur_user_permissions comptes_utilisateur_user_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur_user_permissions
+    ADD CONSTRAINT comptes_utilisateur_user_permissions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: comptes_utilisateur_user_permissions comptes_utilisateur_user_utilisateur_id_permissio_6ccc9f1d_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur_user_permissions
+    ADD CONSTRAINT comptes_utilisateur_user_utilisateur_id_permissio_6ccc9f1d_uniq UNIQUE (utilisateur_id, permission_id);
+
+
+--
+-- Name: comptes_utilisateur comptes_utilisateur_username_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur
+    ADD CONSTRAINT comptes_utilisateur_username_key UNIQUE (username);
+
+
+--
+-- Name: courses_cahier_texte courses_cahier_texte_cours_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_cahier_texte
+    ADD CONSTRAINT courses_cahier_texte_cours_id_key UNIQUE (cours_id);
+
+
+--
+-- Name: courses_cahier_texte courses_cahier_texte_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_cahier_texte
+    ADD CONSTRAINT courses_cahier_texte_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: courses_cours courses_cours_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_cours
+    ADD CONSTRAINT courses_cours_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: courses_creneau_emploi_du_temps courses_creneau_emploi_du_temps_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_creneau_emploi_du_temps
+    ADD CONSTRAINT courses_creneau_emploi_du_temps_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: courses_creneau_horaire courses_creneau_horaire_emploi_du_temps_id_jour__adb49934_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_creneau_horaire
+    ADD CONSTRAINT courses_creneau_horaire_emploi_du_temps_id_jour__adb49934_uniq UNIQUE (emploi_du_temps_id, jour, heure_debut, heure_fin);
+
+
+--
+-- Name: courses_creneau_horaire courses_creneau_horaire_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_creneau_horaire
+    ADD CONSTRAINT courses_creneau_horaire_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: courses_emploi_du_temps courses_emploi_du_temps_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_emploi_du_temps
+    ADD CONSTRAINT courses_emploi_du_temps_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: courses_matiere courses_matiere_code_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_matiere
+    ADD CONSTRAINT courses_matiere_code_key UNIQUE (code);
+
+
+--
+-- Name: courses_matiere_module courses_matiere_module_matiere_id_module_id_72a6b386_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_matiere_module
+    ADD CONSTRAINT courses_matiere_module_matiere_id_module_id_72a6b386_uniq UNIQUE (matiere_id, module_id);
+
+
+--
+-- Name: courses_matiere_module courses_matiere_module_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_matiere_module
+    ADD CONSTRAINT courses_matiere_module_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: courses_matiere courses_matiere_niveau_id_code_aecbb414_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_matiere
+    ADD CONSTRAINT courses_matiere_niveau_id_code_aecbb414_uniq UNIQUE (niveau_id, code);
+
+
+--
+-- Name: courses_matiere courses_matiere_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_matiere
+    ADD CONSTRAINT courses_matiere_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: courses_module courses_module_niveau_id_code_6df8bc64_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_module
+    ADD CONSTRAINT courses_module_niveau_id_code_6df8bc64_uniq UNIQUE (niveau_id, code);
+
+
+--
+-- Name: courses_module courses_module_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_module
+    ADD CONSTRAINT courses_module_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: courses_module_prerequis courses_module_prerequis_from_module_id_to_module_86b0ca78_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_module_prerequis
+    ADD CONSTRAINT courses_module_prerequis_from_module_id_to_module_86b0ca78_uniq UNIQUE (from_module_id, to_module_id);
+
+
+--
+-- Name: courses_module_prerequis courses_module_prerequis_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_module_prerequis
+    ADD CONSTRAINT courses_module_prerequis_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: courses_presence courses_presence_cours_id_etudiant_id_97d4ab85_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_presence
+    ADD CONSTRAINT courses_presence_cours_id_etudiant_id_97d4ab85_uniq UNIQUE (cours_id, etudiant_id);
+
+
+--
+-- Name: courses_presence courses_presence_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_presence
+    ADD CONSTRAINT courses_presence_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: courses_ressource courses_ressource_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_ressource
+    ADD CONSTRAINT courses_ressource_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: django_admin_log django_admin_log_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.django_admin_log
+    ADD CONSTRAINT django_admin_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: django_content_type django_content_type_app_label_model_76bd3d3b_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.django_content_type
+    ADD CONSTRAINT django_content_type_app_label_model_76bd3d3b_uniq UNIQUE (app_label, model);
+
+
+--
+-- Name: django_content_type django_content_type_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.django_content_type
+    ADD CONSTRAINT django_content_type_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: django_migrations django_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.django_migrations
+    ADD CONSTRAINT django_migrations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: django_session django_session_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.django_session
+    ADD CONSTRAINT django_session_pkey PRIMARY KEY (session_key);
+
+
+--
+-- Name: enrollment_abandon enrollment_abandon_inscription_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_abandon
+    ADD CONSTRAINT enrollment_abandon_inscription_id_key UNIQUE (inscription_id);
+
+
+--
+-- Name: enrollment_abandon enrollment_abandon_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_abandon
+    ADD CONSTRAINT enrollment_abandon_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: enrollment_candidature enrollment_candidature_numero_candidature_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_candidature
+    ADD CONSTRAINT enrollment_candidature_numero_candidature_key UNIQUE (numero_candidature);
+
+
+--
+-- Name: enrollment_candidature enrollment_candidature_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_candidature
+    ADD CONSTRAINT enrollment_candidature_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: enrollment_document_candidature enrollment_document_candidature_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_document_candidature
+    ADD CONSTRAINT enrollment_document_candidature_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: enrollment_document_requis enrollment_document_requis_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_document_requis
+    ADD CONSTRAINT enrollment_document_requis_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: enrollment_historique enrollment_historique_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_historique
+    ADD CONSTRAINT enrollment_historique_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: enrollment_inscription enrollment_inscription_candidature_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_inscription
+    ADD CONSTRAINT enrollment_inscription_candidature_id_key UNIQUE (candidature_id);
+
+
+--
+-- Name: enrollment_inscription enrollment_inscription_numero_inscription_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_inscription
+    ADD CONSTRAINT enrollment_inscription_numero_inscription_key UNIQUE (numero_inscription);
+
+
+--
+-- Name: enrollment_inscription enrollment_inscription_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_inscription
+    ADD CONSTRAINT enrollment_inscription_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: enrollment_periode_candidature_filieres enrollment_periode_candi_periodecandidature_id_fi_cfb23125_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_periode_candidature_filieres
+    ADD CONSTRAINT enrollment_periode_candi_periodecandidature_id_fi_cfb23125_uniq UNIQUE (periodecandidature_id, filiere_id);
+
+
+--
+-- Name: enrollment_periode_candidature_filieres enrollment_periode_candidature_filieres_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_periode_candidature_filieres
+    ADD CONSTRAINT enrollment_periode_candidature_filieres_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: enrollment_periode_candidature enrollment_periode_candidature_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_periode_candidature
+    ADD CONSTRAINT enrollment_periode_candidature_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: enrollment_transfert enrollment_transfert_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_transfert
+    ADD CONSTRAINT enrollment_transfert_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: establishments_annee_academique establishments_annee_aca_etablissement_id_nom_f58a5f7b_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_annee_academique
+    ADD CONSTRAINT establishments_annee_aca_etablissement_id_nom_f58a5f7b_uniq UNIQUE (etablissement_id, nom);
+
+
+--
+-- Name: establishments_annee_academique establishments_annee_academique_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_annee_academique
+    ADD CONSTRAINT establishments_annee_academique_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: establishments_bareme_notation establishments_bareme_notation_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_bareme_notation
+    ADD CONSTRAINT establishments_bareme_notation_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: establishments_campus establishments_campus_etablissement_id_code_9ec2d7a2_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_campus
+    ADD CONSTRAINT establishments_campus_etablissement_id_code_9ec2d7a2_uniq UNIQUE (etablissement_id, code);
+
+
+--
+-- Name: establishments_campus establishments_campus_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_campus
+    ADD CONSTRAINT establishments_campus_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: establishments_etablissement establishments_etablissement_code_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_etablissement
+    ADD CONSTRAINT establishments_etablissement_code_key UNIQUE (code);
+
+
+--
+-- Name: establishments_etablissement establishments_etablissement_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_etablissement
+    ADD CONSTRAINT establishments_etablissement_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: establishments_jour_ferie establishments_jour_ferie_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_jour_ferie
+    ADD CONSTRAINT establishments_jour_ferie_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: establishments_localite establishments_localite_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_localite
+    ADD CONSTRAINT establishments_localite_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: establishments_niveau_note establishments_niveau_note_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_niveau_note
+    ADD CONSTRAINT establishments_niveau_note_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: establishments_parametres establishments_parametres_etablissement_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_parametres
+    ADD CONSTRAINT establishments_parametres_etablissement_id_key UNIQUE (etablissement_id);
+
+
+--
+-- Name: establishments_parametres establishments_parametres_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_parametres
+    ADD CONSTRAINT establishments_parametres_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: establishments_salle establishments_salle_etablissement_id_code_72bd7be5_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_salle
+    ADD CONSTRAINT establishments_salle_etablissement_id_code_72bd7be5_uniq UNIQUE (etablissement_id, code);
+
+
+--
+-- Name: establishments_salle establishments_salle_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_salle
+    ADD CONSTRAINT establishments_salle_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: establishments_type_etablissement establishments_type_etablissement_code_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_type_etablissement
+    ADD CONSTRAINT establishments_type_etablissement_code_key UNIQUE (code);
+
+
+--
+-- Name: establishments_type_etablissement establishments_type_etablissement_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_type_etablissement
+    ADD CONSTRAINT establishments_type_etablissement_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: evaluation_composition evaluation_composition_evaluation_id_apprenant_id_230c841f_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_composition
+    ADD CONSTRAINT evaluation_composition_evaluation_id_apprenant_id_230c841f_uniq UNIQUE (evaluation_id, apprenant_id);
+
+
+--
+-- Name: evaluation_composition_fichiers_composition evaluation_composition_f_composition_id_fichierco_3fd9aac1_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_composition_fichiers_composition
+    ADD CONSTRAINT evaluation_composition_f_composition_id_fichierco_3fd9aac1_uniq UNIQUE (composition_id, fichiercomposition_id);
+
+
+--
+-- Name: evaluation_composition_fichiers_composition evaluation_composition_fichiers_composition_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_composition_fichiers_composition
+    ADD CONSTRAINT evaluation_composition_fichiers_composition_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: evaluation_composition evaluation_composition_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_composition
+    ADD CONSTRAINT evaluation_composition_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: evaluation_evaluation_classes evaluation_evaluation_cl_evaluation_id_classe_id_401f2670_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_evaluation_classes
+    ADD CONSTRAINT evaluation_evaluation_cl_evaluation_id_classe_id_401f2670_uniq UNIQUE (evaluation_id, classe_id);
+
+
+--
+-- Name: evaluation_evaluation_classes evaluation_evaluation_classes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_evaluation_classes
+    ADD CONSTRAINT evaluation_evaluation_classes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: evaluation_evaluation evaluation_evaluation_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_evaluation
+    ADD CONSTRAINT evaluation_evaluation_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: evaluation_fichier_composition evaluation_fichier_composition_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_fichier_composition
+    ADD CONSTRAINT evaluation_fichier_composition_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: evaluation_note evaluation_note_apprenant_id_evaluation_id_42242974_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_note
+    ADD CONSTRAINT evaluation_note_apprenant_id_evaluation_id_42242974_uniq UNIQUE (apprenant_id, evaluation_id);
+
+
+--
+-- Name: evaluation_note evaluation_note_composition_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_note
+    ADD CONSTRAINT evaluation_note_composition_id_key UNIQUE (composition_id);
+
+
+--
+-- Name: evaluation_note evaluation_note_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_note
+    ADD CONSTRAINT evaluation_note_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: notifications_message notifications_message_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notifications_message
+    ADD CONSTRAINT notifications_message_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: notifications_notification notifications_notification_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notifications_notification
+    ADD CONSTRAINT notifications_notification_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payments_historique_paiement payments_historique_paiement_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_historique_paiement
+    ADD CONSTRAINT payments_historique_paiement_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payments_inscription_paiement payments_inscription_paiement_inscription_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_inscription_paiement
+    ADD CONSTRAINT payments_inscription_paiement_inscription_id_key UNIQUE (inscription_id);
+
+
+--
+-- Name: payments_inscription_paiement payments_inscription_paiement_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_inscription_paiement
+    ADD CONSTRAINT payments_inscription_paiement_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payments_paiement payments_paiement_numero_transaction_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_paiement
+    ADD CONSTRAINT payments_paiement_numero_transaction_key UNIQUE (numero_transaction);
+
+
+--
+-- Name: payments_paiement payments_paiement_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_paiement
+    ADD CONSTRAINT payments_paiement_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payments_plan_paiement payments_plan_paiement_filiere_id_niveau_id_ann_4b28c979_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_plan_paiement
+    ADD CONSTRAINT payments_plan_paiement_filiere_id_niveau_id_ann_4b28c979_uniq UNIQUE (filiere_id, niveau_id, annee_academique_id);
+
+
+--
+-- Name: payments_plan_paiement payments_plan_paiement_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_plan_paiement
+    ADD CONSTRAINT payments_plan_paiement_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payments_remboursement_paiement payments_remboursement_paiement_paiement_original_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_remboursement_paiement
+    ADD CONSTRAINT payments_remboursement_paiement_paiement_original_id_key UNIQUE (paiement_original_id);
+
+
+--
+-- Name: payments_remboursement_paiement payments_remboursement_paiement_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_remboursement_paiement
+    ADD CONSTRAINT payments_remboursement_paiement_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payments_tranche_paiement payments_tranche_paiement_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_tranche_paiement
+    ADD CONSTRAINT payments_tranche_paiement_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payments_tranche_paiement payments_tranche_paiement_plan_id_numero_4bd295e7_uniq; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_tranche_paiement
+    ADD CONSTRAINT payments_tranche_paiement_plan_id_numero_4bd295e7_uniq UNIQUE (plan_id, numero);
+
+
+--
+-- Name: academique_classe_annee_academique_id_78e53c4e; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX academique_classe_annee_academique_id_78e53c4e ON public.academique_classe USING btree (annee_academique_id);
+
+
+--
+-- Name: academique_classe_etablissement_id_32ea5173; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX academique_classe_etablissement_id_32ea5173 ON public.academique_classe USING btree (etablissement_id);
+
+
+--
+-- Name: academique_classe_niveau_id_30a5860f; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX academique_classe_niveau_id_30a5860f ON public.academique_classe USING btree (niveau_id);
+
+
+--
+-- Name: academique_classe_professeur_principal_id_ef7614b3; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX academique_classe_professeur_principal_id_ef7614b3 ON public.academique_classe USING btree (professeur_principal_id);
+
+
+--
+-- Name: academique_classe_salle_principale_id_9649c2d2; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX academique_classe_salle_principale_id_9649c2d2 ON public.academique_classe USING btree (salle_principale_id);
+
+
+--
+-- Name: academique_departement_chef_id_52f96e24; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX academique_departement_chef_id_52f96e24 ON public.academique_departement USING btree (chef_id);
+
+
+--
+-- Name: academique_departement_etablissement_id_f1db103c; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX academique_departement_etablissement_id_f1db103c ON public.academique_departement USING btree (etablissement_id);
+
+
+--
+-- Name: academique_filiere_departement_id_da6eaa34; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX academique_filiere_departement_id_da6eaa34 ON public.academique_filiere USING btree (departement_id);
+
+
+--
+-- Name: academique_filiere_etablissement_id_459a5dcf; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX academique_filiere_etablissement_id_459a5dcf ON public.academique_filiere USING btree (etablissement_id);
+
+
+--
+-- Name: academique_niveau_filiere_id_fa6449ed; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX academique_niveau_filiere_id_fa6449ed ON public.academique_niveau USING btree (filiere_id);
+
+
+--
+-- Name: academique_periode_annee_academique_id_074063d8; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX academique_periode_annee_academique_id_074063d8 ON public.academique_periode USING btree (annee_academique_id);
+
+
+--
+-- Name: academique_periode_etablissement_id_2306920d; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX academique_periode_etablissement_id_2306920d ON public.academique_periode USING btree (etablissement_id);
+
+
+--
+-- Name: academique_programme_approuve_par_id_9d010e45; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX academique_programme_approuve_par_id_9d010e45 ON public.academique_programme USING btree (approuve_par_id);
+
+
+--
+-- Name: auth_group_name_a6ea08ec_like; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX auth_group_name_a6ea08ec_like ON public.auth_group USING btree (name varchar_pattern_ops);
+
+
+--
+-- Name: auth_group_permissions_group_id_b120cbf9; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX auth_group_permissions_group_id_b120cbf9 ON public.auth_group_permissions USING btree (group_id);
+
+
+--
+-- Name: auth_group_permissions_permission_id_84c5c92e; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX auth_group_permissions_permission_id_84c5c92e ON public.auth_group_permissions USING btree (permission_id);
+
+
+--
+-- Name: auth_permission_content_type_id_2f476e4b; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX auth_permission_content_type_id_2f476e4b ON public.auth_permission USING btree (content_type_id);
+
+
+--
+-- Name: comptes_password_reset_token_token_15177116_like; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_password_reset_token_token_15177116_like ON public.comptes_password_reset_token USING btree (token varchar_pattern_ops);
+
+
+--
+-- Name: comptes_profil_apprenant_annee_academique_id_515e9f89; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_profil_apprenant_annee_academique_id_515e9f89 ON public.comptes_profil_apprenant USING btree (annee_academique_id);
+
+
+--
+-- Name: comptes_profil_apprenant_classe_actuelle_id_0972434a; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_profil_apprenant_classe_actuelle_id_0972434a ON public.comptes_profil_apprenant USING btree (classe_actuelle_id);
+
+
+--
+-- Name: comptes_profil_apprenant_niveau_actuel_id_06e0f4e1; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_profil_apprenant_niveau_actuel_id_06e0f4e1 ON public.comptes_profil_apprenant USING btree (niveau_actuel_id);
+
+
+--
+-- Name: comptes_profil_enseignant_id_employe_bfbe7e9b_like; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_profil_enseignant_id_employe_bfbe7e9b_like ON public.comptes_profil_enseignant USING btree (id_employe varchar_pattern_ops);
+
+
+--
+-- Name: comptes_profil_enseignant_matieres_matiere_id_5b5f81fc; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_profil_enseignant_matieres_matiere_id_5b5f81fc ON public.comptes_profil_enseignant_matieres USING btree (matiere_id);
+
+
+--
+-- Name: comptes_profil_enseignant_matieres_profilenseignant_id_75ef5bdb; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_profil_enseignant_matieres_profilenseignant_id_75ef5bdb ON public.comptes_profil_enseignant_matieres USING btree (profilenseignant_id);
+
+
+--
+-- Name: comptes_utilisateur_cree_par_id_183063fe; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_utilisateur_cree_par_id_183063fe ON public.comptes_utilisateur USING btree (cree_par_id);
+
+
+--
+-- Name: comptes_utilisateur_depart_departement_id_9052f878; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_utilisateur_depart_departement_id_9052f878 ON public.comptes_utilisateur_departements_intervention USING btree (departement_id);
+
+
+--
+-- Name: comptes_utilisateur_depart_utilisateur_id_80b00a6b; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_utilisateur_depart_utilisateur_id_80b00a6b ON public.comptes_utilisateur_departements_intervention USING btree (utilisateur_id);
+
+
+--
+-- Name: comptes_utilisateur_departement_id_a4cedce3; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_utilisateur_departement_id_a4cedce3 ON public.comptes_utilisateur USING btree (departement_id);
+
+
+--
+-- Name: comptes_utilisateur_etablissement_id_36d566d5; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_utilisateur_etablissement_id_36d566d5 ON public.comptes_utilisateur USING btree (etablissement_id);
+
+
+--
+-- Name: comptes_utilisateur_groups_group_id_40550a17; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_utilisateur_groups_group_id_40550a17 ON public.comptes_utilisateur_groups USING btree (group_id);
+
+
+--
+-- Name: comptes_utilisateur_groups_utilisateur_id_2c4242fe; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_utilisateur_groups_utilisateur_id_2c4242fe ON public.comptes_utilisateur_groups USING btree (utilisateur_id);
+
+
+--
+-- Name: comptes_utilisateur_matricule_b3966998_like; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_utilisateur_matricule_b3966998_like ON public.comptes_utilisateur USING btree (matricule varchar_pattern_ops);
+
+
+--
+-- Name: comptes_utilisateur_user_permissions_permission_id_6de48079; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_utilisateur_user_permissions_permission_id_6de48079 ON public.comptes_utilisateur_user_permissions USING btree (permission_id);
+
+
+--
+-- Name: comptes_utilisateur_user_permissions_utilisateur_id_edaf0051; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_utilisateur_user_permissions_utilisateur_id_edaf0051 ON public.comptes_utilisateur_user_permissions USING btree (utilisateur_id);
+
+
+--
+-- Name: comptes_utilisateur_username_aeb08d46_like; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX comptes_utilisateur_username_aeb08d46_like ON public.comptes_utilisateur USING btree (username varchar_pattern_ops);
+
+
+--
+-- Name: courses_cahier_texte_rempli_par_id_81cf20f1; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_cahier_texte_rempli_par_id_81cf20f1 ON public.courses_cahier_texte USING btree (rempli_par_id);
+
+
+--
+-- Name: courses_cou_date_pr_b46dad_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_cou_date_pr_b46dad_idx ON public.courses_cours USING btree (date_prevue, classe_id);
+
+
+--
+-- Name: courses_cou_enseign_96eb43_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_cou_enseign_96eb43_idx ON public.courses_cours USING btree (enseignant_id, date_prevue);
+
+
+--
+-- Name: courses_cours_classe_id_afb55c98; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_cours_classe_id_afb55c98 ON public.courses_cours USING btree (classe_id);
+
+
+--
+-- Name: courses_cours_enseignant_id_0408751c; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_cours_enseignant_id_0408751c ON public.courses_cours USING btree (enseignant_id);
+
+
+--
+-- Name: courses_cours_matiere_id_4c4ccc7a; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_cours_matiere_id_4c4ccc7a ON public.courses_cours USING btree (matiere_id);
+
+
+--
+-- Name: courses_cours_periode_academique_id_4435d14e; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_cours_periode_academique_id_4435d14e ON public.courses_cours USING btree (periode_academique_id);
+
+
+--
+-- Name: courses_cours_salle_id_642a142d; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_cours_salle_id_642a142d ON public.courses_cours USING btree (salle_id);
+
+
+--
+-- Name: courses_creneau_emploi_du_temps_cours_id_15d4cfa3; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_creneau_emploi_du_temps_cours_id_15d4cfa3 ON public.courses_creneau_emploi_du_temps USING btree (cours_id);
+
+
+--
+-- Name: courses_creneau_emploi_du_temps_emploi_du_temps_id_b6e09283; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_creneau_emploi_du_temps_emploi_du_temps_id_b6e09283 ON public.courses_creneau_emploi_du_temps USING btree (emploi_du_temps_id);
+
+
+--
+-- Name: courses_creneau_horaire_emploi_du_temps_id_d0c58ee6; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_creneau_horaire_emploi_du_temps_id_d0c58ee6 ON public.courses_creneau_horaire USING btree (emploi_du_temps_id);
+
+
+--
+-- Name: courses_creneau_horaire_enseignant_id_084e9e6f; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_creneau_horaire_enseignant_id_084e9e6f ON public.courses_creneau_horaire USING btree (enseignant_id);
+
+
+--
+-- Name: courses_creneau_horaire_matiere_module_id_4fb7f1fd; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_creneau_horaire_matiere_module_id_4fb7f1fd ON public.courses_creneau_horaire USING btree (matiere_module_id);
+
+
+--
+-- Name: courses_creneau_horaire_salle_id_fb813a0b; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_creneau_horaire_salle_id_fb813a0b ON public.courses_creneau_horaire USING btree (salle_id);
+
+
+--
+-- Name: courses_emploi_du_temps_classe_id_8cb44665; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_emploi_du_temps_classe_id_8cb44665 ON public.courses_emploi_du_temps USING btree (classe_id);
+
+
+--
+-- Name: courses_emploi_du_temps_cree_par_id_79b17bf6; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_emploi_du_temps_cree_par_id_79b17bf6 ON public.courses_emploi_du_temps USING btree (cree_par_id);
+
+
+--
+-- Name: courses_emploi_du_temps_enseignant_id_a8487617; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_emploi_du_temps_enseignant_id_a8487617 ON public.courses_emploi_du_temps USING btree (enseignant_id);
+
+
+--
+-- Name: courses_emploi_du_temps_periode_academique_id_07780613; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_emploi_du_temps_periode_academique_id_07780613 ON public.courses_emploi_du_temps USING btree (periode_academique_id);
+
+
+--
+-- Name: courses_matiere_code_69ed0b13_like; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_matiere_code_69ed0b13_like ON public.courses_matiere USING btree (code varchar_pattern_ops);
+
+
+--
+-- Name: courses_matiere_enseignant_responsable_id_f5066570; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_matiere_enseignant_responsable_id_f5066570 ON public.courses_matiere USING btree (enseignant_responsable_id);
+
+
+--
+-- Name: courses_matiere_module_enseignant_id_3da7130b; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_matiere_module_enseignant_id_3da7130b ON public.courses_matiere_module USING btree (enseignant_id);
+
+
+--
+-- Name: courses_matiere_module_id_d0d47f52; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_matiere_module_id_d0d47f52 ON public.courses_matiere USING btree (module_id);
+
+
+--
+-- Name: courses_matiere_module_matiere_id_0463ea66; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_matiere_module_matiere_id_0463ea66 ON public.courses_matiere_module USING btree (matiere_id);
+
+
+--
+-- Name: courses_matiere_module_module_id_db0dfda3; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_matiere_module_module_id_db0dfda3 ON public.courses_matiere_module USING btree (module_id);
+
+
+--
+-- Name: courses_matiere_niveau_id_c5e268cb; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_matiere_niveau_id_c5e268cb ON public.courses_matiere USING btree (niveau_id);
+
+
+--
+-- Name: courses_module_coordinateur_id_eadc2927; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_module_coordinateur_id_eadc2927 ON public.courses_module USING btree (coordinateur_id);
+
+
+--
+-- Name: courses_module_niveau_id_d4925fca; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_module_niveau_id_d4925fca ON public.courses_module USING btree (niveau_id);
+
+
+--
+-- Name: courses_module_prerequis_from_module_id_e8307003; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_module_prerequis_from_module_id_e8307003 ON public.courses_module_prerequis USING btree (from_module_id);
+
+
+--
+-- Name: courses_module_prerequis_to_module_id_8ac73549; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_module_prerequis_to_module_id_8ac73549 ON public.courses_module_prerequis USING btree (to_module_id);
+
+
+--
+-- Name: courses_presence_cours_id_c1219dbc; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_presence_cours_id_c1219dbc ON public.courses_presence USING btree (cours_id);
+
+
+--
+-- Name: courses_presence_etudiant_id_867137ad; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_presence_etudiant_id_867137ad ON public.courses_presence USING btree (etudiant_id);
+
+
+--
+-- Name: courses_presence_valide_par_id_fd86a593; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_presence_valide_par_id_fd86a593 ON public.courses_presence USING btree (valide_par_id);
+
+
+--
+-- Name: courses_ressource_cours_id_bbd1d44a; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX courses_ressource_cours_id_bbd1d44a ON public.courses_ressource USING btree (cours_id);
+
+
+--
+-- Name: django_admin_log_content_type_id_c4bce8eb; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX django_admin_log_content_type_id_c4bce8eb ON public.django_admin_log USING btree (content_type_id);
+
+
+--
+-- Name: django_admin_log_user_id_c564eba6; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX django_admin_log_user_id_c564eba6 ON public.django_admin_log USING btree (user_id);
+
+
+--
+-- Name: django_session_expire_date_a5c62663; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX django_session_expire_date_a5c62663 ON public.django_session USING btree (expire_date);
+
+
+--
+-- Name: django_session_session_key_c0390e0f_like; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX django_session_session_key_c0390e0f_like ON public.django_session USING btree (session_key varchar_pattern_ops);
+
+
+--
+-- Name: enrollment__apprena_8178b7_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment__apprena_8178b7_idx ON public.enrollment_inscription USING btree (apprenant_id, statut);
+
+
+--
+-- Name: enrollment__classe__8574a2_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment__classe__8574a2_idx ON public.enrollment_inscription USING btree (classe_assignee_id, statut);
+
+
+--
+-- Name: enrollment__email_ce4083_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment__email_ce4083_idx ON public.enrollment_candidature USING btree (email, statut);
+
+
+--
+-- Name: enrollment__etablis_259019_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment__etablis_259019_idx ON public.enrollment_candidature USING btree (etablissement_id, statut);
+
+
+--
+-- Name: enrollment__filiere_a981a6_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment__filiere_a981a6_idx ON public.enrollment_candidature USING btree (filiere_id, niveau_id, annee_academique_id);
+
+
+--
+-- Name: enrollment_abandon_traite_par_id_c5831f2e; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_abandon_traite_par_id_c5831f2e ON public.enrollment_abandon USING btree (traite_par_id);
+
+
+--
+-- Name: enrollment_candidature_annee_academique_id_459a12aa; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_candidature_annee_academique_id_459a12aa ON public.enrollment_candidature USING btree (annee_academique_id);
+
+
+--
+-- Name: enrollment_candidature_etablissement_id_72e8a4fa; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_candidature_etablissement_id_72e8a4fa ON public.enrollment_candidature USING btree (etablissement_id);
+
+
+--
+-- Name: enrollment_candidature_examine_par_id_59f76f6d; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_candidature_examine_par_id_59f76f6d ON public.enrollment_candidature USING btree (examine_par_id);
+
+
+--
+-- Name: enrollment_candidature_filiere_id_4cafc577; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_candidature_filiere_id_4cafc577 ON public.enrollment_candidature USING btree (filiere_id);
+
+
+--
+-- Name: enrollment_candidature_niveau_id_6bcf2bd8; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_candidature_niveau_id_6bcf2bd8 ON public.enrollment_candidature USING btree (niveau_id);
+
+
+--
+-- Name: enrollment_candidature_numero_candidature_2b52d26c_like; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_candidature_numero_candidature_2b52d26c_like ON public.enrollment_candidature USING btree (numero_candidature varchar_pattern_ops);
+
+
+--
+-- Name: enrollment_document_candidature_candidature_id_4ad27c37; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_document_candidature_candidature_id_4ad27c37 ON public.enrollment_document_candidature USING btree (candidature_id);
+
+
+--
+-- Name: enrollment_document_candidature_valide_par_id_0075b867; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_document_candidature_valide_par_id_0075b867 ON public.enrollment_document_candidature USING btree (valide_par_id);
+
+
+--
+-- Name: enrollment_document_requis_filiere_id_dc959dba; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_document_requis_filiere_id_dc959dba ON public.enrollment_document_requis USING btree (filiere_id);
+
+
+--
+-- Name: enrollment_document_requis_niveau_id_9034bb0c; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_document_requis_niveau_id_9034bb0c ON public.enrollment_document_requis USING btree (niveau_id);
+
+
+--
+-- Name: enrollment_historique_effectue_par_id_83c89c89; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_historique_effectue_par_id_83c89c89 ON public.enrollment_historique USING btree (effectue_par_id);
+
+
+--
+-- Name: enrollment_historique_inscription_id_b393e621; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_historique_inscription_id_b393e621 ON public.enrollment_historique USING btree (inscription_id);
+
+
+--
+-- Name: enrollment_inscription_apprenant_id_7454b438; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_inscription_apprenant_id_7454b438 ON public.enrollment_inscription USING btree (apprenant_id);
+
+
+--
+-- Name: enrollment_inscription_classe_assignee_id_d2fc9a5f; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_inscription_classe_assignee_id_d2fc9a5f ON public.enrollment_inscription USING btree (classe_assignee_id);
+
+
+--
+-- Name: enrollment_inscription_cree_par_id_3b4555f9; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_inscription_cree_par_id_3b4555f9 ON public.enrollment_inscription USING btree (cree_par_id);
+
+
+--
+-- Name: enrollment_inscription_etudiant_id_9144586c; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_inscription_etudiant_id_9144586c ON public.enrollment_inscription USING btree (apprenant_id);
+
+
+--
+-- Name: enrollment_inscription_numero_inscription_047fd97f_like; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_inscription_numero_inscription_047fd97f_like ON public.enrollment_inscription USING btree (numero_inscription varchar_pattern_ops);
+
+
+--
+-- Name: enrollment_periode_candida_periodecandidature_id_be7eeb33; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_periode_candida_periodecandidature_id_be7eeb33 ON public.enrollment_periode_candidature_filieres USING btree (periodecandidature_id);
+
+
+--
+-- Name: enrollment_periode_candidature_annee_academique_id_7d16f237; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_periode_candidature_annee_academique_id_7d16f237 ON public.enrollment_periode_candidature USING btree (annee_academique_id);
+
+
+--
+-- Name: enrollment_periode_candidature_etablissement_id_400d2b14; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_periode_candidature_etablissement_id_400d2b14 ON public.enrollment_periode_candidature USING btree (etablissement_id);
+
+
+--
+-- Name: enrollment_periode_candidature_filieres_filiere_id_1f4a40b0; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_periode_candidature_filieres_filiere_id_1f4a40b0 ON public.enrollment_periode_candidature_filieres USING btree (filiere_id);
+
+
+--
+-- Name: enrollment_transfert_approuve_par_id_8af28017; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_transfert_approuve_par_id_8af28017 ON public.enrollment_transfert USING btree (approuve_par_id);
+
+
+--
+-- Name: enrollment_transfert_classe_destination_id_a064a956; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_transfert_classe_destination_id_a064a956 ON public.enrollment_transfert USING btree (classe_destination_id);
+
+
+--
+-- Name: enrollment_transfert_classe_origine_id_050bee78; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_transfert_classe_origine_id_050bee78 ON public.enrollment_transfert USING btree (classe_origine_id);
+
+
+--
+-- Name: enrollment_transfert_demande_par_id_facefc2a; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_transfert_demande_par_id_facefc2a ON public.enrollment_transfert USING btree (demande_par_id);
+
+
+--
+-- Name: enrollment_transfert_inscription_id_42169b81; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX enrollment_transfert_inscription_id_42169b81 ON public.enrollment_transfert USING btree (inscription_id);
+
+
+--
+-- Name: establishments_annee_academique_etablissement_id_c7f85289; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX establishments_annee_academique_etablissement_id_c7f85289 ON public.establishments_annee_academique USING btree (etablissement_id);
+
+
+--
+-- Name: establishments_bareme_notation_etablissement_id_a3f83f8b; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX establishments_bareme_notation_etablissement_id_a3f83f8b ON public.establishments_bareme_notation USING btree (etablissement_id);
+
+
+--
+-- Name: establishments_campus_etablissement_id_f790cd6c; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX establishments_campus_etablissement_id_f790cd6c ON public.establishments_campus USING btree (etablissement_id);
+
+
+--
+-- Name: establishments_campus_localite_id_b320a7a5; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX establishments_campus_localite_id_b320a7a5 ON public.establishments_campus USING btree (localite_id);
+
+
+--
+-- Name: establishments_campus_responsable_campus_id_d3c0a4aa; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX establishments_campus_responsable_campus_id_d3c0a4aa ON public.establishments_campus USING btree (responsable_campus_id);
+
+
+--
+-- Name: establishments_etablissement_code_bc6f564d_like; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX establishments_etablissement_code_bc6f564d_like ON public.establishments_etablissement USING btree (code varchar_pattern_ops);
+
+
+--
+-- Name: establishments_etablissement_localite_id_9d1e0527; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX establishments_etablissement_localite_id_9d1e0527 ON public.establishments_etablissement USING btree (localite_id);
+
+
+--
+-- Name: establishments_etablissement_type_etablissement_id_eb376534; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX establishments_etablissement_type_etablissement_id_eb376534 ON public.establishments_etablissement USING btree (type_etablissement_id);
+
+
+--
+-- Name: establishments_jour_ferie_etablissement_id_a512ca09; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX establishments_jour_ferie_etablissement_id_a512ca09 ON public.establishments_jour_ferie USING btree (etablissement_id);
+
+
+--
+-- Name: establishments_niveau_note_bareme_notation_id_38340b19; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX establishments_niveau_note_bareme_notation_id_38340b19 ON public.establishments_niveau_note USING btree (bareme_notation_id);
+
+
+--
+-- Name: establishments_parametres_bareme_notation_defaut_id_93254cc1; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX establishments_parametres_bareme_notation_defaut_id_93254cc1 ON public.establishments_parametres USING btree (bareme_notation_defaut_id);
+
+
+--
+-- Name: establishments_salle_etablissement_id_3a796d13; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX establishments_salle_etablissement_id_3a796d13 ON public.establishments_salle USING btree (etablissement_id);
+
+
+--
+-- Name: establishments_type_etablissement_code_d0034fe1_like; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX establishments_type_etablissement_code_d0034fe1_like ON public.establishments_type_etablissement USING btree (code varchar_pattern_ops);
+
+
+--
+-- Name: evaluation_composition_apprenant_id_aa5316ef; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX evaluation_composition_apprenant_id_aa5316ef ON public.evaluation_composition USING btree (apprenant_id);
+
+
+--
+-- Name: evaluation_composition_corrigee_par_id_bf3f2f48; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX evaluation_composition_corrigee_par_id_bf3f2f48 ON public.evaluation_composition USING btree (corrigee_par_id);
+
+
+--
+-- Name: evaluation_composition_evaluation_id_113b8d13; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX evaluation_composition_evaluation_id_113b8d13 ON public.evaluation_composition USING btree (evaluation_id);
+
+
+--
+-- Name: evaluation_composition_fic_composition_id_3d8eb9c2; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX evaluation_composition_fic_composition_id_3d8eb9c2 ON public.evaluation_composition_fichiers_composition USING btree (composition_id);
+
+
+--
+-- Name: evaluation_composition_fic_fichiercomposition_id_75d72f66; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX evaluation_composition_fic_fichiercomposition_id_75d72f66 ON public.evaluation_composition_fichiers_composition USING btree (fichiercomposition_id);
+
+
+--
+-- Name: evaluation_evaluation_classes_classe_id_9d787db1; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX evaluation_evaluation_classes_classe_id_9d787db1 ON public.evaluation_evaluation_classes USING btree (classe_id);
+
+
+--
+-- Name: evaluation_evaluation_classes_evaluation_id_c3f9359d; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX evaluation_evaluation_classes_evaluation_id_c3f9359d ON public.evaluation_evaluation_classes USING btree (evaluation_id);
+
+
+--
+-- Name: evaluation_evaluation_enseignant_id_46f26afd; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX evaluation_evaluation_enseignant_id_46f26afd ON public.evaluation_evaluation USING btree (enseignant_id);
+
+
+--
+-- Name: evaluation_evaluation_matiere_id_fcb552ab; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX evaluation_evaluation_matiere_id_fcb552ab ON public.evaluation_evaluation USING btree (matiere_id);
+
+
+--
+-- Name: evaluation_fichier_composition_uploade_par_id_ce8ff40f; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX evaluation_fichier_composition_uploade_par_id_ce8ff40f ON public.evaluation_fichier_composition USING btree (uploade_par_id);
+
+
+--
+-- Name: evaluation_note_apprenant_id_acc09ea7; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX evaluation_note_apprenant_id_acc09ea7 ON public.evaluation_note USING btree (apprenant_id);
+
+
+--
+-- Name: evaluation_note_attribuee_par_id_3fa342f9; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX evaluation_note_attribuee_par_id_3fa342f9 ON public.evaluation_note USING btree (attribuee_par_id);
+
+
+--
+-- Name: evaluation_note_evaluation_id_ec563b29; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX evaluation_note_evaluation_id_ec563b29 ON public.evaluation_note USING btree (evaluation_id);
+
+
+--
+-- Name: evaluation_note_matiere_id_b3d5f8ba; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX evaluation_note_matiere_id_b3d5f8ba ON public.evaluation_note USING btree (matiere_id);
+
+
+--
+-- Name: notifications_message_recipient_id_f5c7dd5a; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX notifications_message_recipient_id_f5c7dd5a ON public.notifications_message USING btree (recipient_id);
+
+
+--
+-- Name: notifications_message_sender_id_15890649; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX notifications_message_sender_id_15890649 ON public.notifications_message USING btree (sender_id);
+
+
+--
+-- Name: notifications_notification_user_id_b5e8c0ff; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX notifications_notification_user_id_b5e8c0ff ON public.notifications_notification USING btree (user_id);
+
+
+--
+-- Name: payments_historique_paiement_paiement_id_76562e47; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_historique_paiement_paiement_id_76562e47 ON public.payments_historique_paiement USING btree (paiement_id);
+
+
+--
+-- Name: payments_historique_paiement_utilisateur_id_3e108b3b; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_historique_paiement_utilisateur_id_3e108b3b ON public.payments_historique_paiement USING btree (utilisateur_id);
+
+
+--
+-- Name: payments_inscription_paiement_plan_id_46bb10cb; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_inscription_paiement_plan_id_46bb10cb ON public.payments_inscription_paiement USING btree (plan_id);
+
+
+--
+-- Name: payments_pa_inscrip_cd480e_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_pa_inscrip_cd480e_idx ON public.payments_paiement USING btree (inscription_paiement_id, statut);
+
+
+--
+-- Name: payments_pa_referen_332151_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_pa_referen_332151_idx ON public.payments_paiement USING btree (reference_externe);
+
+
+--
+-- Name: payments_pa_statut_30d063_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_pa_statut_30d063_idx ON public.payments_paiement USING btree (statut, date_paiement);
+
+
+--
+-- Name: payments_paiement_inscription_paiement_id_ddbb4fc5; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_paiement_inscription_paiement_id_ddbb4fc5 ON public.payments_paiement USING btree (inscription_paiement_id);
+
+
+--
+-- Name: payments_paiement_numero_transaction_8cff57f7_like; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_paiement_numero_transaction_8cff57f7_like ON public.payments_paiement USING btree (numero_transaction varchar_pattern_ops);
+
+
+--
+-- Name: payments_paiement_traite_par_id_d017e388; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_paiement_traite_par_id_d017e388 ON public.payments_paiement USING btree (traite_par_id);
+
+
+--
+-- Name: payments_paiement_tranche_id_7e0fa7dd; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_paiement_tranche_id_7e0fa7dd ON public.payments_paiement USING btree (tranche_id);
+
+
+--
+-- Name: payments_plan_paiement_annee_academique_id_1d675106; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_plan_paiement_annee_academique_id_1d675106 ON public.payments_plan_paiement USING btree (annee_academique_id);
+
+
+--
+-- Name: payments_plan_paiement_cree_par_id_c1daca07; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_plan_paiement_cree_par_id_c1daca07 ON public.payments_plan_paiement USING btree (cree_par_id);
+
+
+--
+-- Name: payments_plan_paiement_filiere_id_b1fd9fd3; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_plan_paiement_filiere_id_b1fd9fd3 ON public.payments_plan_paiement USING btree (filiere_id);
+
+
+--
+-- Name: payments_plan_paiement_niveau_id_7f47627a; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_plan_paiement_niveau_id_7f47627a ON public.payments_plan_paiement USING btree (niveau_id);
+
+
+--
+-- Name: payments_remboursement_paiement_demande_par_id_65ae4c5d; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_remboursement_paiement_demande_par_id_65ae4c5d ON public.payments_remboursement_paiement USING btree (demande_par_id);
+
+
+--
+-- Name: payments_remboursement_paiement_traite_par_id_ecbc54dc; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_remboursement_paiement_traite_par_id_ecbc54dc ON public.payments_remboursement_paiement USING btree (traite_par_id);
+
+
+--
+-- Name: payments_tranche_paiement_plan_id_90e9c2de; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX payments_tranche_paiement_plan_id_90e9c2de ON public.payments_tranche_paiement USING btree (plan_id);
+
+
+--
+-- Name: unique_candidature_active; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX unique_candidature_active ON public.enrollment_candidature USING btree (email, etablissement_id, filiere_id, niveau_id, annee_academique_id) WHERE ((statut)::text = ANY ((ARRAY['SOUMISE'::character varying, 'EN_COURS_EXAMEN'::character varying, 'APPROUVEE'::character varying])::text[]));
+
+
+--
+-- Name: academique_classe academique_classe_annee_academique_id_78e53c4e_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_classe
+    ADD CONSTRAINT academique_classe_annee_academique_id_78e53c4e_fk_establish FOREIGN KEY (annee_academique_id) REFERENCES public.establishments_annee_academique(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: academique_classe academique_classe_etablissement_id_32ea5173_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_classe
+    ADD CONSTRAINT academique_classe_etablissement_id_32ea5173_fk_establish FOREIGN KEY (etablissement_id) REFERENCES public.establishments_etablissement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: academique_classe academique_classe_niveau_id_30a5860f_fk_academique_niveau_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_classe
+    ADD CONSTRAINT academique_classe_niveau_id_30a5860f_fk_academique_niveau_id FOREIGN KEY (niveau_id) REFERENCES public.academique_niveau(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: academique_classe academique_classe_professeur_principal_ef7614b3_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_classe
+    ADD CONSTRAINT academique_classe_professeur_principal_ef7614b3_fk_comptes_u FOREIGN KEY (professeur_principal_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: academique_classe academique_classe_salle_principale_id_9649c2d2_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_classe
+    ADD CONSTRAINT academique_classe_salle_principale_id_9649c2d2_fk_establish FOREIGN KEY (salle_principale_id) REFERENCES public.establishments_salle(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: academique_departement academique_departeme_chef_id_52f96e24_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_departement
+    ADD CONSTRAINT academique_departeme_chef_id_52f96e24_fk_comptes_u FOREIGN KEY (chef_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: academique_departement academique_departeme_etablissement_id_f1db103c_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_departement
+    ADD CONSTRAINT academique_departeme_etablissement_id_f1db103c_fk_establish FOREIGN KEY (etablissement_id) REFERENCES public.establishments_etablissement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: academique_filiere academique_filiere_departement_id_da6eaa34_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_filiere
+    ADD CONSTRAINT academique_filiere_departement_id_da6eaa34_fk_academiqu FOREIGN KEY (departement_id) REFERENCES public.academique_departement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: academique_filiere academique_filiere_etablissement_id_459a5dcf_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_filiere
+    ADD CONSTRAINT academique_filiere_etablissement_id_459a5dcf_fk_establish FOREIGN KEY (etablissement_id) REFERENCES public.establishments_etablissement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: academique_niveau academique_niveau_filiere_id_fa6449ed_fk_academique_filiere_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_niveau
+    ADD CONSTRAINT academique_niveau_filiere_id_fa6449ed_fk_academique_filiere_id FOREIGN KEY (filiere_id) REFERENCES public.academique_filiere(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: academique_periode academique_periode_annee_academique_id_074063d8_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_periode
+    ADD CONSTRAINT academique_periode_annee_academique_id_074063d8_fk_establish FOREIGN KEY (annee_academique_id) REFERENCES public.establishments_annee_academique(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: academique_periode academique_periode_etablissement_id_2306920d_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_periode
+    ADD CONSTRAINT academique_periode_etablissement_id_2306920d_fk_establish FOREIGN KEY (etablissement_id) REFERENCES public.establishments_etablissement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: academique_programme academique_programme_approuve_par_id_9d010e45_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_programme
+    ADD CONSTRAINT academique_programme_approuve_par_id_9d010e45_fk_comptes_u FOREIGN KEY (approuve_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: academique_programme academique_programme_filiere_id_eada03d6_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.academique_programme
+    ADD CONSTRAINT academique_programme_filiere_id_eada03d6_fk_academiqu FOREIGN KEY (filiere_id) REFERENCES public.academique_filiere(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: auth_group_permissions auth_group_permissio_permission_id_84c5c92e_fk_auth_perm; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auth_group_permissions
+    ADD CONSTRAINT auth_group_permissio_permission_id_84c5c92e_fk_auth_perm FOREIGN KEY (permission_id) REFERENCES public.auth_permission(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: auth_group_permissions auth_group_permissions_group_id_b120cbf9_fk_auth_group_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auth_group_permissions
+    ADD CONSTRAINT auth_group_permissions_group_id_b120cbf9_fk_auth_group_id FOREIGN KEY (group_id) REFERENCES public.auth_group(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: auth_permission auth_permission_content_type_id_2f476e4b_fk_django_co; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.auth_permission
+    ADD CONSTRAINT auth_permission_content_type_id_2f476e4b_fk_django_co FOREIGN KEY (content_type_id) REFERENCES public.django_content_type(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_password_reset_token comptes_password_res_user_id_b621034c_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_password_reset_token
+    ADD CONSTRAINT comptes_password_res_user_id_b621034c_fk_comptes_u FOREIGN KEY (user_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_profil_apprenant comptes_profil_appre_annee_academique_id_515e9f89_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_apprenant
+    ADD CONSTRAINT comptes_profil_appre_annee_academique_id_515e9f89_fk_establish FOREIGN KEY (annee_academique_id) REFERENCES public.establishments_annee_academique(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_profil_apprenant comptes_profil_appre_classe_actuelle_id_0972434a_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_apprenant
+    ADD CONSTRAINT comptes_profil_appre_classe_actuelle_id_0972434a_fk_academiqu FOREIGN KEY (classe_actuelle_id) REFERENCES public.academique_classe(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_profil_apprenant comptes_profil_appre_niveau_actuel_id_06e0f4e1_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_apprenant
+    ADD CONSTRAINT comptes_profil_appre_niveau_actuel_id_06e0f4e1_fk_academiqu FOREIGN KEY (niveau_actuel_id) REFERENCES public.academique_niveau(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_profil_apprenant comptes_profil_appre_utilisateur_id_e8f45308_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_apprenant
+    ADD CONSTRAINT comptes_profil_appre_utilisateur_id_e8f45308_fk_comptes_u FOREIGN KEY (utilisateur_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_profil_enseignant_matieres comptes_profil_ensei_matiere_id_5b5f81fc_fk_courses_m; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_enseignant_matieres
+    ADD CONSTRAINT comptes_profil_ensei_matiere_id_5b5f81fc_fk_courses_m FOREIGN KEY (matiere_id) REFERENCES public.courses_matiere(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_profil_enseignant_matieres comptes_profil_ensei_profilenseignant_id_75ef5bdb_fk_comptes_p; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_enseignant_matieres
+    ADD CONSTRAINT comptes_profil_ensei_profilenseignant_id_75ef5bdb_fk_comptes_p FOREIGN KEY (profilenseignant_id) REFERENCES public.comptes_profil_enseignant(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_profil_enseignant comptes_profil_ensei_utilisateur_id_61f51c28_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_enseignant
+    ADD CONSTRAINT comptes_profil_ensei_utilisateur_id_61f51c28_fk_comptes_u FOREIGN KEY (utilisateur_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_profil_utilisateur comptes_profil_utili_utilisateur_id_a8181ccf_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_profil_utilisateur
+    ADD CONSTRAINT comptes_profil_utili_utilisateur_id_a8181ccf_fk_comptes_u FOREIGN KEY (utilisateur_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_utilisateur_departements_intervention comptes_utilisateur__departement_id_9052f878_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur_departements_intervention
+    ADD CONSTRAINT comptes_utilisateur__departement_id_9052f878_fk_academiqu FOREIGN KEY (departement_id) REFERENCES public.academique_departement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_utilisateur_user_permissions comptes_utilisateur__permission_id_6de48079_fk_auth_perm; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur_user_permissions
+    ADD CONSTRAINT comptes_utilisateur__permission_id_6de48079_fk_auth_perm FOREIGN KEY (permission_id) REFERENCES public.auth_permission(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_utilisateur_groups comptes_utilisateur__utilisateur_id_2c4242fe_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur_groups
+    ADD CONSTRAINT comptes_utilisateur__utilisateur_id_2c4242fe_fk_comptes_u FOREIGN KEY (utilisateur_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_utilisateur_departements_intervention comptes_utilisateur__utilisateur_id_80b00a6b_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur_departements_intervention
+    ADD CONSTRAINT comptes_utilisateur__utilisateur_id_80b00a6b_fk_comptes_u FOREIGN KEY (utilisateur_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_utilisateur_user_permissions comptes_utilisateur__utilisateur_id_edaf0051_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur_user_permissions
+    ADD CONSTRAINT comptes_utilisateur__utilisateur_id_edaf0051_fk_comptes_u FOREIGN KEY (utilisateur_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_utilisateur comptes_utilisateur_cree_par_id_183063fe_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur
+    ADD CONSTRAINT comptes_utilisateur_cree_par_id_183063fe_fk_comptes_u FOREIGN KEY (cree_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_utilisateur comptes_utilisateur_departement_id_a4cedce3_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur
+    ADD CONSTRAINT comptes_utilisateur_departement_id_a4cedce3_fk_academiqu FOREIGN KEY (departement_id) REFERENCES public.academique_departement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_utilisateur comptes_utilisateur_etablissement_id_36d566d5_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur
+    ADD CONSTRAINT comptes_utilisateur_etablissement_id_36d566d5_fk_establish FOREIGN KEY (etablissement_id) REFERENCES public.establishments_etablissement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: comptes_utilisateur_groups comptes_utilisateur_groups_group_id_40550a17_fk_auth_group_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.comptes_utilisateur_groups
+    ADD CONSTRAINT comptes_utilisateur_groups_group_id_40550a17_fk_auth_group_id FOREIGN KEY (group_id) REFERENCES public.auth_group(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_cahier_texte courses_cahier_texte_cours_id_e3588a9d_fk_courses_cours_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_cahier_texte
+    ADD CONSTRAINT courses_cahier_texte_cours_id_e3588a9d_fk_courses_cours_id FOREIGN KEY (cours_id) REFERENCES public.courses_cours(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_cahier_texte courses_cahier_texte_rempli_par_id_81cf20f1_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_cahier_texte
+    ADD CONSTRAINT courses_cahier_texte_rempli_par_id_81cf20f1_fk_comptes_u FOREIGN KEY (rempli_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_cours courses_cours_classe_id_afb55c98_fk_academique_classe_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_cours
+    ADD CONSTRAINT courses_cours_classe_id_afb55c98_fk_academique_classe_id FOREIGN KEY (classe_id) REFERENCES public.academique_classe(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_cours courses_cours_enseignant_id_0408751c_fk_comptes_utilisateur_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_cours
+    ADD CONSTRAINT courses_cours_enseignant_id_0408751c_fk_comptes_utilisateur_id FOREIGN KEY (enseignant_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_cours courses_cours_matiere_id_4c4ccc7a_fk_courses_matiere_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_cours
+    ADD CONSTRAINT courses_cours_matiere_id_4c4ccc7a_fk_courses_matiere_id FOREIGN KEY (matiere_id) REFERENCES public.courses_matiere(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_cours courses_cours_periode_academique_i_4435d14e_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_cours
+    ADD CONSTRAINT courses_cours_periode_academique_i_4435d14e_fk_academiqu FOREIGN KEY (periode_academique_id) REFERENCES public.academique_periode(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_cours courses_cours_salle_id_642a142d_fk_establishments_salle_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_cours
+    ADD CONSTRAINT courses_cours_salle_id_642a142d_fk_establishments_salle_id FOREIGN KEY (salle_id) REFERENCES public.establishments_salle(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_creneau_emploi_du_temps courses_creneau_empl_cours_id_15d4cfa3_fk_courses_c; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_creneau_emploi_du_temps
+    ADD CONSTRAINT courses_creneau_empl_cours_id_15d4cfa3_fk_courses_c FOREIGN KEY (cours_id) REFERENCES public.courses_cours(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_creneau_emploi_du_temps courses_creneau_empl_emploi_du_temps_id_b6e09283_fk_courses_e; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_creneau_emploi_du_temps
+    ADD CONSTRAINT courses_creneau_empl_emploi_du_temps_id_b6e09283_fk_courses_e FOREIGN KEY (emploi_du_temps_id) REFERENCES public.courses_emploi_du_temps(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_emploi_du_temps courses_emploi_du_te_classe_id_8cb44665_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_emploi_du_temps
+    ADD CONSTRAINT courses_emploi_du_te_classe_id_8cb44665_fk_academiqu FOREIGN KEY (classe_id) REFERENCES public.academique_classe(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_emploi_du_temps courses_emploi_du_te_cree_par_id_79b17bf6_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_emploi_du_temps
+    ADD CONSTRAINT courses_emploi_du_te_cree_par_id_79b17bf6_fk_comptes_u FOREIGN KEY (cree_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_emploi_du_temps courses_emploi_du_te_enseignant_id_a8487617_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_emploi_du_temps
+    ADD CONSTRAINT courses_emploi_du_te_enseignant_id_a8487617_fk_comptes_u FOREIGN KEY (enseignant_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_emploi_du_temps courses_emploi_du_te_periode_academique_i_07780613_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_emploi_du_temps
+    ADD CONSTRAINT courses_emploi_du_te_periode_academique_i_07780613_fk_academiqu FOREIGN KEY (periode_academique_id) REFERENCES public.academique_periode(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_matiere courses_matiere_enseignant_responsab_f5066570_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_matiere
+    ADD CONSTRAINT courses_matiere_enseignant_responsab_f5066570_fk_comptes_u FOREIGN KEY (enseignant_responsable_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_matiere_module courses_matiere_modu_enseignant_id_3da7130b_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_matiere_module
+    ADD CONSTRAINT courses_matiere_modu_enseignant_id_3da7130b_fk_comptes_u FOREIGN KEY (enseignant_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_matiere_module courses_matiere_modu_matiere_id_0463ea66_fk_courses_m; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_matiere_module
+    ADD CONSTRAINT courses_matiere_modu_matiere_id_0463ea66_fk_courses_m FOREIGN KEY (matiere_id) REFERENCES public.courses_matiere(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_matiere courses_matiere_module_id_d0d47f52_fk_courses_module_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_matiere
+    ADD CONSTRAINT courses_matiere_module_id_d0d47f52_fk_courses_module_id FOREIGN KEY (module_id) REFERENCES public.courses_module(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_matiere_module courses_matiere_module_module_id_db0dfda3_fk_courses_module_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_matiere_module
+    ADD CONSTRAINT courses_matiere_module_module_id_db0dfda3_fk_courses_module_id FOREIGN KEY (module_id) REFERENCES public.courses_module(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_matiere courses_matiere_niveau_id_c5e268cb_fk_academique_niveau_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_matiere
+    ADD CONSTRAINT courses_matiere_niveau_id_c5e268cb_fk_academique_niveau_id FOREIGN KEY (niveau_id) REFERENCES public.academique_niveau(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_module courses_module_coordinateur_id_eadc2927_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_module
+    ADD CONSTRAINT courses_module_coordinateur_id_eadc2927_fk_comptes_u FOREIGN KEY (coordinateur_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_module courses_module_niveau_id_d4925fca_fk_academique_niveau_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_module
+    ADD CONSTRAINT courses_module_niveau_id_d4925fca_fk_academique_niveau_id FOREIGN KEY (niveau_id) REFERENCES public.academique_niveau(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_module_prerequis courses_module_prere_from_module_id_e8307003_fk_courses_m; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_module_prerequis
+    ADD CONSTRAINT courses_module_prere_from_module_id_e8307003_fk_courses_m FOREIGN KEY (from_module_id) REFERENCES public.courses_module(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_module_prerequis courses_module_prere_to_module_id_8ac73549_fk_courses_m; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_module_prerequis
+    ADD CONSTRAINT courses_module_prere_to_module_id_8ac73549_fk_courses_m FOREIGN KEY (to_module_id) REFERENCES public.courses_module(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_presence courses_presence_cours_id_c1219dbc_fk_courses_cours_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_presence
+    ADD CONSTRAINT courses_presence_cours_id_c1219dbc_fk_courses_cours_id FOREIGN KEY (cours_id) REFERENCES public.courses_cours(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_presence courses_presence_etudiant_id_867137ad_fk_comptes_utilisateur_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_presence
+    ADD CONSTRAINT courses_presence_etudiant_id_867137ad_fk_comptes_utilisateur_id FOREIGN KEY (etudiant_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_presence courses_presence_valide_par_id_fd86a593_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_presence
+    ADD CONSTRAINT courses_presence_valide_par_id_fd86a593_fk_comptes_u FOREIGN KEY (valide_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: courses_ressource courses_ressource_cours_id_bbd1d44a_fk_courses_cours_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.courses_ressource
+    ADD CONSTRAINT courses_ressource_cours_id_bbd1d44a_fk_courses_cours_id FOREIGN KEY (cours_id) REFERENCES public.courses_cours(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: django_admin_log django_admin_log_content_type_id_c4bce8eb_fk_django_co; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.django_admin_log
+    ADD CONSTRAINT django_admin_log_content_type_id_c4bce8eb_fk_django_co FOREIGN KEY (content_type_id) REFERENCES public.django_content_type(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: django_admin_log django_admin_log_user_id_c564eba6_fk_comptes_utilisateur_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.django_admin_log
+    ADD CONSTRAINT django_admin_log_user_id_c564eba6_fk_comptes_utilisateur_id FOREIGN KEY (user_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_abandon enrollment_abandon_inscription_id_0e407df8_fk_enrollmen; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_abandon
+    ADD CONSTRAINT enrollment_abandon_inscription_id_0e407df8_fk_enrollmen FOREIGN KEY (inscription_id) REFERENCES public.enrollment_inscription(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_abandon enrollment_abandon_traite_par_id_c5831f2e_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_abandon
+    ADD CONSTRAINT enrollment_abandon_traite_par_id_c5831f2e_fk_comptes_u FOREIGN KEY (traite_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_candidature enrollment_candidatu_annee_academique_id_459a12aa_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_candidature
+    ADD CONSTRAINT enrollment_candidatu_annee_academique_id_459a12aa_fk_establish FOREIGN KEY (annee_academique_id) REFERENCES public.establishments_annee_academique(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_candidature enrollment_candidatu_etablissement_id_72e8a4fa_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_candidature
+    ADD CONSTRAINT enrollment_candidatu_etablissement_id_72e8a4fa_fk_establish FOREIGN KEY (etablissement_id) REFERENCES public.establishments_etablissement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_candidature enrollment_candidatu_examine_par_id_59f76f6d_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_candidature
+    ADD CONSTRAINT enrollment_candidatu_examine_par_id_59f76f6d_fk_comptes_u FOREIGN KEY (examine_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_candidature enrollment_candidatu_filiere_id_4cafc577_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_candidature
+    ADD CONSTRAINT enrollment_candidatu_filiere_id_4cafc577_fk_academiqu FOREIGN KEY (filiere_id) REFERENCES public.academique_filiere(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_candidature enrollment_candidatu_niveau_id_6bcf2bd8_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_candidature
+    ADD CONSTRAINT enrollment_candidatu_niveau_id_6bcf2bd8_fk_academiqu FOREIGN KEY (niveau_id) REFERENCES public.academique_niveau(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_document_candidature enrollment_document__candidature_id_4ad27c37_fk_enrollmen; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_document_candidature
+    ADD CONSTRAINT enrollment_document__candidature_id_4ad27c37_fk_enrollmen FOREIGN KEY (candidature_id) REFERENCES public.enrollment_candidature(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_document_requis enrollment_document__filiere_id_dc959dba_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_document_requis
+    ADD CONSTRAINT enrollment_document__filiere_id_dc959dba_fk_academiqu FOREIGN KEY (filiere_id) REFERENCES public.academique_filiere(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_document_requis enrollment_document__niveau_id_9034bb0c_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_document_requis
+    ADD CONSTRAINT enrollment_document__niveau_id_9034bb0c_fk_academiqu FOREIGN KEY (niveau_id) REFERENCES public.academique_niveau(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_document_candidature enrollment_document__valide_par_id_0075b867_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_document_candidature
+    ADD CONSTRAINT enrollment_document__valide_par_id_0075b867_fk_comptes_u FOREIGN KEY (valide_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_historique enrollment_historiqu_effectue_par_id_83c89c89_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_historique
+    ADD CONSTRAINT enrollment_historiqu_effectue_par_id_83c89c89_fk_comptes_u FOREIGN KEY (effectue_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_historique enrollment_historiqu_inscription_id_b393e621_fk_enrollmen; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_historique
+    ADD CONSTRAINT enrollment_historiqu_inscription_id_b393e621_fk_enrollmen FOREIGN KEY (inscription_id) REFERENCES public.enrollment_inscription(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_inscription enrollment_inscripti_apprenant_id_7454b438_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_inscription
+    ADD CONSTRAINT enrollment_inscripti_apprenant_id_7454b438_fk_comptes_u FOREIGN KEY (apprenant_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_inscription enrollment_inscripti_candidature_id_bb8c7423_fk_enrollmen; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_inscription
+    ADD CONSTRAINT enrollment_inscripti_candidature_id_bb8c7423_fk_enrollmen FOREIGN KEY (candidature_id) REFERENCES public.enrollment_candidature(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_inscription enrollment_inscripti_classe_assignee_id_d2fc9a5f_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_inscription
+    ADD CONSTRAINT enrollment_inscripti_classe_assignee_id_d2fc9a5f_fk_academiqu FOREIGN KEY (classe_assignee_id) REFERENCES public.academique_classe(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_inscription enrollment_inscripti_cree_par_id_3b4555f9_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_inscription
+    ADD CONSTRAINT enrollment_inscripti_cree_par_id_3b4555f9_fk_comptes_u FOREIGN KEY (cree_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_periode_candidature enrollment_periode_c_annee_academique_id_7d16f237_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_periode_candidature
+    ADD CONSTRAINT enrollment_periode_c_annee_academique_id_7d16f237_fk_establish FOREIGN KEY (annee_academique_id) REFERENCES public.establishments_annee_academique(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_periode_candidature enrollment_periode_c_etablissement_id_400d2b14_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_periode_candidature
+    ADD CONSTRAINT enrollment_periode_c_etablissement_id_400d2b14_fk_establish FOREIGN KEY (etablissement_id) REFERENCES public.establishments_etablissement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_periode_candidature_filieres enrollment_periode_c_filiere_id_1f4a40b0_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_periode_candidature_filieres
+    ADD CONSTRAINT enrollment_periode_c_filiere_id_1f4a40b0_fk_academiqu FOREIGN KEY (filiere_id) REFERENCES public.academique_filiere(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_periode_candidature_filieres enrollment_periode_c_periodecandidature_i_be7eeb33_fk_enrollmen; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_periode_candidature_filieres
+    ADD CONSTRAINT enrollment_periode_c_periodecandidature_i_be7eeb33_fk_enrollmen FOREIGN KEY (periodecandidature_id) REFERENCES public.enrollment_periode_candidature(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_transfert enrollment_transfert_approuve_par_id_8af28017_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_transfert
+    ADD CONSTRAINT enrollment_transfert_approuve_par_id_8af28017_fk_comptes_u FOREIGN KEY (approuve_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_transfert enrollment_transfert_classe_destination_i_a064a956_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_transfert
+    ADD CONSTRAINT enrollment_transfert_classe_destination_i_a064a956_fk_academiqu FOREIGN KEY (classe_destination_id) REFERENCES public.academique_classe(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_transfert enrollment_transfert_classe_origine_id_050bee78_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_transfert
+    ADD CONSTRAINT enrollment_transfert_classe_origine_id_050bee78_fk_academiqu FOREIGN KEY (classe_origine_id) REFERENCES public.academique_classe(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_transfert enrollment_transfert_demande_par_id_facefc2a_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_transfert
+    ADD CONSTRAINT enrollment_transfert_demande_par_id_facefc2a_fk_comptes_u FOREIGN KEY (demande_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: enrollment_transfert enrollment_transfert_inscription_id_42169b81_fk_enrollmen; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.enrollment_transfert
+    ADD CONSTRAINT enrollment_transfert_inscription_id_42169b81_fk_enrollmen FOREIGN KEY (inscription_id) REFERENCES public.enrollment_inscription(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: establishments_annee_academique establishments_annee_etablissement_id_c7f85289_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_annee_academique
+    ADD CONSTRAINT establishments_annee_etablissement_id_c7f85289_fk_establish FOREIGN KEY (etablissement_id) REFERENCES public.establishments_etablissement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: establishments_bareme_notation establishments_barem_etablissement_id_a3f83f8b_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_bareme_notation
+    ADD CONSTRAINT establishments_barem_etablissement_id_a3f83f8b_fk_establish FOREIGN KEY (etablissement_id) REFERENCES public.establishments_etablissement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: establishments_campus establishments_campu_etablissement_id_f790cd6c_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_campus
+    ADD CONSTRAINT establishments_campu_etablissement_id_f790cd6c_fk_establish FOREIGN KEY (etablissement_id) REFERENCES public.establishments_etablissement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: establishments_campus establishments_campu_localite_id_b320a7a5_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_campus
+    ADD CONSTRAINT establishments_campu_localite_id_b320a7a5_fk_establish FOREIGN KEY (localite_id) REFERENCES public.establishments_localite(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: establishments_campus establishments_campu_responsable_campus_i_d3c0a4aa_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_campus
+    ADD CONSTRAINT establishments_campu_responsable_campus_i_d3c0a4aa_fk_comptes_u FOREIGN KEY (responsable_campus_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: establishments_etablissement establishments_etabl_localite_id_9d1e0527_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_etablissement
+    ADD CONSTRAINT establishments_etabl_localite_id_9d1e0527_fk_establish FOREIGN KEY (localite_id) REFERENCES public.establishments_localite(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: establishments_etablissement establishments_etabl_type_etablissement_i_eb376534_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_etablissement
+    ADD CONSTRAINT establishments_etabl_type_etablissement_i_eb376534_fk_establish FOREIGN KEY (type_etablissement_id) REFERENCES public.establishments_type_etablissement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: establishments_jour_ferie establishments_jour__etablissement_id_a512ca09_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_jour_ferie
+    ADD CONSTRAINT establishments_jour__etablissement_id_a512ca09_fk_establish FOREIGN KEY (etablissement_id) REFERENCES public.establishments_etablissement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: establishments_niveau_note establishments_nivea_bareme_notation_id_38340b19_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_niveau_note
+    ADD CONSTRAINT establishments_nivea_bareme_notation_id_38340b19_fk_establish FOREIGN KEY (bareme_notation_id) REFERENCES public.establishments_bareme_notation(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: establishments_parametres establishments_param_bareme_notation_defa_93254cc1_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_parametres
+    ADD CONSTRAINT establishments_param_bareme_notation_defa_93254cc1_fk_establish FOREIGN KEY (bareme_notation_defaut_id) REFERENCES public.establishments_bareme_notation(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: establishments_parametres establishments_param_etablissement_id_89a97bee_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_parametres
+    ADD CONSTRAINT establishments_param_etablissement_id_89a97bee_fk_establish FOREIGN KEY (etablissement_id) REFERENCES public.establishments_etablissement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: establishments_salle establishments_salle_etablissement_id_3a796d13_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.establishments_salle
+    ADD CONSTRAINT establishments_salle_etablissement_id_3a796d13_fk_establish FOREIGN KEY (etablissement_id) REFERENCES public.establishments_etablissement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_composition evaluation_compositi_apprenant_id_aa5316ef_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_composition
+    ADD CONSTRAINT evaluation_compositi_apprenant_id_aa5316ef_fk_comptes_u FOREIGN KEY (apprenant_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_composition_fichiers_composition evaluation_compositi_composition_id_3d8eb9c2_fk_evaluatio; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_composition_fichiers_composition
+    ADD CONSTRAINT evaluation_compositi_composition_id_3d8eb9c2_fk_evaluatio FOREIGN KEY (composition_id) REFERENCES public.evaluation_composition(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_composition evaluation_compositi_corrigee_par_id_bf3f2f48_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_composition
+    ADD CONSTRAINT evaluation_compositi_corrigee_par_id_bf3f2f48_fk_comptes_u FOREIGN KEY (corrigee_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_composition evaluation_compositi_evaluation_id_113b8d13_fk_evaluatio; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_composition
+    ADD CONSTRAINT evaluation_compositi_evaluation_id_113b8d13_fk_evaluatio FOREIGN KEY (evaluation_id) REFERENCES public.evaluation_evaluation(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_composition_fichiers_composition evaluation_compositi_fichiercomposition_i_75d72f66_fk_evaluatio; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_composition_fichiers_composition
+    ADD CONSTRAINT evaluation_compositi_fichiercomposition_i_75d72f66_fk_evaluatio FOREIGN KEY (fichiercomposition_id) REFERENCES public.evaluation_fichier_composition(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_evaluation_classes evaluation_evaluatio_classe_id_9d787db1_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_evaluation_classes
+    ADD CONSTRAINT evaluation_evaluatio_classe_id_9d787db1_fk_academiqu FOREIGN KEY (classe_id) REFERENCES public.academique_classe(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_evaluation evaluation_evaluatio_enseignant_id_46f26afd_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_evaluation
+    ADD CONSTRAINT evaluation_evaluatio_enseignant_id_46f26afd_fk_comptes_u FOREIGN KEY (enseignant_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_evaluation_classes evaluation_evaluatio_evaluation_id_c3f9359d_fk_evaluatio; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_evaluation_classes
+    ADD CONSTRAINT evaluation_evaluatio_evaluation_id_c3f9359d_fk_evaluatio FOREIGN KEY (evaluation_id) REFERENCES public.evaluation_evaluation(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_evaluation evaluation_evaluation_matiere_id_fcb552ab_fk_courses_matiere_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_evaluation
+    ADD CONSTRAINT evaluation_evaluation_matiere_id_fcb552ab_fk_courses_matiere_id FOREIGN KEY (matiere_id) REFERENCES public.courses_matiere(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_fichier_composition evaluation_fichier_c_uploade_par_id_ce8ff40f_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_fichier_composition
+    ADD CONSTRAINT evaluation_fichier_c_uploade_par_id_ce8ff40f_fk_comptes_u FOREIGN KEY (uploade_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_note evaluation_note_apprenant_id_acc09ea7_fk_comptes_utilisateur_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_note
+    ADD CONSTRAINT evaluation_note_apprenant_id_acc09ea7_fk_comptes_utilisateur_id FOREIGN KEY (apprenant_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_note evaluation_note_attribuee_par_id_3fa342f9_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_note
+    ADD CONSTRAINT evaluation_note_attribuee_par_id_3fa342f9_fk_comptes_u FOREIGN KEY (attribuee_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_note evaluation_note_composition_id_7dd2a77a_fk_evaluatio; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_note
+    ADD CONSTRAINT evaluation_note_composition_id_7dd2a77a_fk_evaluatio FOREIGN KEY (composition_id) REFERENCES public.evaluation_composition(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_note evaluation_note_evaluation_id_ec563b29_fk_evaluatio; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_note
+    ADD CONSTRAINT evaluation_note_evaluation_id_ec563b29_fk_evaluatio FOREIGN KEY (evaluation_id) REFERENCES public.evaluation_evaluation(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: evaluation_note evaluation_note_matiere_id_b3d5f8ba_fk_courses_matiere_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.evaluation_note
+    ADD CONSTRAINT evaluation_note_matiere_id_b3d5f8ba_fk_courses_matiere_id FOREIGN KEY (matiere_id) REFERENCES public.courses_matiere(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: notifications_message notifications_messag_recipient_id_f5c7dd5a_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notifications_message
+    ADD CONSTRAINT notifications_messag_recipient_id_f5c7dd5a_fk_comptes_u FOREIGN KEY (recipient_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: notifications_message notifications_messag_sender_id_15890649_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notifications_message
+    ADD CONSTRAINT notifications_messag_sender_id_15890649_fk_comptes_u FOREIGN KEY (sender_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: notifications_notification notifications_notifi_user_id_b5e8c0ff_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notifications_notification
+    ADD CONSTRAINT notifications_notifi_user_id_b5e8c0ff_fk_comptes_u FOREIGN KEY (user_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_historique_paiement payments_historique__paiement_id_76562e47_fk_payments_; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_historique_paiement
+    ADD CONSTRAINT payments_historique__paiement_id_76562e47_fk_payments_ FOREIGN KEY (paiement_id) REFERENCES public.payments_paiement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_historique_paiement payments_historique__utilisateur_id_3e108b3b_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_historique_paiement
+    ADD CONSTRAINT payments_historique__utilisateur_id_3e108b3b_fk_comptes_u FOREIGN KEY (utilisateur_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_inscription_paiement payments_inscription_inscription_id_428d37b1_fk_enrollmen; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_inscription_paiement
+    ADD CONSTRAINT payments_inscription_inscription_id_428d37b1_fk_enrollmen FOREIGN KEY (inscription_id) REFERENCES public.enrollment_inscription(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_inscription_paiement payments_inscription_plan_id_46bb10cb_fk_payments_; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_inscription_paiement
+    ADD CONSTRAINT payments_inscription_plan_id_46bb10cb_fk_payments_ FOREIGN KEY (plan_id) REFERENCES public.payments_plan_paiement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_paiement payments_paiement_inscription_paiement_ddbb4fc5_fk_payments_; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_paiement
+    ADD CONSTRAINT payments_paiement_inscription_paiement_ddbb4fc5_fk_payments_ FOREIGN KEY (inscription_paiement_id) REFERENCES public.payments_inscription_paiement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_paiement payments_paiement_traite_par_id_d017e388_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_paiement
+    ADD CONSTRAINT payments_paiement_traite_par_id_d017e388_fk_comptes_u FOREIGN KEY (traite_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_paiement payments_paiement_tranche_id_7e0fa7dd_fk_payments_; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_paiement
+    ADD CONSTRAINT payments_paiement_tranche_id_7e0fa7dd_fk_payments_ FOREIGN KEY (tranche_id) REFERENCES public.payments_tranche_paiement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_plan_paiement payments_plan_paieme_annee_academique_id_1d675106_fk_establish; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_plan_paiement
+    ADD CONSTRAINT payments_plan_paieme_annee_academique_id_1d675106_fk_establish FOREIGN KEY (annee_academique_id) REFERENCES public.establishments_annee_academique(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_plan_paiement payments_plan_paieme_cree_par_id_c1daca07_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_plan_paiement
+    ADD CONSTRAINT payments_plan_paieme_cree_par_id_c1daca07_fk_comptes_u FOREIGN KEY (cree_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_plan_paiement payments_plan_paieme_filiere_id_b1fd9fd3_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_plan_paiement
+    ADD CONSTRAINT payments_plan_paieme_filiere_id_b1fd9fd3_fk_academiqu FOREIGN KEY (filiere_id) REFERENCES public.academique_filiere(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_plan_paiement payments_plan_paieme_niveau_id_7f47627a_fk_academiqu; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_plan_paiement
+    ADD CONSTRAINT payments_plan_paieme_niveau_id_7f47627a_fk_academiqu FOREIGN KEY (niveau_id) REFERENCES public.academique_niveau(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_remboursement_paiement payments_rembourseme_demande_par_id_65ae4c5d_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_remboursement_paiement
+    ADD CONSTRAINT payments_rembourseme_demande_par_id_65ae4c5d_fk_comptes_u FOREIGN KEY (demande_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_remboursement_paiement payments_rembourseme_paiement_original_id_a05f8d0e_fk_payments_; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_remboursement_paiement
+    ADD CONSTRAINT payments_rembourseme_paiement_original_id_a05f8d0e_fk_payments_ FOREIGN KEY (paiement_original_id) REFERENCES public.payments_paiement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_remboursement_paiement payments_rembourseme_traite_par_id_ecbc54dc_fk_comptes_u; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_remboursement_paiement
+    ADD CONSTRAINT payments_rembourseme_traite_par_id_ecbc54dc_fk_comptes_u FOREIGN KEY (traite_par_id) REFERENCES public.comptes_utilisateur(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: payments_tranche_paiement payments_tranche_pai_plan_id_90e9c2de_fk_payments_; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments_tranche_paiement
+    ADD CONSTRAINT payments_tranche_pai_plan_id_90e9c2de_fk_payments_ FOREIGN KEY (plan_id) REFERENCES public.payments_plan_paiement(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- PostgreSQL database dump complete
+--
+

@@ -1,0 +1,842 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Gestion des Paiements - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-paiements">
+    <!-- Header compact -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Paiements</span>
+            </div>
+            <h1>Gestion des Paiements</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ paiements.paginator.count }} total</span>
+                <span class="stat-badge confirmes">{{ stats.confirmes }} confirmés</span>
+                <span class="stat-badge montant">{{ stats.total_montant|floatformat:0 }} FCFA</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportPaiements()" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="addPaiement()">
+                <i class="fas fa-plus"></i> Nouveau
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtres compacts -->
+    <div class="filters-section">
+        <form method="GET" class="filters-form-extended">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="N° transaction, nom..."
+                       value="{{ current_filters.search }}" class="form-input-sm">
+            </div>
+            <div class="filter-group">
+                <select name="statut" class="form-select-sm">
+                    <option value="">Tous statuts</option>
+                    {% for statut_key, statut_label in statuts %}
+                        <option value="{{ statut_key }}" {% if current_filters.statut == statut_key %}selected{% endif %}>
+                            {{ statut_label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="methode_paiement" class="form-select-sm">
+                    <option value="">Toutes méthodes</option>
+                    {% for methode_key, methode_label in methodes %}
+                        <option value="{{ methode_key }}" {% if current_filters.methode_paiement == methode_key %}selected{% endif %}>
+                            {{ methode_label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <input type="date" name="date_debut" value="{{ current_filters.date_debut }}"
+                       class="form-input-sm" placeholder="Date début">
+            </div>
+            <div class="filter-group">
+                <input type="date" name="date_fin" value="{{ current_filters.date_fin }}"
+                       class="form-input-sm" placeholder="Date fin">
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:admin_paiements' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Actions en lot -->
+    <div class="bulk-actions-bar" id="bulkActionsBar" style="display: none;">
+        <div class="bulk-info">
+            <i class="fas fa-check-square"></i>
+            <span id="selectedCount">0</span> sélectionné(s)
+        </div>
+        <div class="bulk-buttons">
+            <button class="btn btn-sm btn-success" onclick="bulkConfirm()">
+                <i class="fas fa-check"></i> Confirmer
+            </button>
+            <button class="btn btn-sm btn-warning" onclick="bulkExport()">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Tableau optimisé -->
+    <div class="paiements-table-container">
+        <div class="table-wrapper">
+            <table class="paiements-table">
+                <thead>
+                    <tr>
+                        <th width="30">
+                            <input type="checkbox" class="select-all-header" id="selectAllPaiements">
+                        </th>
+                        <th width="150">N° Transaction</th>
+                        <th width="200">Étudiant</th>
+                        <th width="100">Montant</th>
+                        <th width="80">Frais</th>
+                        <th width="100">Net reçu</th>
+                        <th width="120">Méthode</th>
+                        <th width="120">Date paiement</th>
+                        <th width="100">Statut</th>
+                        <th width="80">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for paiement in paiements %}
+                    <tr class="paiement-row">
+                        <td>
+                            <input type="checkbox" class="paiement-checkbox" value="{{ paiement.id }}">
+                        </td>
+                        <td>
+                            <div class="transaction-info">
+                                <code class="numero-transaction">{{ paiement.numero_transaction }}</code>
+                                {% if paiement.reference_externe %}
+                                    <small class="reference-externe">Réf: {{ paiement.reference_externe|truncatechars:15 }}</small>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="student-info">
+                                <div class="student-name">
+                                    {{ paiement.inscription_paiement.inscription.apprenant.get_full_name|truncatechars:30 }}
+                                </div>
+                                <small class="inscription-numero">
+                                    {{ paiement.inscription_paiement.inscription.numero_inscription }}
+                                </small>
+                            </div>
+                        </td>
+                        <td class="text-right">
+                            <span class="montant-principal">{{ paiement.montant|floatformat:0 }}</span>
+                        </td>
+                        <td class="text-right">
+                            <span class="montant-frais">{{ paiement.frais_transaction|floatformat:0 }}</span>
+                        </td>
+                        <td class="text-right">
+                            <span class="montant-net">{{ paiement.montant_net|floatformat:0 }}</span>
+                        </td>
+                        <td>
+                            <span class="methode-badge methode-{{ paiement.methode_paiement|lower }}">
+                                {% if paiement.methode_paiement == 'LIGDICASH' %}
+                                    <i class="fas fa-mobile-alt"></i>
+                                {% elif paiement.methode_paiement == 'ESPECES' %}
+                                    <i class="fas fa-money-bill-wave"></i>
+                                {% elif paiement.methode_paiement == 'CHEQUE' %}
+                                    <i class="fas fa-money-check"></i>
+                                {% elif paiement.methode_paiement == 'VIREMENT' %}
+                                    <i class="fas fa-university"></i>
+                                {% else %}
+                                    <i class="fas fa-credit-card"></i>
+                                {% endif %}
+                                {{ paiement.get_methode_paiement_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="date-info">
+                                <small class="date-paiement">{{ paiement.date_paiement|date:"d/m/Y" }}</small>
+                                <small class="heure-paiement">{{ paiement.date_paiement|date:"H:i" }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="status-badge status-{{ paiement.statut|lower }}">
+                                {% if paiement.statut == 'EN_ATTENTE' %}
+                                    <i class="fas fa-clock"></i>
+                                {% elif paiement.statut == 'EN_COURS' %}
+                                    <i class="fas fa-spinner"></i>
+                                {% elif paiement.statut == 'CONFIRME' %}
+                                    <i class="fas fa-check-circle"></i>
+                                {% elif paiement.statut == 'ECHEC' %}
+                                    <i class="fas fa-times-circle"></i>
+                                {% elif paiement.statut == 'ANNULE' %}
+                                    <i class="fas fa-ban"></i>
+                                {% else %}
+                                    <i class="fas fa-undo"></i>
+                                {% endif %}
+                                {{ paiement.get_statut_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-buttons-sm">
+                                <button class="btn-icon-sm btn-primary" onclick="viewPaiement('{{ paiement.id }}')" title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <div class="dropdown-compact">
+                                    <button class="btn-icon-sm btn-outline dropdown-toggle">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="dropdown-menu-compact">
+                                        <a href="#" onclick="viewDetails('{{ paiement.id }}')">
+                                            <i class="fas fa-info-circle"></i> Détails
+                                        </a>
+                                        <a href="#" onclick="viewReceipt('{{ paiement.id }}')">
+                                            <i class="fas fa-receipt"></i> Reçu
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        {% if paiement.statut == 'EN_ATTENTE' or paiement.statut == 'EN_COURS' %}
+                                            <a href="#" onclick="confirmPaiement('{{ paiement.id }}')" class="text-success">
+                                                <i class="fas fa-check"></i> Confirmer
+                                            </a>
+                                            <a href="#" onclick="cancelPaiement('{{ paiement.id }}')" class="text-danger">
+                                                <i class="fas fa-times"></i> Annuler
+                                            </a>
+                                        {% endif %}
+                                        {% if paiement.statut == 'CONFIRME' %}
+                                            <a href="#" onclick="refundPaiement('{{ paiement.id }}')" class="text-warning">
+                                                <i class="fas fa-undo"></i> Rembourser
+                                            </a>
+                                        {% endif %}
+                                        <div class="dropdown-divider"></div>
+                                        <a href="#" onclick="printReceipt('{{ paiement.id }}')">
+                                            <i class="fas fa-print"></i> Imprimer
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <div class="empty-content">
+                                <i class="fas fa-credit-card fa-2x text-muted"></i>
+                                <p class="mt-2">Aucun paiement trouvé</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% include 'components/pagination.html' with page_obj=paiements %}
+    </div>
+</div>
+
+<style>
+.admin-paiements {
+    padding: 15px;
+}
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: var(--shadow-sm);
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav .current {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.header-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.stat-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--light-gray);
+    border-radius: 12px;
+    font-size: 11px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.stat-badge.confirmes {
+    background: #d4edda;
+    color: #155724;
+}
+
+.stat-badge.montant {
+    background: #d1ecf1;
+    color: #0c5460;
+    font-weight: 700;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.filters-section {
+    background: var(--white);
+    padding: 12px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+}
+
+.filters-form-extended {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.form-input-sm, .form-select-sm {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    height: 32px;
+    width: 100%;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.bulk-actions-bar {
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: var(--border-radius);
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--font-size-sm);
+}
+
+.bulk-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #155724;
+    font-weight: 500;
+}
+
+.bulk-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.paiements-table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.paiements-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 100%;
+    table-layout: auto;
+}
+
+.paiements-table th {
+    background: var(--light-gray);
+    padding: 8px 6px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+}
+
+.paiements-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--gray);
+    vertical-align: middle;
+    font-size: var(--font-size-xs);
+}
+
+.paiements-table-container,
+.table-wrapper,
+.paiements-table tr,
+.paiements-table td {
+    overflow: visible !important;
+}
+
+.transaction-info, .student-info, .date-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.numero-transaction {
+    background: #fff3e0;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #e65100;
+    font-weight: 600;
+}
+
+.reference-externe {
+    color: var(--text-light);
+    font-size: 10px;
+}
+
+.student-name {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: var(--font-size-sm);
+}
+
+.inscription-numero {
+    color: var(--text-light);
+    font-size: 10px;
+    font-family: monospace;
+}
+
+.montant-principal {
+    font-size: 12px;
+    font-weight: 700;
+    color: #2e7d32;
+}
+
+.montant-frais {
+    font-size: 11px;
+    color: #d32f2f;
+}
+
+.montant-net {
+    font-size: 11px;
+    font-weight: 600;
+    color: #1976d2;
+}
+
+.methode-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.methode-ligdicash { background: #e3f2fd; color: #1565c0; }
+.methode-especes { background: #e8f5e9; color: #2e7d32; }
+.methode-cheque { background: #f3e5f5; color: #7b1fa2; }
+.methode-virement { background: #fff3e0; color: #e65100; }
+.methode-autre { background: #e0e0e0; color: #616161; }
+
+.date-paiement, .heure-paiement {
+    color: var(--text-light);
+    font-size: 10px;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.status-en_attente { background: #e0e0e0; color: #616161; }
+.status-en_cours { background: #fff3cd; color: #856404; }
+.status-confirme { background: #d4edda; color: #155724; }
+.status-echec { background: #f8d7da; color: #721c24; }
+.status-annule { background: #f8d7da; color: #721c24; }
+.status-rembourse { background: #d1ecf1; color: #0c5460; }
+
+.action-buttons-sm {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.btn-icon-sm {
+    width: 24px;
+    height: 24px;
+    border-radius: 3px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.3s;
+}
+
+.btn-icon-sm.btn-primary { background: var(--primary-color); color: white; }
+.btn-icon-sm.btn-outline {
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+    transition: all 0.3s;
+}
+
+.btn-icon:hover {
+    background: var(--light-gray);
+}
+
+.dropdown-compact {
+    position: relative;
+}
+
+.dropdown-menu-compact {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    min-width: 180px;
+}
+
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.dropdown-menu-compact a:hover {
+    background: var(--light-gray);
+}
+
+.text-success { color: var(--success-color); }
+.text-danger { color: var(--danger-color); }
+.text-warning { color: var(--warning-color); }
+.text-muted { color: var(--text-light); }
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 3px 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-content {
+    color: var(--text-light);
+}
+
+.mt-2 { margin-top: 8px; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+@media (max-width: 768px) {
+    .page-header-compact {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .filters-form-extended {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .paiements-table {
+        min-width: 1200px;
+    }
+
+    .header-stats {
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-start;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAllPaiements');
+    const checkboxes = document.querySelectorAll('.paiement-checkbox');
+    const bulkBar = document.getElementById('bulkActionsBar');
+    const selectedCount = document.getElementById('selectedCount');
+
+    selectAll?.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+        updateBulkActions();
+    });
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    function updateBulkActions() {
+        const selected = document.querySelectorAll('.paiement-checkbox:checked').length;
+        selectedCount.textContent = selected;
+        bulkBar.style.display = selected > 0 ? 'flex' : 'none';
+
+        if (selectAll) {
+            selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+            selectAll.checked = selected === checkboxes.length;
+        }
+    }
+
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.style.display = 'none';
+            });
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        });
+    });
+
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    });
+});
+
+function exportPaiements() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/dashboard/admin/paiements/export/?${params.toString()}`;
+}
+
+function addPaiement() {
+    window.location.href = `/dashboard/admin/paiements/add/`;
+}
+
+function viewPaiement(paiementId) {
+    window.location.href = `/dashboard/admin/paiements/${paiementId}/`;
+}
+
+function viewDetails(paiementId) {
+    event.preventDefault();
+    window.location.href = `/dashboard/admin/paiements/${paiementId}/details/`;
+}
+
+function viewReceipt(paiementId) {
+    event.preventDefault();
+    window.location.href = `/dashboard/admin/paiements/${paiementId}/receipt/`;
+}
+
+function confirmPaiement(paiementId) {
+    event.preventDefault();
+    if (confirm('Confirmer ce paiement ?')) {
+        fetch(`/dashboard/admin/paiements/${paiementId}/confirm/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erreur: ' + (data.message || 'Une erreur est survenue'));
+            }
+        })
+        .catch(error => {
+            alert('Erreur de connexion');
+            console.error(error);
+        });
+    }
+}
+
+function cancelPaiement(paiementId) {
+    event.preventDefault();
+    const motif = prompt('Motif d\'annulation:');
+    if (motif) {
+        fetch(`/dashboard/admin/paiements/${paiementId}/cancel/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({motif: motif})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erreur: ' + (data.message || 'Une erreur est survenue'));
+            }
+        })
+        .catch(error => {
+            alert('Erreur de connexion');
+            console.error(error);
+        });
+    }
+}
+
+function refundPaiement(paiementId) {
+    event.preventDefault();
+    const motif = prompt('Motif du remboursement:');
+    if (motif) {
+        fetch(`/dashboard/admin/paiements/${paiementId}/refund/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({motif: motif})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erreur: ' + (data.message || 'Une erreur est survenue'));
+            }
+        })
+        .catch(error => {
+            alert('Erreur de connexion');
+            console.error(error);
+        });
+    }
+}
+
+function printReceipt(paiementId) {
+    event.preventDefault();
+    window.open(`/dashboard/admin/paiements/${paiementId}/print-receipt/`, '_blank');
+}
+
+function bulkConfirm() {
+    const selected = Array.from(document.querySelectorAll('.paiement-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins un paiement');
+        return;
+    }
+    if (confirm(`Confirmer ${selected.length} paiement(s) ?`)) {
+        fetch('/dashboard/admin/paiements/bulk-confirm/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({paiements: selected})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erreur: ' + (data.message || 'Une erreur est survenue'));
+            }
+        })
+        .catch(error => {
+            alert('Erreur de connexion');
+            console.error(error);
+        });
+    }
+}
+
+function bulkExport() {
+    const selected = Array.from(document.querySelectorAll('.paiement-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins un paiement');
+        return;
+    }
+    const params = new URLSearchParams();
+    params.set('paiements', selected.join(','));
+    window.location.href = `/dashboard/admin/paiements/export/?${params.toString()}`;
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

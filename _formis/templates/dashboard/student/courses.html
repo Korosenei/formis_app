@@ -1,652 +1,175 @@
 {% extends 'base/dashboard_base.html' %}
 {% load static %}
-{% load humanize %}
 
-{% block page_title %}FORMIS - Mes Cours{% endblock %}
-{% block page_title_text %}Mes Cours{% endblock %}
-{% block page_icon %}fas fa-book{% endblock %}
-{% block breadcrumb %}Accueil / Mes Cours{% endblock %}
+{% block page_title %}Gestion des Cours - Admin{% endblock %}
 
 {% block content %}
-<div class="content-card">
-    <div class="card-header">
-        <h3 class="card-title">Mes Cours - {{ inscription.classe_attribuee.niveau.nom }}</h3>
-        <div class="header-filters">
-            <select class="form-select" id="semestreFilter">
-                <option value="">Tous les semestres</option>
-                <option value="1">Semestre 1</option>
-                <option value="2">Semestre 2</option>
-            </select>
-            <select class="form-select" id="statutFilter">
-                <option value="">Tous les statuts</option>
-                <option value="actif">Actif</option>
-                <option value="termine">Terminé</option>
-                <option value="retard">En retard</option>
-            </select>
+<div class="admin-courses">
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Cours</span>
+            </div>
+            <h1>Gestion des Cours</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ courses.paginator.count }} total</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportCours()" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+            <a href="{% url 'courses:cours_create' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Ajouter
+            </a>
         </div>
     </div>
-    <div class="card-body">
-        {% if cours %}
-            <div class="courses-grid">
-                {% for cours in cours %}
-                <div class="course-card" data-semestre="{{ cours.semestre|default:'1' }}" data-statut="{{ cours.statut }}">
-                    <div class="course-header">
-                        <h4 class="course-title">{{ cours.matiere.nom }}</h4>
-                        <span class="badge {% if cours.statut == 'success' %}success{% elif cours.statut == 'warning' %}warning{% else %}danger{% endif %}">
-                            {% if cours.statut == 'success' %}Actif
-                            {% elif cours.statut == 'warning' %}En retard
-                            {% else %}À rattraper{% endif %}
-                        </span>
-                    </div>
-                    
-                    <div class="course-info">
-                        <div class="info-item">
-                            <i class="fas fa-user-tie"></i>
-                            <span>{{ cours.enseignant.get_full_name }}</span>
-                        </div>
-                        <div class="info-item">
-                            <i class="fas fa-coins"></i>
-                            <span>Crédit: {{ cours.matiere.credit|default:"N/A" }}</span>
-                        </div>
-                        <div class="info-item">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <span>Salle: {{ cours.salle|default:"Non définie" }}</span>
-                        </div>
-                        <div class="info-item">
-                            <i class="fas fa-clock"></i>
-                            <span>Horaire: {{ cours.horaire|default:"À définir" }}</span>
-                        </div>
-                    </div>
 
-                    <!-- Progression du cours -->
-                    <div class="course-progress">
-                        <div class="progress-header">
-                            <span>Progression</span>
-                            <span class="progress-percentage">{{ cours.progression|floatformat:0 }}%</span>
-                        </div>
-                        <div class="progress">
-                            <div class="progress-bar" style="width: {{ cours.progression }}%"></div>
-                        </div>
-                    </div>
-
-                    <!-- Statistiques du cours -->
-                    <div class="course-stats">
-                        <div class="stat-item">
-                            <div class="stat-value">{{ cours.nb_seances|default:0 }}</div>
-                            <div class="stat-label">Séances</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">{{ cours.nb_evaluations|default:0 }}</div>
-                            <div class="stat-label">Évaluations</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">{{ cours.moyenne|default:"-" }}</div>
-                            <div class="stat-label">Moyenne</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">{{ cours.taux_presence|default:0 }}%</div>
-                            <div class="stat-label">Présence</div>
-                        </div>
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="course-actions">
-                        <a href="{% url 'dashboard:student_course_detail' cours.id %}" class="btn btn-primary">
-                            <i class="fas fa-play"></i> Accéder au cours
-                        </a>
-                        <a href="{% url 'dashboard:student_resources_by_subject' cours.matiere.id %}" class="btn btn-outline">
-                            <i class="fas fa-download"></i> Ressources
-                        </a>
-                        <a href="{% url 'dashboard:student_course_progress' cours.id %}" class="btn btn-outline">
-                            <i class="fas fa-chart-line"></i> Progression
-                        </a>
-                    </div>
-
-                    <!-- Prochaine séance -->
-                    {% if cours.prochaine_seance %}
-                    <div class="next-session">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span>Prochaine séance: {{ cours.prochaine_seance|date:"d/m/Y à H:i" }}</span>
-                    </div>
-                    {% endif %}
-
-                    <!-- Alertes -->
-                    {% if cours.statut == 'warning' or cours.statut == 'danger' %}
-                    <div class="course-alerts">
-                        {% if cours.statut == 'warning' %}
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            Vous êtes en retard dans ce cours
-                        </div>
-                        {% elif cours.statut == 'danger' %}
-                        <div class="alert alert-danger">
-                            <i class="fas fa-exclamation-circle"></i>
-                            Rattrapage nécessaire
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                </div>
-                {% endfor %}
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <select name="matiere" class="form-select-sm">
+                    <option value="">Toutes matières</option>
+                    {% for matiere in matieres %}
+                        <option value="{{ matiere.id }}" {% if current_filters.matiere == matiere.id|stringformat:"s" %}selected{% endif %}>
+                            {{ matiere.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
-
-            <!-- Pagination -->
-            {% if is_paginated %}
-            <div class="pagination-wrapper">
-                <nav aria-label="Navigation des cours">
-                    <ul class="pagination">
-                        {% if page_obj.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
-                                <i class="fas fa-chevron-left"></i> Précédent
-                            </a>
-                        </li>
-                        {% endif %}
-
-                        {% for num in page_obj.paginator.page_range %}
-                        {% if page_obj.number == num %}
-                        <li class="page-item active">
-                            <span class="page-link">{{ num }}</span>
-                        </li>
-                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                        </li>
-                        {% endif %}
-                        {% endfor %}
-
-                        {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">
-                                Suivant <i class="fas fa-chevron-right"></i>
-                            </a>
-                        </li>
-                        {% endif %}
-                    </ul>
-                </nav>
+            <div class="filter-group">
+                <select name="classe" class="form-select-sm">
+                    <option value="">Toutes classes</option>
+                    {% for classe in classes %}
+                        <option value="{{ classe.id }}" {% if current_filters.classe == classe.id|stringformat:"s" %}selected{% endif %}>
+                            {{ classe.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
-            {% endif %}
-
-        {% else %}
-            <div class="empty-state">
-                <i class="fas fa-book-open fa-4x text-muted mb-4"></i>
-                <h3>Aucun cours disponible</h3>
-                <p class="text-muted">Aucun cours n'est disponible pour votre classe actuellement.</p>
-                <a href="{% url 'dashboard:student' %}" class="btn btn-primary">
-                    <i class="fas fa-arrow-left"></i> Retour au tableau de bord
-                </a>
+            <div class="filter-group">
+                <input type="date" name="date_debut" value="{{ current_filters.date_debut }}" class="form-input-sm">
             </div>
-        {% endif %}
+            <div class="filter-group">
+                <select name="statut" class="form-select-sm">
+                    <option value="">Tous statuts</option>
+                    {% for key, label in statuts %}
+                        <option value="{{ key }}" {% if current_filters.statut == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search"></i></button>
+                <a href="{% url 'dashboard:admin_courses' %}" class="btn btn-sm btn-outline"><i class="fas fa-undo"></i></a>
+            </div>
+        </form>
     </div>
-</div>
 
-<!-- Modal détails du cours -->
-<div class="modal fade" id="courseDetailsModal" tabindex="-1" aria-labelledby="courseDetailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="courseDetailsModalLabel">Détails du Cours</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="courses-grid">
+        {% for cours in courses %}
+        <div class="cours-card">
+            <div class="cours-header">
+                <div class="cours-color" style="background-color: {{ cours.matiere.couleur }}"></div>
+                <div class="cours-info">
+                    <h3>{{ cours.titre|truncatechars:50 }}</h3>
+                    <p class="cours-matiere">{{ cours.matiere.nom }}</p>
+                </div>
+                <span class="cours-type-badge {{ cours.type_cours|lower }}">{{ cours.get_type_cours_display }}</span>
             </div>
-            <div class="modal-body">
-                <!-- Contenu chargé dynamiquement -->
-                <div class="loading-content">
-                    <div class="text-center">
-                        <i class="fas fa-spinner fa-spin fa-2x"></i>
-                        <p>Chargement...</p>
-                    </div>
+            <div class="cours-body">
+                <div class="cours-detail">
+                    <i class="fas fa-calendar"></i> {{ cours.date_prevue|date:"d/m/Y" }}
+                </div>
+                <div class="cours-detail">
+                    <i class="fas fa-clock"></i> {{ cours.heure_debut_prevue|time:"H:i" }} - {{ cours.heure_fin_prevue|time:"H:i" }}
+                </div>
+                {% if cours.salle %}
+                <div class="cours-detail">
+                    <i class="fas fa-door-open"></i> {{ cours.salle.code }}
+                </div>
+                {% endif %}
+            </div>
+            <div class="cours-footer">
+                <span class="status-badge {{ cours.statut|lower }}">{{ cours.get_statut_display }}</span>
+                <div class="cours-actions">
+                    <a href="{% url 'courses:cours_detail' cours.id %}" class="btn-icon-sm btn-primary"><i class="fas fa-eye"></i></a>
+                    <a href="{% url 'courses:cours_edit' cours.id %}" class="btn-icon-sm btn-info"><i class="fas fa-edit"></i></a>
                 </div>
             </div>
         </div>
+        {% empty %}
+        <div class="empty-state-full">
+            <i class="fas fa-chalkboard fa-3x"></i>
+            <h3>Aucun cours trouvé</h3>
+            <a href="{% url 'courses:cours_create' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Ajouter un cours</a>
+        </div>
+        {% endfor %}
     </div>
-</div>
-{% endblock %}
 
-{% block extra_css %}
+    {% include 'components/pagination.html' with page_obj=courses %}
+</div>
+
 <style>
-    .header-filters {
-        display: flex;
-        gap: 10px;
-    }
-
-    .header-filters .form-select {
-        padding: 8px 12px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        min-width: 150px;
-    }
-
-    .courses-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-        gap: 25px;
-        margin-top: 20px;
-    }
-
-    .course-card {
-        border: 1px solid #e9ecef;
-        border-radius: 12px;
-        padding: 25px;
-        transition: all 0.3s ease;
-        background: white;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .course-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    }
-
-    .course-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-
-    .course-title {
-        font-size: 1.2rem;
-        font-weight: 600;
-        color: #333;
-        margin: 0;
-    }
-
-    .course-info {
-        margin-bottom: 20px;
-    }
-
-    .info-item {
-        display: flex;
-        align-items: center;
-        margin-bottom: 8px;
-        color: #6c757d;
-        font-size: 0.9rem;
-    }
-
-    .info-item i {
-        width: 20px;
-        margin-right: 10px;
-        color: #667eea;
-    }
-
-    .course-progress {
-        margin-bottom: 20px;
-    }
-
-    .progress-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-        font-size: 0.9rem;
-        font-weight: 500;
-    }
-
-    .progress-percentage {
-        color: #667eea;
-        font-weight: 600;
-    }
-
-    .course-stats {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 15px;
-        margin-bottom: 20px;
-        padding: 15px;
-        background: #f8f9fa;
-        border-radius: 8px;
-    }
-
-    .stat-item {
-        text-align: center;
-    }
-
-    .stat-value {
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: #333;
-        display: block;
-    }
-
-    .stat-label {
-        font-size: 0.8rem;
-        color: #6c757d;
-        margin-top: 2px;
-    }
-
-    .course-actions {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-bottom: 15px;
-    }
-
-    .course-actions .btn {
-        flex: 1;
-        min-width: 100px;
-        font-size: 0.85rem;
-        padding: 8px 12px;
-    }
-
-    .next-session {
-        background: #e3f2fd;
-        padding: 10px;
-        border-radius: 6px;
-        font-size: 0.85rem;
-        color: #1976d2;
-        margin-bottom: 15px;
-    }
-
-    .next-session i {
-        margin-right: 5px;
-    }
-
-    .course-alerts {
-        margin-top: 15px;
-    }
-
-    .course-alerts .alert {
-        padding: 10px;
-        border-radius: 6px;
-        font-size: 0.85rem;
-        display: flex;
-        align-items: center;
-        margin: 0;
-    }
-
-    .course-alerts .alert i {
-        margin-right: 8px;
-    }
-
-    .alert-warning {
-        background-color: #fff3cd;
-        border: 1px solid #ffeaa7;
-        color: #856404;
-    }
-
-    .alert-danger {
-        background-color: #f8d7da;
-        border: 1px solid #f5c6cb;
-        color: #721c24;
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-    }
-
-    .pagination-wrapper {
-        margin-top: 30px;
-        display: flex;
-        justify-content: center;
-    }
-
-    .pagination {
-        display: flex;
-        padding-left: 0;
-        list-style: none;
-        border-radius: 6px;
-    }
-
-    .page-item {
-        margin: 0 2px;
-    }
-
-    .page-link {
-        position: relative;
-        display: block;
-        padding: 8px 12px;
-        margin-left: -1px;
-        line-height: 1.25;
-        color: #667eea;
-        background-color: #fff;
-        border: 1px solid #dee2e6;
-        text-decoration: none;
-        border-radius: 4px;
-        transition: all 0.3s ease;
-    }
-
-    .page-link:hover {
-        z-index: 2;
-        color: #495057;
-        background-color: #e9ecef;
-        border-color: #dee2e6;
-    }
-
-    .page-item.active .page-link {
-        z-index: 3;
-        color: #fff;
-        background-color: #667eea;
-        border-color: #667eea;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .courses-grid {
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-
-        .course-stats {
-            grid-template-columns: repeat(2, 1fr);
-        }
-
-        .course-actions {
-            flex-direction: column;
-        }
-
-        .course-actions .btn {
-            flex: none;
-            width: 100%;
-        }
-
-        .header-filters {
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .header-filters .form-select {
-            min-width: auto;
-            width: 100%;
-        }
-    }
-
-    @media (max-width: 480px) {
-        .course-stats {
-            grid-template-columns: 1fr;
-            gap: 10px;
-        }
-
-        .course-card {
-            padding: 20px;
-        }
-    }
+.admin-courses { padding: 15px; }
+.page-header-compact { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; padding: 15px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.breadcrumb-nav { font-size: 11px; color: #6b7280; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+.breadcrumb-nav .current { color: #2563eb; font-weight: 500; }
+.header-content h1 { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #1f2937; }
+.header-stats { display: flex; gap: 8px; margin-top: 5px; }
+.stat-badge { padding: 2px 8px; background: #f3f4f6; border-radius: 12px; font-size: 11px; font-weight: 500; }
+.header-actions { display: flex; gap: 8px; }
+.filters-section { background: white; padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; }
+.filters-form { display: grid; grid-template-columns: 1.5fr 1.5fr 1fr 1fr auto; gap: 12px; }
+.form-select-sm, .form-input-sm { padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; height: 32px; }
+.filter-actions { display: flex; gap: 5px; }
+.courses-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 15px; margin-bottom: 20px; }
+.cours-card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; border: 1px solid #e5e7eb; transition: transform 0.2s; }
+.cours-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.cours-header { padding: 12px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 10px; background: #f9fafb; }
+.cours-color { width: 4px; height: 40px; border-radius: 2px; }
+.cours-info { flex: 1; }
+.cours-info h3 { margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #1f2937; }
+.cours-matiere { margin: 0; font-size: 12px; color: #6b7280; }
+.cours-type-badge { padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+.cours-type-badge.cm { background: #dbeafe; color: #1e40af; }
+.cours-type-badge.td { background: #d1fae5; color: #065f46; }
+.cours-type-badge.tp { background: #fed7aa; color: #92400e; }
+.cours-type-badge.evaluation { background: #fce7f3; color: #9f1239; }
+.cours-body { padding: 12px; }
+.cours-detail { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; color: #6b7280; }
+.cours-detail i { width: 16px; color: #9ca3af; }
+.cours-footer { padding: 12px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: #fafbfc; }
+.status-badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+.status-badge.programme { background: #e0e7ff; color: #3730a3; }
+.status-badge.en_cours { background: #fef3c7; color: #92400e; }
+.status-badge.termine { background: #d1fae5; color: #065f46; }
+.status-badge.annule { background: #fee2e2; color: #991b1b; }
+.cours-actions { display: flex; gap: 5px; }
+.btn-icon-sm { width: 28px; height: 28px; border-radius: 4px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; text-decoration: none; }
+.btn-icon-sm.btn-primary { background: #2563eb; color: white; }
+.btn-icon-sm.btn-info { background: #3b82f6; color: white; }
+.btn-icon { width: 32px; height: 32px; font-size: 14px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: white; border: 1px solid #e5e7eb; }
+.btn { padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-outline { background: white; border: 1px solid #e5e7eb; color: #1f2937; }
+.empty-state-full { grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: white; border-radius: 8px; }
+.empty-state-full i { color: #d1d5db; margin-bottom: 20px; }
+.empty-state-full h3 { margin: 0 0 20px 0; color: #1f2937; }
+@media (max-width: 768px) {
+    .courses-grid { grid-template-columns: 1fr; }
+    .filters-form { grid-template-columns: 1fr; }
+}
 </style>
-{% endblock %}
 
-{% block extra_js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Filtres
-        const semestreFilter = document.getElementById('semestreFilter');
-        const statutFilter = document.getElementById('statutFilter');
-        const courseCards = document.querySelectorAll('.course-card');
-
-        function filterCourses() {
-            const semestreValue = semestreFilter.value;
-            const statutValue = statutFilter.value;
-
-            courseCards.forEach(card => {
-                let showCard = true;
-
-                if (semestreValue && card.dataset.semestre !== semestreValue) {
-                    showCard = false;
-                }
-
-                if (statutValue && card.dataset.statut !== statutValue) {
-                    showCard = false;
-                }
-
-                if (showCard) {
-                    card.style.display = 'block';
-                    card.style.animation = 'fadeIn 0.5s ease';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-
-            // Vérifier s'il y a des cours visibles
-            const visibleCourses = document.querySelectorAll('.course-card[style*="display: block"], .course-card:not([style*="display: none"])');
-            const emptyMessage = document.querySelector('.no-results-message');
-            
-            if (visibleCourses.length === 0 && !emptyMessage) {
-                const coursesGrid = document.querySelector('.courses-grid');
-                const noResultsDiv = document.createElement('div');
-                noResultsDiv.className = 'no-results-message empty-state';
-                noResultsDiv.innerHTML = `
-                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
-                    <h4>Aucun cours trouvé</h4>
-                    <p class="text-muted">Aucun cours ne correspond aux filtres sélectionnés.</p>
-                `;
-                coursesGrid.appendChild(noResultsDiv);
-            } else if (visibleCourses.length > 0 && emptyMessage) {
-                emptyMessage.remove();
-            }
-        }
-
-        if (semestreFilter) semestreFilter.addEventListener('change', filterCourses);
-        if (statutFilter) statutFilter.addEventListener('change', filterCourses);
-
-        // Animation d'entrée pour les cartes
-        courseCards.forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(30px)';
-            setTimeout(() => {
-                card.style.transition = 'all 0.6s ease';
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, index * 100);
-        });
-
-        // Modal pour les détails du cours
-        const courseDetailsModal = document.getElementById('courseDetailsModal');
-        if (courseDetailsModal) {
-            courseDetailsModal.addEventListener('show.bs.modal', function(event) {
-                const button = event.relatedTarget;
-                const courseId = button.getAttribute('data-course-id');
-                
-                if (courseId) {
-                    loadCourseDetails(courseId);
-                }
-            });
-        }
-
-        // Fonction pour charger les détails d'un cours
-        function loadCourseDetails(courseId) {
-            const modalBody = document.querySelector('#courseDetailsModal .modal-body');
-            modalBody.innerHTML = '<div class="loading-content"><div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Chargement...</p></div></div>';
-
-            fetch(`/dashboard/student/courses/${courseId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    modalBody.innerHTML = `
-                        <div class="course-details">
-                            <h4>${data.title}</h4>
-                            <p>${data.description || 'Aucune description disponible'}</p>
-                            
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <strong>Enseignant:</strong> ${data.teacher}<br>
-                                    <strong>Crédits:</strong> ${data.credits || 'N/A'}<br>
-                                    <strong>Salle:</strong> ${data.room || 'Non définie'}
-                                </div>
-                                <div class="col-md-6">
-                                    <strong>Progression:</strong> ${data.progress}%<br>
-                                    <strong>Moyenne:</strong> ${data.average || 'N/A'}<br>
-                                    <strong>Présence:</strong> ${data.attendance}%
-                                </div>
-                            </div>
-                            
-                            ${data.next_session ? `<div class="mt-3"><strong>Prochaine séance:</strong> ${data.next_session}</div>` : ''}
-                        </div>
-                    `;
-                })
-                .catch(error => {
-                    console.error('Erreur:', error);
-                    modalBody.innerHTML = `
-                        <div class="alert alert-danger">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            Erreur lors du chargement des détails du cours.
-                        </div>
-                    `;
-                });
-        }
-
-        // Sauvegarde des filtres dans le localStorage
-        function saveFilters() {
-            localStorage.setItem('courseFilters', JSON.stringify({
-                semestre: semestreFilter.value,
-                statut: statutFilter.value
-            }));
-        }
-
-        function loadFilters() {
-            const savedFilters = localStorage.getItem('courseFilters');
-            if (savedFilters) {
-                const filters = JSON.parse(savedFilters);
-                if (semestreFilter) semestreFilter.value = filters.semestre || '';
-                if (statutFilter) statutFilter.value = filters.statut || '';
-                filterCourses();
-            }
-        }
-
-        // Charger les filtres sauvegardés
-        loadFilters();
-
-        // Sauvegarder les filtres à chaque changement
-        if (semestreFilter) semestreFilter.addEventListener('change', saveFilters);
-        if (statutFilter) statutFilter.addEventListener('change', saveFilters);
-
-        // Raccourcis clavier
-        document.addEventListener('keydown', function(e) {
-            // Ctrl/Cmd + F pour focuser sur la recherche
-            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-                e.preventDefault();
-                if (semestreFilter) semestreFilter.focus();
-            }
-        });
-    });
-
-    // Animations CSS personnalisées
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .course-card {
-            animation: slideInUp 0.6s ease-out;
-        }
-        
-        @keyframes slideInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-    `;
-    document.head.appendChild(style);
+function exportCours() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/courses/cours/export/?${params.toString()}`;
+}
 </script>
 {% endblock %}

@@ -1,280 +1,175 @@
-{% extends 'base/dashboard_base.html' %} 
+{% extends 'base/dashboard_base.html' %}
 {% load static %}
 
-{% block title %}Liste des Cours{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'courses/css/courses.css' %}">
-<style>
-    .course-card {
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .course-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-    .status-badge {
-        font-size: 0.85em;
-        padding: 0.35em 0.8em;
-    }
-    .filter-section {
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-    }
-</style>
-{% endblock %}
+{% block page_title %}Gestion des Cours - Admin{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <!-- En-tête -->
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <h1 class="h3 mb-0">
-                <i class="fas fa-chalkboard-teacher me-2"></i>
-                Gestion des Cours
-            </h1>
-            <p class="text-muted">Liste et gestion de tous les cours</p>
+<div class="admin-courses">
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Cours</span>
+            </div>
+            <h1>Gestion des Cours</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ courses.paginator.count }} total</span>
+            </div>
         </div>
-        <div class="col-md-6 text-end">
-            {% if perms.courses.add_cours %}
-            <a href="{% url 'courses:cours_create' %}" class="btn btn-primary">
-                <i class="fas fa-plus me-2"></i>Nouveau Cours
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportCours()" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+            <a href="{% url 'courses:cours_create' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Ajouter
             </a>
-            {% endif %}
         </div>
     </div>
 
-    <!-- Section de filtrage -->
-    <div class="filter-section">
-        <h5 class="mb-3">
-            <i class="fas fa-filter me-2"></i>Filtres
-        </h5>
-        <form method="get" class="row g-3">
-            <div class="col-md-3">
-                <input type="text" name="search" class="form-control" 
-                       placeholder="Rechercher..." value="{{ request.GET.search }}">
-            </div>
-            <div class="col-md-2">
-                <select name="statut" class="form-select">
-                    <option value="">Tous les statuts</option>
-                    <option value="PROGRAMME" {% if request.GET.statut == 'PROGRAMME' %}selected{% endif %}>Programmé</option>
-                    <option value="EN_COURS" {% if request.GET.statut == 'EN_COURS' %}selected{% endif %}>En cours</option>
-                    <option value="TERMINE" {% if request.GET.statut == 'TERMINE' %}selected{% endif %}>Terminé</option>
-                    <option value="ANNULE" {% if request.GET.statut == 'ANNULE' %}selected{% endif %}>Annulé</option>
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <select name="matiere" class="form-select-sm">
+                    <option value="">Toutes matières</option>
+                    {% for matiere in matieres %}
+                        <option value="{{ matiere.id }}" {% if current_filters.matiere == matiere.id|stringformat:"s" %}selected{% endif %}>
+                            {{ matiere.nom }}
+                        </option>
+                    {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
-                <select name="type_cours" class="form-select">
-                    <option value="">Tous les types</option>
-                    <option value="COURS" {% if request.GET.type_cours == 'COURS' %}selected{% endif %}>Cours magistral</option>
-                    <option value="TD" {% if request.GET.type_cours == 'TD' %}selected{% endif %}>TD</option>
-                    <option value="TP" {% if request.GET.type_cours == 'TP' %}selected{% endif %}>TP</option>
+            <div class="filter-group">
+                <select name="classe" class="form-select-sm">
+                    <option value="">Toutes classes</option>
+                    {% for classe in classes %}
+                        <option value="{{ classe.id }}" {% if current_filters.classe == classe.id|stringformat:"s" %}selected{% endif %}>
+                            {{ classe.nom }}
+                        </option>
+                    {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
-                <input type="date" name="date" class="form-control" value="{{ request.GET.date }}">
+            <div class="filter-group">
+                <input type="date" name="date_debut" value="{{ current_filters.date_debut }}" class="form-input-sm">
             </div>
-            <div class="col-md-3">
-                <button type="submit" class="btn btn-outline-primary me-2">
-                    <i class="fas fa-search me-1"></i>Filtrer
-                </button>
-                <a href="{% url 'courses:cours_list' %}" class="btn btn-outline-secondary">
-                    <i class="fas fa-times me-1"></i>Effacer
-                </a>
+            <div class="filter-group">
+                <select name="statut" class="form-select-sm">
+                    <option value="">Tous statuts</option>
+                    {% for key, label in statuts %}
+                        <option value="{{ key }}" {% if current_filters.statut == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search"></i></button>
+                <a href="{% url 'dashboard:admin_courses' %}" class="btn btn-sm btn-outline"><i class="fas fa-undo"></i></a>
             </div>
         </form>
     </div>
 
-    <!-- Liste des cours -->
-    {% if cours %}
-    <div class="row">
-        {% for cours_item in cours %}
-        <div class="col-xl-4 col-lg-6 mb-4">
-            <div class="card course-card h-100">
-                <!-- En-tête de la carte -->
-                <div class="card-header d-flex justify-content-between align-items-start">
-                    <div>
-                        <h6 class="card-title mb-1">{{ cours_item.titre }}</h6>
-                        <small class="text-muted">{{ cours_item.classe.nom }}</small>
-                    </div>
-                    <span class="badge status-badge 
-                        {% if cours_item.statut == 'PROGRAMME' %}bg-info
-                        {% elif cours_item.statut == 'EN_COURS' %}bg-warning
-                        {% elif cours_item.statut == 'TERMINE' %}bg-success
-                        {% elif cours_item.statut == 'ANNULE' %}bg-danger
-                        {% endif %}">
-                        {{ cours_item.get_statut_display }}
-                    </span>
+    <div class="courses-grid">
+        {% for cours in courses %}
+        <div class="cours-card">
+            <div class="cours-header">
+                <div class="cours-color" style="background-color: {{ cours.matiere.couleur }}"></div>
+                <div class="cours-info">
+                    <h3>{{ cours.titre|truncatechars:50 }}</h3>
+                    <p class="cours-matiere">{{ cours.matiere.nom }}</p>
                 </div>
-
-                <!-- Corps de la carte -->
-                <div class="card-body">
-                    <div class="row g-2 mb-3">
-                        <div class="col-12">
-                            <small class="text-muted d-block">
-                                <i class="fas fa-book me-1"></i>
-                                {{ cours_item.matiere.nom }}
-                            </small>
-                        </div>
-                        <div class="col-6">
-                            <small class="text-muted d-block">
-                                <i class="fas fa-user me-1"></i>
-                                {{ cours_item.enseignant.get_full_name }}
-                            </small>
-                        </div>
-                        <div class="col-6">
-                            <small class="text-muted d-block">
-                                <i class="fas fa-tag me-1"></i>
-                                {{ cours_item.get_type_cours_display }}
-                            </small>
-                        </div>
-                    </div>
-
-                    <!-- Informations de planning -->
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-calendar text-primary me-2"></i>
-                        <span>{{ cours_item.date_prevue|date:"d/m/Y" }}</span>
-                    </div>
-                    <div class="d-flex align-items-center mb-3">
-                        <i class="fas fa-clock text-primary me-2"></i>
-                        <span>{{ cours_item.heure_debut_prevue|time:"H:i" }} - {{ cours_item.heure_fin_prevue|time:"H:i" }}</span>
-                    </div>
-
-                    {% if cours_item.salle %}
-                    <div class="d-flex align-items-center mb-3">
-                        <i class="fas fa-map-marker-alt text-primary me-2"></i>
-                        <span>{{ cours_item.salle.nom }}</span>
-                    </div>
-                    {% endif %}
-
-                    <!-- Indicateurs -->
-                    <div class="row g-2 mb-3">
-                        {% if cours_item.cours_en_ligne %}
-                        <div class="col-auto">
-                            <span class="badge bg-success">
-                                <i class="fas fa-video me-1"></i>En ligne
-                            </span>
-                        </div>
-                        {% endif %}
-                        {% if cours_item.presence_prise %}
-                        <div class="col-auto">
-                            <span class="badge bg-info">
-                                <i class="fas fa-check me-1"></i>Présences
-                            </span>
-                        </div>
-                        {% endif %}
-                    </div>
+                <span class="cours-type-badge {{ cours.type_cours|lower }}">{{ cours.get_type_cours_display }}</span>
+            </div>
+            <div class="cours-body">
+                <div class="cours-detail">
+                    <i class="fas fa-calendar"></i> {{ cours.date_prevue|date:"d/m/Y" }}
                 </div>
-
-                <!-- Pied de la carte -->
-                <div class="card-footer bg-transparent">
-                    <div class="btn-group w-100" role="group">
-                        <a href="{% url 'courses:cours_detail' cours_item.pk %}" 
-                           class="btn btn-outline-primary btn-sm">
-                            <i class="fas fa-eye me-1"></i>Voir
-                        </a>
-                        {% if can_edit or user == cours_item.enseignant %}
-                        <a href="{% url 'courses:cours_edit' cours_item.pk %}" 
-                           class="btn btn-outline-secondary btn-sm">
-                            <i class="fas fa-edit me-1"></i>Modifier
-                        </a>
-                        {% endif %}
-                        {% if cours_item.cours_en_ligne and cours_item.streaming_actif %}
-                        <a href="{% url 'courses:cours_streaming' cours_item.pk %}" 
-                           class="btn btn-outline-success btn-sm">
-                            <i class="fas fa-play me-1"></i>Stream
-                        </a>
-                        {% endif %}
-                    </div>
+                <div class="cours-detail">
+                    <i class="fas fa-clock"></i> {{ cours.heure_debut_prevue|time:"H:i" }} - {{ cours.heure_fin_prevue|time:"H:i" }}
+                </div>
+                {% if cours.salle %}
+                <div class="cours-detail">
+                    <i class="fas fa-door-open"></i> {{ cours.salle.code }}
+                </div>
+                {% endif %}
+            </div>
+            <div class="cours-footer">
+                <span class="status-badge {{ cours.statut|lower }}">{{ cours.get_statut_display }}</span>
+                <div class="cours-actions">
+                    <a href="{% url 'courses:cours_detail' cours.id %}" class="btn-icon-sm btn-primary"><i class="fas fa-eye"></i></a>
+                    <a href="{% url 'courses:cours_edit' cours.id %}" class="btn-icon-sm btn-info"><i class="fas fa-edit"></i></a>
                 </div>
             </div>
+        </div>
+        {% empty %}
+        <div class="empty-state-full">
+            <i class="fas fa-chalkboard fa-3x"></i>
+            <h3>Aucun cours trouvé</h3>
+            <a href="{% url 'courses:cours_create' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Ajouter un cours</a>
         </div>
         {% endfor %}
     </div>
 
-    <!-- Pagination -->
-    {% if is_paginated %}
-    <div class="d-flex justify-content-center mt-4">
-        <nav aria-label="Navigation des pages">
-            <ul class="pagination">
-                {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page=1{{ request.GET.urlencode|slice:'1:' }}&{{ request.GET.urlencode }}">
-                            <i class="fas fa-angle-double-left"></i>
-                        </a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ request.GET.urlencode|slice:'1:' }}&{{ request.GET.urlencode }}">
-                            <i class="fas fa-angle-left"></i>
-                        </a>
-                    </li>
-                {% endif %}
-
-                {% for num in page_obj.paginator.page_range %}
-                    {% if page_obj.number == num %}
-                        <li class="page-item active">
-                            <span class="page-link">{{ num }}</span>
-                        </li>
-                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}{{ request.GET.urlencode|slice:'1:' }}&{{ request.GET.urlencode }}">{{ num }}</a>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ request.GET.urlencode|slice:'1:' }}&{{ request.GET.urlencode }}">
-                            <i class="fas fa-angle-right"></i>
-                        </a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ request.GET.urlencode|slice:'1:' }}&{{ request.GET.urlencode }}">
-                            <i class="fas fa-angle-double-right"></i>
-                        </a>
-                    </li>
-                {% endif %}
-            </ul>
-        </nav>
-    </div>
-    {% endif %}
-
-    {% else %}
-    <!-- Message si aucun cours -->
-    <div class="text-center py-5">
-        <i class="fas fa-chalkboard-teacher fa-5x text-muted mb-3"></i>
-        <h4 class="text-muted">Aucun cours trouvé</h4>
-        <p class="text-muted">
-            {% if request.GET %}
-            Aucun cours ne correspond aux critères de recherche.
-            {% else %}
-            Il n'y a pas encore de cours enregistrés.
-            {% endif %}
-        </p>
-        {% if perms.courses.add_cours %}
-        <a href="{% url 'courses:cours_create' %}" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>Créer le premier cours
-        </a>
-        {% endif %}
-    </div>
-    {% endif %}
+    {% include 'components/pagination.html' with page_obj=courses %}
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<style>
+.admin-courses { padding: 15px; }
+.page-header-compact { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; padding: 15px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.breadcrumb-nav { font-size: 11px; color: #6b7280; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+.breadcrumb-nav .current { color: #2563eb; font-weight: 500; }
+.header-content h1 { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #1f2937; }
+.header-stats { display: flex; gap: 8px; margin-top: 5px; }
+.stat-badge { padding: 2px 8px; background: #f3f4f6; border-radius: 12px; font-size: 11px; font-weight: 500; }
+.header-actions { display: flex; gap: 8px; }
+.filters-section { background: white; padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; }
+.filters-form { display: grid; grid-template-columns: 1.5fr 1.5fr 1fr 1fr auto; gap: 12px; }
+.form-select-sm, .form-input-sm { padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; height: 32px; }
+.filter-actions { display: flex; gap: 5px; }
+.courses-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 15px; margin-bottom: 20px; }
+.cours-card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; border: 1px solid #e5e7eb; transition: transform 0.2s; }
+.cours-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.cours-header { padding: 12px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 10px; background: #f9fafb; }
+.cours-color { width: 4px; height: 40px; border-radius: 2px; }
+.cours-info { flex: 1; }
+.cours-info h3 { margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #1f2937; }
+.cours-matiere { margin: 0; font-size: 12px; color: #6b7280; }
+.cours-type-badge { padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+.cours-type-badge.cm { background: #dbeafe; color: #1e40af; }
+.cours-type-badge.td { background: #d1fae5; color: #065f46; }
+.cours-type-badge.tp { background: #fed7aa; color: #92400e; }
+.cours-type-badge.evaluation { background: #fce7f3; color: #9f1239; }
+.cours-body { padding: 12px; }
+.cours-detail { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; color: #6b7280; }
+.cours-detail i { width: 16px; color: #9ca3af; }
+.cours-footer { padding: 12px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: #fafbfc; }
+.status-badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+.status-badge.programme { background: #e0e7ff; color: #3730a3; }
+.status-badge.en_cours { background: #fef3c7; color: #92400e; }
+.status-badge.termine { background: #d1fae5; color: #065f46; }
+.status-badge.annule { background: #fee2e2; color: #991b1b; }
+.cours-actions { display: flex; gap: 5px; }
+.btn-icon-sm { width: 28px; height: 28px; border-radius: 4px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; text-decoration: none; }
+.btn-icon-sm.btn-primary { background: #2563eb; color: white; }
+.btn-icon-sm.btn-info { background: #3b82f6; color: white; }
+.btn-icon { width: 32px; height: 32px; font-size: 14px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: white; border: 1px solid #e5e7eb; }
+.btn { padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-outline { background: white; border: 1px solid #e5e7eb; color: #1f2937; }
+.empty-state-full { grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: white; border-radius: 8px; }
+.empty-state-full i { color: #d1d5db; margin-bottom: 20px; }
+.empty-state-full h3 { margin: 0 0 20px 0; color: #1f2937; }
+@media (max-width: 768px) {
+    .courses-grid { grid-template-columns: 1fr; }
+    .filters-form { grid-template-columns: 1fr; }
+}
+</style>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-submit du formulaire de filtre au changement
-    const filterForm = document.querySelector('.filter-section form');
-    const selects = filterForm.querySelectorAll('select');
-    
-    selects.forEach(select => {
-        select.addEventListener('change', () => {
-            filterForm.submit();
-        });
-    });
-});
+function exportCours() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/courses/cours/export/?${params.toString()}`;
+}
 </script>
 {% endblock %}

@@ -7,11 +7,11 @@
 
     <nav class="pagination-nav">
         {% if page_obj.has_previous %}
-            <a href="?page=1{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+            <a href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
                class="page-link page-first" title="Première page">
                 <i class="fas fa-angle-double-left"></i>
             </a>
-            <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+            <a href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
                class="page-link page-prev" title="Page précédente">
                 <i class="fas fa-angle-left"></i>
             </a>
@@ -29,10 +29,10 @@
             {% if page_obj.number == num %}
                 <span class="page-link active">{{ num }}</span>
             {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                <a href="?page={{ num }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                <a href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
                    class="page-link">{{ num }}</a>
             {% elif num == 1 or num == page_obj.paginator.num_pages %}
-                <a href="?page={{ num }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                <a href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
                    class="page-link">{{ num }}</a>
             {% elif num == 2 and page_obj.number > 5 %}
                 <span class="page-link dots">...</span>
@@ -42,11 +42,11 @@
         {% endfor %}
 
         {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+            <a href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
                class="page-link page-next" title="Page suivante">
                 <i class="fas fa-angle-right"></i>
             </a>
-            <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+            <a href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
                class="page-link page-last" title="Dernière page">
                 <i class="fas fa-angle-double-right"></i>
             </a>
@@ -64,8 +64,8 @@
     <div class="page-size-selector">
         <label for="pageSize">Par page:</label>
         <select id="pageSize" onchange="changePageSize(this.value)">
-            <option value="10" {% if request.GET.per_page == '10' or not request.GET.per_page %}selected{% endif %}>10</option>
-            <option value="20" {% if request.GET.per_page == '20' %}selected{% endif %}>20</option>
+            <option value="10" {% if request.GET.per_page == '10' %}selected{% endif %}>10</option>
+            <option value="20" {% if request.GET.per_page == '20' or not request.GET.per_page %}selected{% endif %}>20</option>
             <option value="50" {% if request.GET.per_page == '50' %}selected{% endif %}>50</option>
             <option value="100" {% if request.GET.per_page == '100' %}selected{% endif %}>100</option>
         </select>
@@ -76,7 +76,7 @@
 .pagination-container {
     padding: 15px 20px;
     background: white;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid #e5e7eb;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -85,7 +85,7 @@
 }
 
 .pagination-info {
-    color: var(--text-light);
+    color: #6b7280;
     font-size: 12px;
     min-width: 200px;
 }
@@ -100,9 +100,9 @@
     padding: 6px 8px;
     min-width: 28px;
     height: 28px;
-    border: 1px solid var(--border-color);
+    border: 1px solid #e5e7eb;
     border-radius: 4px;
-    color: var(--text-dark);
+    color: #1f2937;
     text-decoration: none;
     transition: all 0.3s;
     display: flex;
@@ -113,31 +113,31 @@
 }
 
 .page-link:hover:not(.disabled):not(.active) {
-    background: var(--primary-color);
+    background: #2563eb;
     color: white;
-    border-color: var(--primary-color);
+    border-color: #2563eb;
     transform: translateY(-1px);
 }
 
 .page-link.active {
-    background: var(--primary-color);
+    background: #2563eb;
     color: white;
-    border-color: var(--primary-color);
+    border-color: #2563eb;
     font-weight: 600;
 }
 
 .page-link.disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    background: var(--light-gray);
-    color: var(--text-light);
+    background: #f3f4f6;
+    color: #6b7280;
 }
 
 .page-link.dots {
     border: none;
     background: none;
     cursor: default;
-    color: var(--text-light);
+    color: #6b7280;
 }
 
 .page-link.dots:hover {
@@ -157,7 +157,7 @@
     align-items: center;
     gap: 6px;
     font-size: 12px;
-    color: var(--text-light);
+    color: #6b7280;
 }
 
 .page-size-selector label {
@@ -166,10 +166,15 @@
 
 .page-size-selector select {
     padding: 4px 6px;
-    border: 1px solid var(--border-color);
+    border: 1px solid #e5e7eb;
     border-radius: 4px;
     font-size: 12px;
     background: white;
+    cursor: pointer;
+}
+
+.page-size-selector select:hover {
+    border-color: #2563eb;
 }
 
 /* Responsive */
@@ -213,11 +218,6 @@
         height: 28px;
         padding: 6px;
         font-size: 11px;
-    }
-
-    /* Masquer quelques pages sur très petits écrans */
-    .pagination-nav .page-link:nth-child(n+8):nth-child(-n+12) {
-        display: none;
     }
 }
 </style>

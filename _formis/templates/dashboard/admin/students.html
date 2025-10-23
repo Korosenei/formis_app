@@ -17,8 +17,8 @@
             </div>
             <h1>Gestion des Étudiants</h1>
             <div class="header-stats">
-                <span class="stat-badge">{{ students.paginator.count }} total</span>
-                <span class="stat-badge actifs">{{ students|dictsort:"est_actif"|dictsort:"True"|length }} actifs</span>
+                <span class="stat-badge">{{ page_obj.paginator.count }} total</span>
+                <span class="stat-badge actifs">{{ students|length }} sur cette page</span>
             </div>
         </div>
         <div class="header-actions">
@@ -174,8 +174,8 @@
                         <td>
                             <div class="academic-info">
                                 {% if student.profil_apprenant.classe_actuelle %}
-                                    <div class="department-name">{{ student.profil_apprenant.classe_actuelle.niveau.filiere.departement.nom }}</div>
-                                    <div class="filiere-name">{{ student.profil_apprenant.classe_actuelle.niveau.filiere.nom }}</div>
+                                    <div class="department-name">{{ student.profil_apprenant.classe_actuelle.niveau.filiere.departement.nom|truncatechars:20 }}</div>
+                                    <div class="filiere-name">{{ student.profil_apprenant.classe_actuelle.niveau.filiere.nom|truncatechars:20 }}</div>
                                     <div class="niveau-name">{{ student.profil_apprenant.classe_actuelle.niveau.nom }}</div>
                                     <div class="classe-name">{{ student.profil_apprenant.classe_actuelle.nom }}</div>
                                 {% else %}
@@ -293,7 +293,9 @@
         </div>
 
         <!-- Pagination -->
-        {% include 'components/pagination.html' with page_obj=students %}
+        {% if students %}
+            {% include 'components/pagination.html' with page_obj=page_obj %}
+        {% endif %}
     </div>
 </div>
 
@@ -328,7 +330,7 @@
     padding: 15px;
     background: white;
     border-radius: 6px;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .breadcrumb-nav {
@@ -450,6 +452,7 @@
     border-radius: 6px;
     font-size: 13px;
     height: 32px;
+    width: 100%;
 }
 
 .filter-actions {
@@ -555,23 +558,22 @@
 }
 
 .students-table-container {
-    background: var(--white);
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--border-color);
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e5e7eb;
     overflow: hidden;
 }
 
 .table-wrapper {
-    overflow-x: hidden;
+    overflow-x: auto;
     max-width: 100%;
 }
 
 .students-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 100%;
-    table-layout: auto;
+    min-width: 800px;
 }
 
 .students-table th {

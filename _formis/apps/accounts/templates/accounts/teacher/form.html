@@ -36,52 +36,32 @@
                 </h3>
                 <div class="form-row">
                     <div class="form-group col-md-6">
-                        <label for="{{ form.prenom.id_for_label }}" class="required">
-                            Prénom
-                        </label>
+                        <label for="{{ form.prenom.id_for_label }}" class="required">Prénom</label>
                         {{ form.prenom }}
-                        {% if form.prenom.errors %}
-                            <div class="error-message">{{ form.prenom.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.prenom.errors %}<div class="error-message">{{ form.prenom.errors.0 }}</div>{% endif %}
                     </div>
                     <div class="form-group col-md-6">
-                        <label for="{{ form.nom.id_for_label }}" class="required">
-                            Nom
-                        </label>
+                        <label for="{{ form.nom.id_for_label }}" class="required">Nom</label>
                         {{ form.nom }}
-                        {% if form.nom.errors %}
-                            <div class="error-message">{{ form.nom.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.nom.errors %}<div class="error-message">{{ form.nom.errors.0 }}</div>{% endif %}
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group col-md-4">
-                        <label for="{{ form.genre.id_for_label }}">
-                            Genre
-                        </label>
+                        <label for="{{ form.genre.id_for_label }}">Genre</label>
                         {{ form.genre }}
-                        {% if form.genre.errors %}
-                            <div class="error-message">{{ form.genre.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.genre.errors %}<div class="error-message">{{ form.genre.errors.0 }}</div>{% endif %}
                     </div>
                     <div class="form-group col-md-4">
-                        <label for="{{ form.date_naissance.id_for_label }}">
-                            Date de naissance
-                        </label>
+                        <label for="{{ form.date_naissance.id_for_label }}">Date de naissance</label>
                         {{ form.date_naissance }}
-                        {% if form.date_naissance.errors %}
-                            <div class="error-message">{{ form.date_naissance.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.date_naissance.errors %}<div class="error-message">{{ form.date_naissance.errors.0 }}</div>{% endif %}
                     </div>
                     <div class="form-group col-md-4">
-                        <label for="{{ form.lieu_naissance.id_for_label }}">
-                            Lieu de naissance
-                        </label>
+                        <label for="{{ form.lieu_naissance.id_for_label }}">Lieu de naissance</label>
                         {{ form.lieu_naissance }}
-                        {% if form.lieu_naissance.errors %}
-                            <div class="error-message">{{ form.lieu_naissance.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.lieu_naissance.errors %}<div class="error-message">{{ form.lieu_naissance.errors.0 }}</div>{% endif %}
                     </div>
                 </div>
             </div>
@@ -94,45 +74,29 @@
                 </h3>
                 <div class="form-row">
                     <div class="form-group col-md-6">
-                        <label for="{{ form.email.id_for_label }}" class="required">
-                            Email
-                        </label>
+                        <label for="{{ form.email.id_for_label }}" class="required">Email</label>
                         <div class="input-group">
-                            <span class="input-prefix">
-                                <i class="fas fa-envelope"></i>
-                            </span>
+                            <span class="input-prefix"><i class="fas fa-envelope"></i></span>
                             {{ form.email }}
                         </div>
-                        {% if form.email.errors %}
-                            <div class="error-message">{{ form.email.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.email.errors %}<div class="error-message">{{ form.email.errors.0 }}</div>{% endif %}
                         <small class="form-text">Servira pour la connexion</small>
                     </div>
                     <div class="form-group col-md-6">
-                        <label for="{{ form.telephone.id_for_label }}">
-                            Téléphone
-                        </label>
+                        <label for="{{ form.telephone.id_for_label }}">Téléphone</label>
                         <div class="input-group">
-                            <span class="input-prefix">
-                                <i class="fas fa-phone"></i>
-                            </span>
+                            <span class="input-prefix"><i class="fas fa-phone"></i></span>
                             {{ form.telephone }}
                         </div>
-                        {% if form.telephone.errors %}
-                            <div class="error-message">{{ form.telephone.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.telephone.errors %}<div class="error-message">{{ form.telephone.errors.0 }}</div>{% endif %}
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="{{ form.adresse.id_for_label }}">
-                            Adresse complète
-                        </label>
+                        <label for="{{ form.adresse.id_for_label }}">Adresse complète</label>
                         {{ form.adresse }}
-                        {% if form.adresse.errors %}
-                            <div class="error-message">{{ form.adresse.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.adresse.errors %}<div class="error-message">{{ form.adresse.errors.0 }}</div>{% endif %}
                     </div>
                 </div>
             </div>
@@ -143,59 +107,65 @@
                     <i class="fas fa-briefcase"></i>
                     Informations professionnelles
                 </h3>
+
+                <!-- Type d'enseignant -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="required">Type d'enseignant</label>
+                        <div class="radio-group">
+                            {% for value, label in form.fields.type_enseignant.choices %}
+                            <label class="radio-label">
+                                <input type="radio" name="type_enseignant" value="{{ value }}"
+                                       {% if form.type_enseignant.value == value %}checked{% endif %}
+                                       class="form-check-input">
+                                <span class="radio-text">
+                                    {% if value|lower == 'permanent' %}
+                                        <i class="fas fa-user-tie"></i>
+                                    {% else %}
+                                        <i class="fas fa-user-clock"></i>
+                                    {% endif %}
+                                    {{ label }}
+                                </span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% if form.type_enseignant.errors %}<div class="error-message">{{ form.type_enseignant.errors.0 }}</div>{% endif %}
+                    </div>
+                </div>
+
                 <div class="form-row">
                     <div class="form-group col-md-6">
-                        <label for="{{ form.departement.id_for_label }}" class="required">
-                            Département
-                        </label>
+                        <label for="{{ form.departement.id_for_label }}" class="required">Département principal</label>
                         {{ form.departement }}
-                        {% if form.departement.errors %}
-                            <div class="error-message">{{ form.departement.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.departement.errors %}<div class="error-message">{{ form.departement.errors.0 }}</div>{% endif %}
                     </div>
                     <div class="form-group col-md-6">
-                        <label for="{{ form.id_employe.id_for_label }}">
-                            ID Employé
-                        </label>
+                        <label for="{{ form.id_employe.id_for_label }}">ID Employé</label>
                         {{ form.id_employe }}
-                        {% if form.id_employe.errors %}
-                            <div class="error-message">{{ form.id_employe.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.id_employe.errors %}<div class="error-message">{{ form.id_employe.errors.0 }}</div>{% endif %}
                         <small class="form-text">Numéro d'identification interne (optionnel)</small>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group col-md-6">
-                        <label for="{{ form.specialisation.id_for_label }}">
-                            Spécialisation
-                        </label>
+                        <label for="{{ form.specialisation.id_for_label }}">Spécialisation</label>
                         {{ form.specialisation }}
-                        {% if form.specialisation.errors %}
-                            <div class="error-message">{{ form.specialisation.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.specialisation.errors %}<div class="error-message">{{ form.specialisation.errors.0 }}</div>{% endif %}
                         <small class="form-text">Ex: Mathématiques, Physique, etc.</small>
                     </div>
                     <div class="form-group col-md-6">
-                        <label for="{{ form.date_embauche.id_for_label }}">
-                            Date d'embauche
-                        </label>
+                        <label for="{{ form.date_embauche.id_for_label }}">Date d'embauche</label>
                         {{ form.date_embauche }}
-                        {% if form.date_embauche.errors %}
-                            <div class="error-message">{{ form.date_embauche.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.date_embauche.errors %}<div class="error-message">{{ form.date_embauche.errors.0 }}</div>{% endif %}
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="{{ form.qualifications.id_for_label }}">
-                            Qualifications et diplômes
-                        </label>
+                        <label for="{{ form.qualifications.id_for_label }}">Qualifications et diplômes</label>
                         {{ form.qualifications }}
-                        {% if form.qualifications.errors %}
-                            <div class="error-message">{{ form.qualifications.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.qualifications.errors %}<div class="error-message">{{ form.qualifications.errors.0 }}</div>{% endif %}
                         <small class="form-text">Listez les diplômes, certifications, formations...</small>
                     </div>
                 </div>
@@ -203,41 +173,95 @@
                 <div class="form-row">
                     <div class="form-group col-md-6">
                         <label class="checkbox-label">
-                            {{ form.est_permanent }}
-                            <span>Enseignant permanent</span>
-                        </label>
-                        {% if form.est_permanent.errors %}
-                            <div class="error-message">{{ form.est_permanent.errors.0 }}</div>
-                        {% endif %}
-                        <small class="form-text">Cochez si l'enseignant fait partie du personnel permanent</small>
-                    </div>
-                    <div class="form-group col-md-6">
-                        <label class="checkbox-label">
                             {{ form.est_principal }}
                             <span>Enseignant principal</span>
                         </label>
-                        {% if form.est_principal.errors %}
-                            <div class="error-message">{{ form.est_principal.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.est_principal.errors %}<div class="error-message">{{ form.est_principal.errors.0 }}</div>{% endif %}
                         <small class="form-text">Cochez pour les enseignants avec responsabilités accrues</small>
                     </div>
                 </div>
+            </div>
 
-                {% if form.matieres %}
+            <!-- Section Départements d'intervention -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-building"></i>
+                    Départements d'intervention
+                </h3>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="{{ form.matieres.id_for_label }}">
-                            Matières enseignées
-                        </label>
-                        {{ form.matieres }}
-                        {% if form.matieres.errors %}
-                            <div class="error-message">{{ form.matieres.errors.0 }}</div>
-                        {% endif %}
-                        <small class="form-text">Maintenez Ctrl (Cmd sur Mac) pour sélectionner plusieurs matières</small>
+                        <label>Départements où cet enseignant peut intervenir</label>
+                        <div class="checkbox-grid">
+                            {% for dept in form.fields.departements_intervention.queryset %}
+                            <label class="checkbox-label-inline">
+                                <input type="checkbox" name="departements_intervention"
+                                       value="{{ dept.id }}"
+                                       {% if dept in form.departements_intervention.value %}checked{% endif %}
+                                       class="form-check-input">
+                                <span>{{ dept.nom }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% if form.departements_intervention.errors %}<div class="error-message">{{ form.departements_intervention.errors.0 }}</div>{% endif %}
+                        <small class="form-text">Le département principal sera automatiquement inclus</small>
                     </div>
                 </div>
-                {% endif %}
             </div>
+
+            <!-- Section Chef de département -->
+            <div class="form-section" id="chefDepartementSection">
+                <h3 class="section-title">
+                    <i class="fas fa-crown"></i>
+                    Nomination comme chef de département
+                </h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            {{ form.est_chef_departement }}
+                            <span>Nommer cet enseignant comme chef de département</span>
+                        </label>
+                        {% if form.est_chef_departement.errors %}<div class="error-message">{{ form.est_chef_departement.errors.0 }}</div>{% endif %}
+                    </div>
+                </div>
+
+                <div class="form-row" id="departementADirigerContainer" style="display: none;">
+                    <div class="form-group">
+                        <label for="{{ form.departement_a_diriger.id_for_label }}" class="required">
+                            Département à diriger
+                        </label>
+                        {{ form.departement_a_diriger }}
+                        {% if form.departement_a_diriger.errors %}<div class="error-message">{{ form.departement_a_diriger.errors.0 }}</div>{% endif %}
+                        <small class="form-text">Seuls les départements sans chef actuel sont disponibles</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Matières -->
+            {% if form.matieres %}
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-book"></i>
+                    Matières enseignées
+                </h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Sélectionnez les matières</label>
+                        <div class="checkbox-grid">
+                            {% for matiere in form.fields.matieres.queryset %}
+                            <label class="checkbox-label-inline">
+                                <input type="checkbox" name="matieres"
+                                       value="{{ matiere.id }}"
+                                       {% if matiere in form.matieres.value %}checked{% endif %}
+                                       class="form-check-input">
+                                <span>{{ matiere.nom }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% if form.matieres.errors %}<div class="error-message">{{ form.matieres.errors.0 }}</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Section Photo -->
             <div class="form-section">
@@ -263,9 +287,7 @@
                                 <small class="form-text">JPG ou PNG, max 5 MB</small>
                             </div>
                         </div>
-                        {% if form.photo_profil.errors %}
-                            <div class="error-message">{{ form.photo_profil.errors.0 }}</div>
-                        {% endif %}
+                        {% if form.photo_profil.errors %}<div class="error-message">{{ form.photo_profil.errors.0 }}</div>{% endif %}
                     </div>
                 </div>
             </div>
@@ -378,14 +400,6 @@
     flex-direction: column;
 }
 
-.form-group.col-md-4 {
-    grid-column: span 1;
-}
-
-.form-group.col-md-6 {
-    grid-column: span 1;
-}
-
 .form-row:has(.col-md-6) {
     grid-template-columns: repeat(2, 1fr);
 }
@@ -425,10 +439,6 @@
     resize: vertical;
 }
 
-.form-group select[multiple] {
-    min-height: 150px;
-}
-
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
@@ -457,6 +467,57 @@
     border-radius: 0 6px 6px 0 !important;
 }
 
+/* Radio buttons */
+.radio-group {
+    display: flex;
+    gap: 20px;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.radio-label:has(input:checked) {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.radio-label input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.radio-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.radio-text i {
+    font-size: 16px;
+    color: #6b7280;
+}
+
+.radio-label:has(input:checked) .radio-text {
+    color: #2563eb;
+}
+
+.radio-label:has(input:checked) .radio-text i {
+    color: #2563eb;
+}
+
+/* Checkboxes */
 .checkbox-label {
     display: flex;
     align-items: center;
@@ -473,6 +534,42 @@
 
 .checkbox-label span {
     font-size: 14px;
+    color: #1f2937;
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.checkbox-label-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.checkbox-label-inline:hover {
+    background: #f9fafb;
+}
+
+.checkbox-label-inline:has(input:checked) {
+    background: #eff6ff;
+    border-color: #2563eb;
+}
+
+.checkbox-label-inline input {
+    width: 16px;
+    height: 16px;
+}
+
+.checkbox-label-inline span {
+    font-size: 13px;
     color: #1f2937;
 }
 
@@ -596,6 +693,14 @@
         grid-template-columns: 1fr;
     }
 
+    .radio-group {
+        flex-direction: column;
+    }
+
+    .checkbox-grid {
+        grid-template-columns: 1fr;
+    }
+
     .photo-upload-container {
         flex-direction: column;
     }
@@ -616,6 +721,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('teacherForm');
     const photoInput = document.getElementById('{{ form.photo_profil.id_for_label }}');
     const photoPreview = document.getElementById('photoPreview');
+    const estChefCheckbox = document.getElementById('id_est_chef_departement');
+    const departementADirigerContainer = document.getElementById('departementADirigerContainer');
 
     // Preview photo
     if (photoInput) {
@@ -627,6 +734,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     photoPreview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
                 };
                 reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    // Gestion affichage département à diriger
+    if (estChefCheckbox && departementADirigerContainer) {
+        // Afficher/masquer au chargement
+        if (estChefCheckbox.checked) {
+            departementADirigerContainer.style.display = 'block';
+        }
+
+        // Gérer le changement
+        estChefCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                departementADirigerContainer.style.display = 'block';
+            } else {
+                departementADirigerContainer.style.display = 'none';
             }
         });
     }
@@ -671,11 +795,22 @@ document.addEventListener('DOMContentLoaded', function() {
         const nom = form.querySelector('[name="nom"]').value.trim();
         const email = form.querySelector('[name="email"]').value.trim();
         const departement = form.querySelector('[name="departement"]').value;
+        const typeEnseignant = form.querySelector('[name="type_enseignant"]:checked');
 
-        if (!prenom || !nom || !email || !departement) {
+        if (!prenom || !nom || !email || !departement || !typeEnseignant) {
             e.preventDefault();
             alert('Veuillez remplir tous les champs obligatoires');
             return false;
+        }
+
+        // Vérification chef de département
+        if (estChefCheckbox && estChefCheckbox.checked) {
+            const deptADiriger = form.querySelector('[name="departement_a_diriger"]').value;
+            if (!deptADiriger) {
+                e.preventDefault();
+                alert('Veuillez sélectionner le département à diriger');
+                return false;
+            }
         }
     });
 });

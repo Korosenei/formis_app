@@ -4,17 +4,18 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
+from django.utils import timezone
 from .models import (
-    Module, Matiere, MatiereModule, Cours, CahierTexte,
-    Ressource, Presence, EmploiDuTemps, CreneauHoraire
+    Module, Matiere, Cours, CahierTexte,
+    Ressource, Presence, EmploiDuTemps, CreneauEmploiDuTemps
 )
 
 
 @admin.register(Module)
 class ModuleAdmin(admin.ModelAdmin):
     list_display = [
-        'nom', 'code', 'niveau', 'get_filiere', 'get_departement',
-        'coordinateur', 'credits_ects', 'volume_horaire_total', 'actif'
+        'nom', 'code', 'niveau', 'coordinateur',
+        'credits_ects', 'volume_horaire_total', 'actif'
     ]
     list_filter = [
         'niveau__filiere__departement__etablissement',
@@ -25,34 +26,20 @@ class ModuleAdmin(admin.ModelAdmin):
         'created_at'
     ]
     search_fields = ['nom', 'code', 'description']
-    filter_horizontal = ['prerequis']
     raw_id_fields = ['coordinateur']
+    list_select_related = ['niveau', 'coordinateur']
 
     fieldsets = (
         ('Informations générales', {
             'fields': ('nom', 'code', 'description', 'niveau')
         }),
-        ('Configuration académique', {
-            'fields': ('coordinateur', 'volume_horaire_total', 'credits_ects')
-        }),
-        ('Prérequis', {
-            'fields': ('prerequis',),
-            'classes': ('collapse',)
+        ('Coordination', {
+            'fields': ('coordinateur',)
         }),
         ('Statut', {
             'fields': ('actif',)
         })
     )
-
-    def get_filiere(self, obj):
-        return obj.filiere.nom if obj.filiere else '-'
-
-    get_filiere.short_description = 'Filière'
-
-    def get_departement(self, obj):
-        return obj.departement.nom if obj.departement else '-'
-
-    get_departement.short_description = 'Département'
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
@@ -61,41 +48,50 @@ class ModuleAdmin(admin.ModelAdmin):
         )
 
 
-class MatiereModuleInline(admin.TabularInline):
-    model = MatiereModule
-    extra = 1
-    raw_id_fields = ['enseignant']
-
-
 @admin.register(Matiere)
 class MatiereAdmin(admin.ModelAdmin):
     list_display = [
-        'nom', 'code', 'coefficient', 'get_volume_horaire',
+        'nom', 'code', 'niveau', 'module', 'enseignant_responsable',
+        'coefficient', 'credits_ects', 'volume_horaire_total',
         'get_couleur_display', 'actif'
     ]
-    list_filter = ['actif', 'created_at']
+    list_filter = [
+        'niveau__filiere__departement__etablissement',
+        'niveau__filiere__departement',
+        'niveau__filiere',
+        'niveau',
+        'module',
+        'actif',
+        'created_at'
+    ]
     search_fields = ['nom', 'code', 'description']
-    inlines = [MatiereModuleInline]
+    raw_id_fields = ['enseignant_responsable']
+    list_select_related = ['niveau', 'module', 'enseignant_responsable']
 
     fieldsets = (
         ('Informations générales', {
-            'fields': ('nom', 'code', 'description')
+            'fields': ('nom', 'code', 'description', 'niveau', 'module')
         }),
-        ('Configuration pédagogique', {
-            'fields': ('coefficient', 'couleur')
+        ('Enseignement', {
+            'fields': ('enseignant_responsable',)
         }),
         ('Volume horaire', {
-            'fields': ('heures_theorie', 'heures_pratique', 'heures_td')
+            'fields': (
+                'heures_cours_magistral',
+                'heures_travaux_diriges',
+                'heures_travaux_pratiques'
+            )
+        }),
+        ('Évaluation', {
+            'fields': ('coefficient', 'credits_ects')
+        }),
+        ('Affichage', {
+            'fields': ('couleur',)
         }),
         ('Statut', {
             'fields': ('actif',)
         })
     )
-
-    def get_volume_horaire(self, obj):
-        return f"{obj.volume_horaire_total}h"
-
-    get_volume_horaire.short_description = 'Volume horaire'
 
     def get_couleur_display(self, obj):
         return format_html(
@@ -106,42 +102,24 @@ class MatiereAdmin(admin.ModelAdmin):
 
     get_couleur_display.short_description = 'Couleur'
 
-
-@admin.register(MatiereModule)
-class MatiereModuleAdmin(admin.ModelAdmin):
-    list_display = [
-        'matiere', 'module', 'get_niveau', 'enseignant',
-        'coefficient', 'get_volume_horaire'
-    ]
-    list_filter = [
-        'module__niveau__filiere__departement__etablissement',
-        'module__niveau__filiere__departement',
-        'module__niveau__filiere',
-        'module__niveau',
-    ]
-    search_fields = ['matiere__nom', 'module__nom']
-    raw_id_fields = ['enseignant']
-
-    def get_niveau(self, obj):
-        return obj.module.niveau.nom
-
-    get_niveau.short_description = 'Niveau'
-
-    def get_volume_horaire(self, obj):
-        return f"{obj.volume_horaire_total}h"
-
-    get_volume_horaire.short_description = 'Volume horaire'
-
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
-            'matiere', 'module__niveau', 'enseignant'
+            'niveau__filiere__departement__etablissement',
+            'module',
+            'enseignant_responsable'
         )
 
 
 class CahierTexteInline(admin.StackedInline):
     model = CahierTexte
     extra = 0
-    readonly_fields = ['rempli_par', 'date_saisie', 'modifie_le']
+    max_num = 1
+    readonly_fields = ['date_saisie', 'modifie_le']
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # editing an existing object
+            return self.readonly_fields + ['rempli_par']
+        return self.readonly_fields
 
     def save_model(self, request, obj, form, change):
         if not obj.rempli_par:
@@ -165,9 +143,9 @@ class PresenceInline(admin.TabularInline):
 @admin.register(Cours)
 class CoursAdmin(admin.ModelAdmin):
     list_display = [
-        'titre', 'get_classe', 'get_matiere', 'enseignant',
+        'titre', 'matiere', 'classe', 'enseignant',
         'date_prevue', 'heure_debut_prevue', 'type_cours',
-        'statut', 'cours_en_ligne', 'presence_prise'
+        'statut', 'cours_en_ligne', 'presence_prise', 'actif'
     ]
     list_filter = [
         'classe__niveau__filiere__departement__etablissement',
@@ -180,41 +158,52 @@ class CoursAdmin(admin.ModelAdmin):
         'statut',
         'cours_en_ligne',
         'presence_prise',
+        'actif',
         'date_prevue'
     ]
-    search_fields = ['titre', 'description', 'classe__nom', 'enseignant__first_name', 'enseignant__last_name']
-    raw_id_fields = ['enseignant']
+    search_fields = [
+        'titre', 'description', 'classe__nom',
+        'enseignant__first_name', 'enseignant__last_name',
+        'matiere__nom'
+    ]
+    raw_id_fields = ['enseignant', 'salle']
     date_hierarchy = 'date_prevue'
     inlines = [CahierTexteInline, RessourceInline, PresenceInline]
+    list_select_related = ['matiere', 'classe', 'enseignant', 'periode_academique', 'salle']
 
     fieldsets = (
         ('Informations générales', {
-            'fields': ('titre', 'description', 'classe', 'matiere_module', 'enseignant', 'periode_academique')
+            'fields': (
+                'titre', 'description', 'matiere', 'classe',
+                'enseignant', 'periode_academique'
+            )
         }),
         ('Type et statut', {
             'fields': ('type_cours', 'statut')
         }),
-        ('Planification prévue', {
-            'fields': ('date_prevue', 'heure_debut_prevue', 'heure_fin_prevue', 'salle')
+        ('Planification', {
+            'fields': (
+                'date_prevue', 'heure_debut_prevue', 'heure_fin_prevue',
+                'salle'
+            )
         }),
         ('Réalisation effective', {
-            'fields': ('date_effective', 'heure_debut_effective', 'heure_fin_effective'),
+            'fields': (
+                'date_effective', 'heure_debut_effective',
+                'heure_fin_effective'
+            ),
             'classes': ('collapse',)
         }),
         ('Contenu pédagogique', {
-            'fields': ('objectifs', 'contenu', 'prerequis', 'ressources_utilisees'),
+            'fields': ('objectifs', 'contenu'),
             'classes': ('collapse',)
         }),
         ('Cours en ligne', {
-            'fields': ('cours_en_ligne', 'url_streaming', 'streaming_actif'),
-            'classes': ('collapse',)
-        }),
-        ('Observations', {
-            'fields': ('notes_enseignant', 'retours_etudiants'),
+            'fields': ('cours_en_ligne', 'url_streaming'),
             'classes': ('collapse',)
         }),
         ('Présence', {
-            'fields': ('presence_prise', 'date_prise_presence'),
+            'fields': ('presence_prise',),
             'classes': ('collapse',)
         }),
         ('Statut', {
@@ -222,22 +211,13 @@ class CoursAdmin(admin.ModelAdmin):
         })
     )
 
-    def get_classe(self, obj):
-        return obj.classe.nom
-
-    get_classe.short_description = 'Classe'
-
-    def get_matiere(self, obj):
-        return obj.matiere.nom
-
-    get_matiere.short_description = 'Matière'
-
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
-            'classe__niveau__filiere__departement',
-            'matiere_module__matiere',
+            'classe__niveau__filiere__departement__etablissement',
+            'matiere',
             'enseignant',
-            'periode_academique'
+            'periode_academique',
+            'salle'
         )
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
@@ -247,24 +227,25 @@ class CoursAdmin(admin.ModelAdmin):
                 kwargs["queryset"] = db_field.related_model.objects.filter(
                     niveau__filiere__departement__etablissement=request.user.etablissement
                 )
-        elif db_field.name == "matiere_module":
-            # Filtrer selon la classe sélectionnée
-            if request.GET.get('classe'):
-                try:
-                    classe_id = int(request.GET.get('classe'))
-                    kwargs["queryset"] = db_field.related_model.objects.filter(
-                        module__niveau=classe_id
-                    )
-                except (ValueError, TypeError):
-                    pass
+        elif db_field.name == "matiere":
+            # Filtrer les matières selon l'établissement
+            if hasattr(request.user, 'etablissement'):
+                kwargs["queryset"] = db_field.related_model.objects.filter(
+                    niveau__filiere__departement__etablissement=request.user.etablissement
+                )
+        elif db_field.name == "salle":
+            # Filtrer les salles selon l'établissement
+            if hasattr(request.user, 'etablissement'):
+                kwargs["queryset"] = db_field.related_model.objects.filter(
+                    batiment__etablissement=request.user.etablissement
+                )
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
 @admin.register(CahierTexte)
 class CahierTexteAdmin(admin.ModelAdmin):
     list_display = [
-        'get_cours_titre', 'get_classe', 'get_matiere',
-        'rempli_par', 'date_saisie', 'date_travail_pour'
+        'cours', 'rempli_par', 'date_saisie', 'date_travail_pour'
     ]
     list_filter = [
         'cours__classe__niveau__filiere__departement__etablissement',
@@ -276,21 +257,19 @@ class CahierTexteAdmin(admin.ModelAdmin):
     ]
     search_fields = [
         'cours__titre', 'travail_fait', 'travail_donne',
-        'cours__classe__nom'
+        'cours__classe__nom', 'cours__matiere__nom'
     ]
     readonly_fields = ['date_saisie', 'modifie_le']
     raw_id_fields = ['cours', 'rempli_par']
     date_hierarchy = 'date_saisie'
+    list_select_related = ['cours', 'rempli_par']
 
     fieldsets = (
         ('Cours', {
             'fields': ('cours', 'rempli_par')
         }),
-        ('Travail réalisé', {
-            'fields': ('travail_fait',)
-        }),
-        ('Travail à faire', {
-            'fields': ('travail_donne', 'date_travail_pour')
+        ('Contenu du cours', {
+            'fields': ('travail_fait', 'travail_donne', 'date_travail_pour')
         }),
         ('Observations', {
             'fields': ('observations',)
@@ -301,21 +280,6 @@ class CahierTexteAdmin(admin.ModelAdmin):
         })
     )
 
-    def get_cours_titre(self, obj):
-        return obj.cours.titre
-
-    get_cours_titre.short_description = 'Cours'
-
-    def get_classe(self, obj):
-        return obj.cours.classe.nom
-
-    get_classe.short_description = 'Classe'
-
-    def get_matiere(self, obj):
-        return obj.cours.matiere.nom
-
-    get_matiere.short_description = 'Matière'
-
     def save_model(self, request, obj, form, change):
         if not change:  # Nouvel objet
             obj.rempli_par = request.user
@@ -325,7 +289,7 @@ class CahierTexteAdmin(admin.ModelAdmin):
 @admin.register(Ressource)
 class RessourceAdmin(admin.ModelAdmin):
     list_display = [
-        'titre', 'get_cours', 'type_ressource',
+        'titre', 'cours', 'type_ressource',
         'get_taille_fichier_display', 'obligatoire',
         'telechargeable', 'nombre_telechargements', 'nombre_vues'
     ]
@@ -340,6 +304,7 @@ class RessourceAdmin(admin.ModelAdmin):
     search_fields = ['titre', 'description', 'cours__titre']
     readonly_fields = ['taille_fichier', 'nombre_telechargements', 'nombre_vues']
     raw_id_fields = ['cours']
+    list_select_related = ['cours']
 
     fieldsets = (
         ('Informations générales', {
@@ -361,17 +326,17 @@ class RessourceAdmin(admin.ModelAdmin):
         })
     )
 
-    def get_cours(self, obj):
-        return obj.cours.titre
-
-    get_cours.short_description = 'Cours'
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'cours__classe__niveau__filiere__departement__etablissement'
+        )
 
 
 @admin.register(Presence)
 class PresenceAdmin(admin.ModelAdmin):
     list_display = [
-        'get_etudiant', 'get_cours', 'get_classe',
-        'statut', 'heure_arrivee', 'valide', 'valide_par'
+        'etudiant', 'cours', 'statut', 'heure_arrivee',
+        'valide', 'valide_par', 'date_validation'
     ]
     list_filter = [
         'cours__classe__niveau__filiere__departement__etablissement',
@@ -386,6 +351,7 @@ class PresenceAdmin(admin.ModelAdmin):
     ]
     raw_id_fields = ['cours', 'etudiant', 'valide_par']
     readonly_fields = ['date_validation']
+    list_select_related = ['cours', 'etudiant', 'valide_par']
 
     fieldsets = (
         ('Informations générales', {
@@ -404,21 +370,6 @@ class PresenceAdmin(admin.ModelAdmin):
         })
     )
 
-    def get_etudiant(self, obj):
-        return obj.etudiant.get_full_name()
-
-    get_etudiant.short_description = 'Étudiant'
-
-    def get_cours(self, obj):
-        return obj.cours.titre
-
-    get_cours.short_description = 'Cours'
-
-    def get_classe(self, obj):
-        return obj.cours.classe.nom
-
-    get_classe.short_description = 'Classe'
-
     def save_model(self, request, obj, form, change):
         if obj.valide and not obj.valide_par:
             obj.valide_par = request.user
@@ -426,124 +377,104 @@ class PresenceAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-class CreneauHoraireInline(admin.TabularInline):
-    model = CreneauHoraire
+class CreneauEmploiDuTempsInline(admin.TabularInline):
+    model = CreneauEmploiDuTemps
     extra = 1
-    raw_id_fields = ['enseignant']
+    raw_id_fields = ['cours']
 
 
 @admin.register(EmploiDuTemps)
 class EmploiDuTempsAdmin(admin.ModelAdmin):
     list_display = [
-        'nom', 'classe', 'get_filiere', 'periode_academique',
-        'valide_a_partir_du', 'valide_jusqua', 'publie', 'actuel'
+        'nom', 'get_cible', 'periode_academique',
+        'semaine_debut', 'semaine_fin', 'publie', 'actuel'
     ]
     list_filter = [
-        'classe__niveau__filiere__departement__etablissement',
-        'classe__niveau__filiere__departement',
-        'classe__niveau__filiere',
         'periode_academique',
         'publie',
-        'actuel'
+        'actuel',
+        'semaine_debut'
     ]
-    search_fields = ['nom', 'description', 'classe__nom']
-    raw_id_fields = ['cree_par']
-    inlines = [CreneauHoraireInline]
+    search_fields = ['nom', 'classe__nom', 'enseignant__first_name', 'enseignant__last_name']
+    raw_id_fields = ['classe', 'enseignant', 'cree_par']
+    inlines = [CreneauEmploiDuTempsInline]
+    list_select_related = ['classe', 'enseignant', 'periode_academique', 'cree_par']
 
     fieldsets = (
         ('Informations générales', {
-            'fields': ('nom', 'description', 'classe', 'periode_academique')
+            'fields': ('nom', 'periode_academique')
         }),
-        ('Validité', {
-            'fields': ('valide_a_partir_du', 'valide_jusqua')
+        ('Cible', {
+            'fields': (('classe', 'enseignant'),)
+        }),
+        ('Période de validité', {
+            'fields': ('semaine_debut', 'semaine_fin')
         }),
         ('Statut', {
             'fields': ('publie', 'actuel')
         }),
-        ('Métadonnées', {
+        ('Création', {
             'fields': ('cree_par',),
             'classes': ('collapse',)
         })
     )
 
-    def get_filiere(self, obj):
-        return obj.classe.niveau.filiere.nom
+    def get_cible(self, obj):
+        if obj.classe:
+            return f"Classe: {obj.classe.nom}"
+        elif obj.enseignant:
+            return f"Enseignant: {obj.enseignant.get_full_name()}"
+        return "Non spécifié"
 
-    get_filiere.short_description = 'Filière'
+    get_cible.short_description = 'Cible'
 
     def save_model(self, request, obj, form, change):
         if not change:  # Nouvel objet
             obj.cree_par = request.user
         super().save_model(request, obj, form, change)
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'classe__niveau__filiere__departement__etablissement',
+            'enseignant',
+            'periode_academique',
+            'cree_par'
+        )
 
-@admin.register(CreneauHoraire)
-class CreneauHoraireAdmin(admin.ModelAdmin):
+
+@admin.register(CreneauEmploiDuTemps)
+class CreneauEmploiDuTempsAdmin(admin.ModelAdmin):
     list_display = [
-        'get_emploi_du_temps', 'jour', 'heure_debut', 'heure_fin',
-        'get_matiere', 'enseignant', 'salle', 'type_cours', 'recurrent'
+        'emploi_du_temps', 'cours', 'jour_semaine',
+        'heure_debut', 'heure_fin'
     ]
     list_filter = [
         'emploi_du_temps__classe__niveau__filiere__departement__etablissement',
         'emploi_du_temps__classe',
-        'jour',
-        'type_cours',
-        'recurrent'
+        'jour_semaine',
+        'emploi_du_temps__periode_academique'
     ]
     search_fields = [
-        'emploi_du_temps__nom', 'matiere_module__matiere__nom',
-        'enseignant__first_name', 'enseignant__last_name'
+        'emploi_du_temps__nom', 'cours__titre',
+        'cours__matiere__nom'
     ]
-    raw_id_fields = ['emploi_du_temps', 'enseignant']
+    raw_id_fields = ['emploi_du_temps', 'cours']
+    list_select_related = ['emploi_du_temps', 'cours']
 
     fieldsets = (
         ('Emploi du temps', {
-            'fields': ('emploi_du_temps',)
+            'fields': ('emploi_du_temps', 'cours')
         }),
         ('Horaires', {
-            'fields': ('jour', 'heure_debut', 'heure_fin')
-        }),
-        ('Cours', {
-            'fields': ('matiere_module', 'enseignant', 'type_cours')
-        }),
-        ('Lieu', {
-            'fields': ('salle',)
-        }),
-        ('Récurrence', {
-            'fields': ('recurrent', 'dates_exception'),
-            'classes': ('collapse',)
+            'fields': ('jour_semaine', 'heure_debut', 'heure_fin')
         })
     )
 
-    def get_emploi_du_temps(self, obj):
-        return f"{obj.emploi_du_temps.classe.nom} - {obj.emploi_du_temps.nom}"
-
-    get_emploi_du_temps.short_description = 'Emploi du temps'
-
-    def get_matiere(self, obj):
-        return obj.matiere_module.matiere.nom
-
-    get_matiere.short_description = 'Matière'
-
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == "matiere_module":
-            # Filtrer selon l'emploi du temps sélectionné
-            if request.GET.get('emploi_du_temps'):
-                try:
-                    edt_id = int(request.GET.get('emploi_du_temps'))
-                    edt = EmploiDuTemps.objects.get(id=edt_id)
-                    kwargs["queryset"] = db_field.related_model.objects.filter(
-                        module__niveau=edt.classe.niveau
-                    )
-                except (ValueError, TypeError, EmploiDuTemps.DoesNotExist):
-                    pass
-        elif db_field.name == "salle":
-            # Filtrer selon l'établissement
-            if hasattr(request.user, 'etablissement'):
-                kwargs["queryset"] = db_field.related_model.objects.filter(
-                    batiment__etablissement=request.user.etablissement
-                )
-        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'emploi_du_temps__classe__niveau__filiere__departement__etablissement',
+            'cours__matiere'
+        )
 
 
 # Configuration des titres d'administration

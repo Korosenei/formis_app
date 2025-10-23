@@ -1,4 +1,5 @@
 # apps/core/dashboard_views.py
+from django.db import models
 from django.http import HttpResponse, JsonResponse, Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -6,8 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.generic import TemplateView, ListView, DetailView, UpdateView, FormView
 from django.db.models.functions import ExtractMonth
-from django.db.models import Count, Q, Sum
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.core.paginator import Paginator
@@ -19,13 +19,15 @@ from decimal import Decimal
 from io import StringIO
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
-from django.urls import reverse_lazy
+from datetime import date, datetime
+from django.db.models import Avg, Sum, F, IntegerField, Count, Q
+from django.utils.timesince import timesince
 
 from apps.core.mixins import RoleRequiredMixin, EstablishmentFilterMixin
 from apps.accounts.models import Utilisateur, ProfilApprenant, ProfilEnseignant
 from apps.establishments.models import Etablissement, AnneeAcademique, Salle
-from apps.academic.models import Departement, Filiere, Niveau, Classe
-from apps.courses.models import Matiere, Cours, Presence, Ressource, CahierTexte, MatiereModule, EmploiDuTemps
+from apps.academic.models import Departement, Filiere, Niveau, Classe, PeriodeAcademique
+from apps.courses.models import Module, Matiere, StatutCours, TypeCours, Cours, Presence, Ressource, CahierTexte, EmploiDuTemps
 from apps.enrollment.models import Candidature, Inscription
 from apps.evaluations.models import Evaluation, Note
 from apps.payments.models import Paiement, PlanPaiement, InscriptionPaiement
@@ -245,6 +247,57 @@ class AdminUsersView(LoginRequiredMixin, ListView):
                 'departement': self.request.GET.get('departement', ''),
                 'search': self.request.GET.get('search', ''),
             },
+        })
+
+        return context
+
+class AdminDepartmentHeadsView(LoginRequiredMixin, ListView):
+    """Liste des chefs de département"""
+    template_name = 'dashboard/admin/department_heads.html'
+    context_object_name = 'chefs_departement'  # Changé de 'department_heads'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        etablissement = self.request.user.etablissement
+
+        # Récupérer tous les départements avec leurs chefs
+        departements = Departement.objects.filter(
+            etablissement=etablissement,
+            est_actif=True
+        ).select_related('chef').prefetch_related(
+            'utilisateurs',
+            'filieres'
+        ).order_by('nom')
+
+        return departements
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        etablissement = self.request.user.etablissement
+
+        # Départements sans chef
+        depts_sans_chef = Departement.objects.filter(
+            etablissement=etablissement,
+            est_actif=True,
+            chef__isnull=True
+        ).count()
+
+        # Total des départements
+        total_depts = Departement.objects.filter(
+            etablissement=etablissement,
+            est_actif=True
+        ).count()
+
+        context.update({
+            'departements_sans_chef': depts_sans_chef,
+            'total_departements': total_depts,
+            'can_nominate': depts_sans_chef > 0
         })
 
         return context
@@ -548,7 +601,6 @@ class AdminNiveauxView(LoginRequiredMixin, ListView):
         per_page = self.request.GET.get('per_page', 20)
         try:
             per_page = int(per_page)
-            # Limiter entre 10 et 100
             if per_page not in [10, 20, 50, 100]:
                 per_page = 20
         except (ValueError, TypeError):
@@ -560,9 +612,9 @@ class AdminNiveauxView(LoginRequiredMixin, ListView):
         queryset = Niveau.objects.filter(
             filiere__etablissement=etablissement
         ).select_related('filiere__departement').annotate(
-            nombre_classes=Count('classes', filter=Q(classes__est_active=True)),  # <-- changed
+            nombre_classes=Count('classes', filter=Q(classes__est_active=True)),
             nombre_etudiants=Count(
-                'classes__apprenants',  # <-- changed
+                'classes__apprenants',
                 filter=Q(classes__apprenants__utilisateur__est_actif=True),
                 distinct=True
             )
@@ -675,8 +727,6 @@ class AdminClassesView(LoginRequiredMixin, ListView):
         return queryset.order_by('-annee_academique__nom', 'nom')
 
     def get_context_data(self, **kwargs):
-        from apps.establishments.models import AnneeAcademique
-
         context = super().get_context_data(**kwargs)
         etablissement = self.request.user.etablissement
 
@@ -739,8 +789,6 @@ class AdminPeriodesView(LoginRequiredMixin, ListView):
         return queryset.order_by('-annee_academique__nom', 'ordre')
 
     def get_context_data(self, **kwargs):
-        from apps.establishments.models import AnneeAcademique
-
         context = super().get_context_data(**kwargs)
         etablissement = self.request.user.etablissement
 
@@ -782,54 +830,75 @@ class AdminModulesView(LoginRequiredMixin, ListView):
         return per_page
 
     def get_queryset(self):
-        from apps.courses.models import Module
-        etablissement = self.request.user.etablissement
-        queryset = Module.objects.filter(
-            niveau__filiere__departement__etablissement=etablissement
-        ).select_related(
+        user = self.request.user
+        queryset = Module.objects.select_related(
             'niveau__filiere__departement',
             'coordinateur'
         ).annotate(
-            nombre_matieres=Count('matieremodule')
+            nombre_matieres=Count('matieres'),
+            total_heures=Sum(
+                F('matieres__heures_cours_magistral') +
+                F('matieres__heures_travaux_diriges') +
+                F('matieres__heures_travaux_pratiques'),
+                output_field=IntegerField()
+            ),
+            credits_ects_total=Sum('matieres__credits_ects')
         )
 
-        # Filtres
-        departement = self.request.GET.get('departement')
-        if departement:
-            queryset = queryset.filter(niveau__filiere__departement_id=departement)
+        # Filtres selon le rôle
+        if user.role == 'ADMIN':
+            queryset = queryset.filter(niveau__filiere__etablissement=user.etablissement)
+        elif user.role == 'CHEF_DEPARTEMENT':
+            queryset = queryset.filter(niveau__filiere__departement=user.departement)
+        elif user.role == 'ENSEIGNANT':
+            queryset = queryset.filter(
+                Q(coordinateur=user) | Q(matieres__enseignant_responsable=user)
+            ).distinct()
 
-        filiere = self.request.GET.get('filiere')
-        if filiere:
-            queryset = queryset.filter(niveau__filiere_id=filiere)
-
-        niveau = self.request.GET.get('niveau')
-        if niveau:
-            queryset = queryset.filter(niveau_id=niveau)
-
+        # Filtres de recherche
         search = self.request.GET.get('search')
         if search:
-            queryset = queryset.filter(
-                Q(nom__icontains=search) |
-                Q(code__icontains=search)
-            )
+            queryset = queryset.filter(Q(nom__icontains=search) | Q(code__icontains=search))
 
-        return queryset.order_by('niveau__filiere__nom', 'nom')
+        departement_id = self.request.GET.get('departement')
+        if departement_id:
+            queryset = queryset.filter(niveau__filiere__departement_id=departement_id)
+
+        filiere_id = self.request.GET.get('filiere')
+        if filiere_id:
+            queryset = queryset.filter(niveau__filiere_id=filiere_id)
+
+        niveau_id = self.request.GET.get('niveau')
+        if niveau_id:
+            queryset = queryset.filter(niveau_id=niveau_id)
+
+        return queryset.order_by('niveau__ordre', 'nom')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        etablissement = self.request.user.etablissement
+        user = self.request.user
 
-        context.update({
-            'departements': Departement.objects.filter(etablissement=etablissement, est_actif=True),
-            'filieres': Filiere.objects.filter(etablissement=etablissement, est_active=True),
-            'niveaux': Niveau.objects.filter(filiere__etablissement=etablissement, est_actif=True),
-            'current_filters': {
-                'departement': self.request.GET.get('departement', ''),
-                'filiere': self.request.GET.get('filiere', ''),
-                'niveau': self.request.GET.get('niveau', ''),
-                'search': self.request.GET.get('search', ''),
-            },
-        })
+        if user.role == 'ADMIN':
+            context['departements'] = Departement.objects.filter(
+                etablissement=user.etablissement, est_actif=True
+            )
+            context['filieres'] = Filiere.objects.filter(
+                etablissement=user.etablissement, est_active=True
+            )
+        elif user.role == 'CHEF_DEPARTEMENT':
+            context['departements'] = [user.departement]
+            context['filieres'] = Filiere.objects.filter(
+                departement=user.departement, est_active=True
+            )
+
+        context['niveaux'] = Niveau.objects.filter(est_actif=True)
+        context['current_filters'] = {
+            'search': self.request.GET.get('search', ''),
+            'departement': self.request.GET.get('departement', ''),
+            'filiere': self.request.GET.get('filiere', ''),
+            'niveau': self.request.GET.get('niveau', ''),
+        }
+
         return context
 
 class AdminMatieresView(LoginRequiredMixin, ListView):
@@ -856,31 +925,78 @@ class AdminMatieresView(LoginRequiredMixin, ListView):
         return per_page
 
     def get_queryset(self):
-        from apps.courses.models import Matiere
-        queryset = Matiere.objects.all().annotate(
-            nombre_modules=Count('matieremodule')
+        user = self.request.user
+        queryset = Matiere.objects.select_related(
+            'niveau__filiere__departement',
+            'module',
+            'enseignant_responsable'
         )
 
-        # Filtres
+        # Filtrage selon le rôle
+        if user.role == 'ADMIN':
+            queryset = queryset.filter(
+                niveau__filiere__etablissement=user.etablissement
+            )
+        elif user.role == 'CHEF_DEPARTEMENT':
+            queryset = queryset.filter(
+                niveau__filiere__departement=user.departement
+            )
+        elif user.role == 'ENSEIGNANT':
+            queryset = queryset.filter(enseignant_responsable=user)
+
+        # Filtres de recherche
         search = self.request.GET.get('search')
         if search:
             queryset = queryset.filter(
-                Q(nom__icontains=search) |
-                Q(code__icontains=search)
+                Q(nom__icontains=search) | Q(code__icontains=search)
             )
+
+        niveau_id = self.request.GET.get('niveau')
+        if niveau_id:
+            queryset = queryset.filter(niveau_id=niveau_id)
+
+        module_id = self.request.GET.get('module')
+        if module_id == 'sans_module':
+            queryset = queryset.filter(module__isnull=True)
+        elif module_id:
+            queryset = queryset.filter(module_id=module_id)
 
         actif = self.request.GET.get('actif')
         if actif:
             queryset = queryset.filter(actif=actif == 'True')
 
-        return queryset.order_by('nom')
+        return queryset.order_by('niveau__ordre', 'nom')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        user = self.request.user
+
+        if user.role == 'ADMIN':
+            context['niveaux'] = Niveau.objects.filter(
+                filiere__etablissement=user.etablissement,
+                est_actif=True
+            ).select_related('filiere')
+            context['modules'] = Module.objects.filter(
+                niveau__filiere__etablissement=user.etablissement,
+                actif=True
+            )
+        elif user.role == 'CHEF_DEPARTEMENT':
+            context['niveaux'] = Niveau.objects.filter(
+                filiere__departement=user.departement,
+                est_actif=True
+            ).select_related('filiere')
+            context['modules'] = Module.objects.filter(
+                niveau__filiere__departement=user.departement,
+                actif=True
+            )
+
         context['current_filters'] = {
-            'actif': self.request.GET.get('actif', ''),
             'search': self.request.GET.get('search', ''),
+            'niveau': self.request.GET.get('niveau', ''),
+            'module': self.request.GET.get('module', ''),
+            'actif': self.request.GET.get('actif', ''),
         }
+
         return context
 
 class AdminCandidaturesView(LoginRequiredMixin, ListView):
@@ -896,7 +1012,6 @@ class AdminCandidaturesView(LoginRequiredMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        from apps.enrollment.models import Candidature
         etablissement = self.request.user.etablissement
 
         queryset = Candidature.objects.filter(
@@ -941,10 +1056,6 @@ class AdminCandidaturesView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         etablissement = self.request.user.etablissement
-
-        from apps.academic.models import Filiere, Niveau
-        from apps.establishments.models import AnneeAcademique
-        from apps.enrollment.models import Candidature
 
         context.update({
             'filieres': Filiere.objects.filter(etablissement=etablissement, est_active=True),
@@ -1136,39 +1247,115 @@ class AdminCoursesView(LoginRequiredMixin, ListView):
             return redirect('dashboard:redirect')
         return super().dispatch(request, *args, **kwargs)
 
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            # Limiter entre 10 et 100
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
+
     def get_queryset(self):
-        etablissement = self.request.user.etablissement
-        queryset = Cours.objects.filter(
-            matiere_module__module__niveau__filiere__departement__etablissement=etablissement
-        ).select_related(
-            'matiere_module', 'matiere_module__matiere', 'enseignant', 'classe'
-        ).distinct()
+        user = self.request.user
+        queryset = Cours.objects.select_related(
+            'matiere__niveau__filiere',
+            'classe__niveau',
+            'enseignant',
+            'periode_academique',
+            'salle'
+        )
+
+        # Filtrage selon le rôle
+        if user.role == 'ADMIN':
+            queryset = queryset.filter(
+                classe__etablissement=user.etablissement
+            )
+        elif user.role == 'CHEF_DEPARTEMENT':
+            queryset = queryset.filter(
+                matiere__niveau__filiere__departement=user.departement
+            )
+        elif user.role == 'ENSEIGNANT':
+            queryset = queryset.filter(enseignant=user)
+        elif user.role == 'APPRENANT':
+            if hasattr(user, 'profil_apprenant') and user.profil_apprenant.classe_actuelle:
+                queryset = queryset.filter(
+                    classe=user.profil_apprenant.classe_actuelle,
+                    date_prevue__gte=timezone.now().date() - timedelta(days=30)
+                )
+            else:
+                queryset = queryset.none()
 
         # Filtres
-        departement = self.request.GET.get('departement')
-        if departement:
-            queryset = queryset.filter(
-                matiere_module__module__niveau__filiere__departement_id=departement
-            )
+        matiere_id = self.request.GET.get('matiere')
+        if matiere_id:
+            queryset = queryset.filter(matiere_id=matiere_id)
 
-        enseignant = self.request.GET.get('enseignant')
-        if enseignant:
-            queryset = queryset.filter(enseignant_id=enseignant)
+        classe_id = self.request.GET.get('classe')
+        if classe_id:
+            queryset = queryset.filter(classe_id=classe_id)
 
-        return queryset.order_by('-created_at')
+        enseignant_id = self.request.GET.get('enseignant')
+        if enseignant_id:
+            queryset = queryset.filter(enseignant_id=enseignant_id)
+
+        date_debut = self.request.GET.get('date_debut')
+        if date_debut:
+            queryset = queryset.filter(date_prevue__gte=date_debut)
+
+        date_fin = self.request.GET.get('date_fin')
+        if date_fin:
+            queryset = queryset.filter(date_prevue__lte=date_fin)
+
+        statut = self.request.GET.get('statut')
+        if statut:
+            queryset = queryset.filter(statut=statut)
+
+        type_cours = self.request.GET.get('type_cours')
+        if type_cours:
+            queryset = queryset.filter(type_cours=type_cours)
+
+        return queryset.order_by('-date_prevue', '-heure_debut_prevue')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        etablissement = self.request.user.etablissement
+        user = self.request.user
 
-        context.update({
-            'departements': Departement.objects.filter(etablissement=etablissement),
-            'enseignants': Utilisateur.objects.filter(
-                etablissement=etablissement,
-                role='ENSEIGNANT'
-            ),
-            'total_cours': self.get_queryset().count(),
-        })
+        if user.role in ['ADMIN', 'CHEF_DEPARTEMENT']:
+            if user.role == 'ADMIN':
+                context['matieres'] = Matiere.objects.filter(
+                    niveau__filiere__etablissement=user.etablissement, actif=True
+                )
+                context['classes'] = Classe.objects.filter(
+                    etablissement=user.etablissement, est_active=True
+                )
+                context['enseignants'] = Utilisateur.objects.filter(
+                    etablissement=user.etablissement, role='ENSEIGNANT', est_actif=True
+                )
+            else:
+                context['matieres'] = Matiere.objects.filter(
+                    niveau__filiere__departement=user.departement, actif=True
+                )
+                context['classes'] = Classe.objects.filter(
+                    niveau__filiere__departement=user.departement, est_active=True
+                )
+                context['enseignants'] = Utilisateur.objects.filter(
+                    departement=user.departement, role='ENSEIGNANT', est_actif=True
+                )
+
+        context['statuts'] = StatutCours.choices
+        context['types_cours'] = TypeCours.choices
+        context['current_filters'] = {
+            'matiere': self.request.GET.get('matiere', ''),
+            'classe': self.request.GET.get('classe', ''),
+            'enseignant': self.request.GET.get('enseignant', ''),
+            'date_debut': self.request.GET.get('date_debut', ''),
+            'date_fin': self.request.GET.get('date_fin', ''),
+            'statut': self.request.GET.get('statut', ''),
+            'type_cours': self.request.GET.get('type_cours', ''),
+        }
 
         return context
 
@@ -1187,12 +1374,15 @@ class AdminEvaluationsView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         etablissement = self.request.user.etablissement
 
+        # Filtrer par établissement via la matière
         queryset = Evaluation.objects.filter(
-            matiere_module__module__niveau__filiere__departement__etablissement=etablissement
+            matiere__niveau__filiere__etablissement=etablissement
         ).select_related(
             'enseignant',
-            'matiere_module__matiere',
-            'matiere_module__module'
+            'matiere',
+            'matiere__niveau__filiere'
+        ).prefetch_related(
+            'classes'
         ).annotate(
             nombre_compositions=Count('compositions')
         )
@@ -1212,13 +1402,15 @@ class AdminEvaluationsView(LoginRequiredMixin, ListView):
 
         matiere = self.request.GET.get('matiere')
         if matiere:
-            queryset = queryset.filter(matiere_module__matiere_id=matiere)
+            queryset = queryset.filter(matiere_id=matiere)
 
         search = self.request.GET.get('search')
         if search:
             queryset = queryset.filter(
                 Q(titre__icontains=search) |
-                Q(matiere_module__matiere__nom__icontains=search)
+                Q(matiere__nom__icontains=search) |
+                Q(enseignant__prenom__icontains=search) |
+                Q(enseignant__nom__icontains=search)
             )
 
         return queryset.order_by('-date_debut')
@@ -1227,6 +1419,12 @@ class AdminEvaluationsView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         etablissement = self.request.user.etablissement
 
+        # Récupérer les matières de l'établissement
+        matieres = Matiere.objects.filter(
+            niveau__filiere__etablissement=etablissement,
+            actif=True
+        ).select_related('niveau__filiere')
+
         context.update({
             'types_evaluation': Evaluation.TYPE_EVALUATION,
             'statuts': Evaluation.STATUT,
@@ -1234,8 +1432,8 @@ class AdminEvaluationsView(LoginRequiredMixin, ListView):
                 etablissement=etablissement,
                 role='ENSEIGNANT',
                 est_actif=True
-            ),
-            'matieres': Matiere.objects.filter(actif=True),
+            ).order_by('nom', 'prenom'),
+            'matieres': matieres,
             'current_filters': {
                 'type_evaluation': self.request.GET.get('type_evaluation', ''),
                 'statut': self.request.GET.get('statut', ''),
@@ -1245,6 +1443,7 @@ class AdminEvaluationsView(LoginRequiredMixin, ListView):
             },
             'stats': {
                 'total': self.get_queryset().count(),
+                'brouillon': self.get_queryset().filter(statut='BROUILLON').count(),
                 'programmees': self.get_queryset().filter(statut='PROGRAMMEE').count(),
                 'en_cours': self.get_queryset().filter(statut='EN_COURS').count(),
                 'terminees': self.get_queryset().filter(statut='TERMINEE').count(),
@@ -1252,10 +1451,10 @@ class AdminEvaluationsView(LoginRequiredMixin, ListView):
         })
         return context
 
-class AdminProgrammesView(LoginRequiredMixin, ListView):
-    """Gestion des programmes par l'admin"""
-    template_name = 'dashboard/admin/programmes.html'
-    context_object_name = 'programmes'
+class AdminCahiersTexteView(LoginRequiredMixin, ListView):
+    """Gestion des cahiers de texte par l'admin"""
+    template_name = 'dashboard/admin/cahiers_texte.html'
+    context_object_name = 'cahiers'
     paginate_by = 20
 
     def dispatch(self, request, *args, **kwargs):
@@ -1264,64 +1463,250 @@ class AdminProgrammesView(LoginRequiredMixin, ListView):
             return redirect('dashboard:redirect')
         return super().dispatch(request, *args, **kwargs)
 
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
+
     def get_queryset(self):
-        etablissement = self.request.user.etablissement
+        user = self.request.user
+        queryset = CahierTexte.objects.select_related(
+            'cours__matiere__niveau__filiere',
+            'cours__classe',
+            'cours__enseignant',
+            'rempli_par'
+        ).filter(
+            cours__classe__etablissement=user.etablissement
+        )
 
-        # Récupérer les classes de l'établissement via les niveaux/filières
-        classes_ids = Classe.objects.filter(
-            niveau__filiere__etablissement=etablissement
-        ).values_list('id', flat=True)
+        # Filtres
+        classe_id = self.request.GET.get('classe')
+        if classe_id:
+            queryset = queryset.filter(cours__classe_id=classe_id)
 
-        queryset = EmploiDuTemps.objects.filter(
-            classe_id__in=classes_ids
-        ).select_related('classe', 'periode_academique', 'cree_par')
+        enseignant_id = self.request.GET.get('enseignant')
+        if enseignant_id:
+            queryset = queryset.filter(cours__enseignant_id=enseignant_id)
 
-        # Filtre par département
-        departement = self.request.GET.get('departement')
-        if departement:
-            departement_classes_ids = Classe.objects.filter(
-                niveau__filiere__departement_id=departement
-            ).values_list('id', flat=True)
-            queryset = queryset.filter(classe_id__in=departement_classes_ids)
+        matiere_id = self.request.GET.get('matiere')
+        if matiere_id:
+            queryset = queryset.filter(cours__matiere_id=matiere_id)
 
-        # Filtre par filière
-        filiere = self.request.GET.get('filiere')
-        if filiere:
-            filiere_classes_ids = Classe.objects.filter(
-                niveau__filiere_id=filiere
-            ).values_list('id', flat=True)
-            queryset = queryset.filter(classe_id__in=filiere_classes_ids)
+        date_debut = self.request.GET.get('date_debut')
+        if date_debut:
+            queryset = queryset.filter(cours__date_prevue__gte=date_debut)
 
-        # Filtre sur l'emploi du temps actuel / publié
-        est_actif = self.request.GET.get('est_actif')
-        if est_actif:
-            queryset = queryset.filter(actuel=est_actif == 'True')
+        date_fin = self.request.GET.get('date_fin')
+        if date_fin:
+            queryset = queryset.filter(cours__date_prevue__lte=date_fin)
 
-        # Recherche texte
-        search = self.request.GET.get('search')
-        if search:
-            queryset = queryset.filter(
-                Q(nom__icontains=search) |
-                Q(classe__nom__icontains=search)
-            )
-
-        return queryset.order_by('classe__nom', 'nom')
+        return queryset.order_by('-cours__date_prevue')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        etablissement = self.request.user.etablissement
+        user = self.request.user
 
-        context.update({
-            'departements': Departement.objects.filter(etablissement=etablissement, est_actif=True),
-            'filieres': Filiere.objects.filter(etablissement=etablissement, est_active=True),
-            'current_filters': {
-                'departement': self.request.GET.get('departement', ''),
-                'filiere': self.request.GET.get('filiere', ''),
-                'est_actif': self.request.GET.get('est_actif', ''),
-                'search': self.request.GET.get('search', ''),
-            },
-            'total_programmes': self.get_queryset().count(),
-        })
+        context['classes'] = Classe.objects.filter(
+            etablissement=user.etablissement, est_active=True
+        )
+        context['enseignants'] = Utilisateur.objects.filter(
+            etablissement=user.etablissement, role='ENSEIGNANT', est_actif=True
+        )
+        context['matieres'] = Matiere.objects.filter(
+            niveau__filiere__etablissement=user.etablissement, actif=True
+        )
+        context['current_filters'] = {
+            'classe': self.request.GET.get('classe', ''),
+            'enseignant': self.request.GET.get('enseignant', ''),
+            'matiere': self.request.GET.get('matiere', ''),
+            'date_debut': self.request.GET.get('date_debut', ''),
+            'date_fin': self.request.GET.get('date_fin', ''),
+        }
+
+        return context
+
+class AdminEmploiDuTempsView(LoginRequiredMixin, ListView):
+    """Gestion des programmes par l'admin"""
+    template_name = 'dashboard/admin/emplois_du_temps.html'
+    context_object_name = 'emplois_du_temps'
+    paginate_by = 20
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = EmploiDuTemps.objects.select_related(
+            'classe__niveau__filiere',
+            'enseignant',
+            'periode_academique',
+            'cree_par'
+        ).prefetch_related('creneaux')
+
+        # Filtrage selon le rôle
+        if user.role == 'ADMIN':
+            queryset = queryset.filter(
+                Q(classe__etablissement=user.etablissement) |
+                Q(enseignant__etablissement=user.etablissement)
+            )
+        elif user.role == 'CHEF_DEPARTEMENT':
+            queryset = queryset.filter(
+                Q(classe__niveau__filiere__departement=user.departement) |
+                Q(enseignant__departement=user.departement)
+            )
+        elif user.role == 'ENSEIGNANT':
+            queryset = queryset.filter(enseignant=user, publie=True)
+        elif user.role == 'APPRENANT':
+            if hasattr(user, 'profil_apprenant') and user.profil_apprenant.classe_actuelle:
+                queryset = queryset.filter(
+                    classe=user.profil_apprenant.classe_actuelle,
+                    publie=True
+                )
+            else:
+                queryset = queryset.none()
+
+        # Filtres
+        filter_type = self.request.GET.get('type', 'classe')
+
+        if filter_type == 'classe':
+            classe_id = self.request.GET.get('classe')
+            if classe_id:
+                queryset = queryset.filter(classe_id=classe_id)
+        else:
+            enseignant_id = self.request.GET.get('enseignant')
+            if enseignant_id:
+                queryset = queryset.filter(enseignant_id=enseignant_id)
+
+        periode_id = self.request.GET.get('periode')
+        if periode_id:
+            queryset = queryset.filter(periode_academique_id=periode_id)
+
+        statut = self.request.GET.get('statut')
+        if statut == 'publie':
+            queryset = queryset.filter(publie=True)
+        elif statut == 'non_publie':
+            queryset = queryset.filter(publie=False)
+        elif statut == 'actuel':
+            queryset = queryset.filter(actuel=True)
+
+        return queryset.order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+
+        if user.role == 'ADMIN':
+            context['classes'] = Classe.objects.filter(
+                etablissement=user.etablissement, est_active=True
+            ).select_related('niveau__filiere')
+            context['enseignants'] = Utilisateur.objects.filter(
+                etablissement=user.etablissement, role='ENSEIGNANT', est_actif=True
+            )
+            context['periodes'] = PeriodeAcademique.objects.filter(
+                etablissement=user.etablissement, est_active=True
+            )
+        elif user.role == 'CHEF_DEPARTEMENT':
+            context['classes'] = Classe.objects.filter(
+                niveau__filiere__departement=user.departement, est_active=True
+            ).select_related('niveau__filiere')
+            context['enseignants'] = Utilisateur.objects.filter(
+                departement=user.departement, role='ENSEIGNANT', est_actif=True
+            )
+            context['periodes'] = PeriodeAcademique.objects.filter(
+                etablissement=user.etablissement, est_active=True
+            )
+
+        context['nombre_publies'] = self.get_queryset().filter(publie=True).count()
+        context['current_filters'] = {
+            'type': self.request.GET.get('type', 'classe'),
+            'classe': self.request.GET.get('classe', ''),
+            'enseignant': self.request.GET.get('enseignant', ''),
+            'periode': self.request.GET.get('periode', ''),
+            'statut': self.request.GET.get('statut', ''),
+        }
+
+        return context
+
+class AdminRessourcesView(LoginRequiredMixin, ListView):
+    """Gestion des ressources par l'admin"""
+    template_name = 'dashboard/admin/ressources.html'
+    context_object_name = 'ressources'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Ressource.objects.select_related(
+            'cours__matiere',
+            'cours__classe',
+            'cours__enseignant'
+        ).filter(
+            cours__classe__etablissement=user.etablissement
+        )
+
+        # Filtres
+        type_ressource = self.request.GET.get('type')
+        if type_ressource:
+            queryset = queryset.filter(type_ressource=type_ressource)
+
+        cours_id = self.request.GET.get('cours')
+        if cours_id:
+            queryset = queryset.filter(cours_id=cours_id)
+
+        enseignant_id = self.request.GET.get('enseignant')
+        if enseignant_id:
+            queryset = queryset.filter(cours__enseignant_id=enseignant_id)
+
+        public = self.request.GET.get('public')
+        if public:
+            queryset = queryset.filter(public=public == 'True')
+
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(titre__icontains=search) | Q(description__icontains=search)
+            )
+
+        return queryset.order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+
+        context['types_ressource'] = Ressource.TYPES_RESSOURCE
+        context['enseignants'] = Utilisateur.objects.filter(
+            etablissement=user.etablissement, role='ENSEIGNANT', est_actif=True
+        )
+        context['current_filters'] = {
+            'type': self.request.GET.get('type', ''),
+            'cours': self.request.GET.get('cours', ''),
+            'enseignant': self.request.GET.get('enseignant', ''),
+            'public': self.request.GET.get('public', ''),
+            'search': self.request.GET.get('search', ''),
+        }
+
+        # Stats
+        queryset = self.get_queryset()
+        context['total_telechargements'] = queryset.aggregate(Sum('nombre_telechargements'))['nombre_telechargements__sum'] or 0
+        context['total_vues'] = queryset.aggregate(Sum('nombre_vues'))['nombre_vues__sum'] or 0
+
         return context
 
 @login_required
@@ -1485,28 +1870,19 @@ class DepartmentHeadDashboardView(LoginRequiredMixin, TemplateView):
         if request.user.role != 'CHEF_DEPARTEMENT':
             messages.error(request, "Accès non autorisé")
             return redirect('dashboard:redirect')
+
+        if not request.user.departement:
+            messages.error(request, "Aucun département assigné")
+            return redirect('dashboard:redirect')
+
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        user = self.request.user
+        departement = self.request.user.departement
 
-        # 🔧 CORRECTION : Utiliser 'departement' au lieu de 'departement'
-        departement = user.departement
-
-        # 🔎 Sécurité : s'assurer que departement est bien un objet Departement
-        if not departement:
-            messages.warning(self.request, "Aucun département assigné")
-            return context
-
-        # Vérifier que l'utilisateur est bien chef de ce département
-        if not hasattr(user, 'departements_diriges') or not user.departements_diriges.filter(
-                id=departement.id).exists():
-            messages.error(self.request, "Vous n'êtes pas chef de ce département")
-            return context
-
-        # Statistiques du département
         context.update({
+            'departement': departement,
             'total_enseignants': self.get_total_enseignants(departement),
             'total_apprenants': self.get_total_apprenants(departement),
             'total_filieres': self.get_total_filieres(departement),
@@ -1514,16 +1890,13 @@ class DepartmentHeadDashboardView(LoginRequiredMixin, TemplateView):
             'evaluations_en_cours': self.get_evaluations_en_cours(departement),
             'candidatures_departement': self.get_candidatures_departement(departement),
 
-            # Données pour graphiques
+            # Graphiques
             'repartition_apprenants_filiere': self.get_repartition_apprenants_filiere(departement),
             'stats_evaluations_mois': self.get_stats_evaluations_par_mois(departement),
 
             # Activités récentes
             'cours_recents': self.get_cours_recents(departement),
             'evaluations_recentes': self.get_evaluations_recentes(departement),
-
-            # 🔧 AJOUT : Passer le département au contexte
-            'departement': departement,
         })
 
         return context
@@ -1552,13 +1925,13 @@ class DepartmentHeadDashboardView(LoginRequiredMixin, TemplateView):
 
     def get_evaluations_en_cours(self, departement):
         return Evaluation.objects.filter(
-            matiere_module__module__niveau__filiere__departement=departement,  # 🔧 CORRECTION du chemin
+            matiere__niveau__filiere__departement=departement,
             statut='EN_COURS'
         ).count()
 
     def get_candidatures_departement(self, departement):
         return Candidature.objects.filter(
-            niveau__filiere__departement=departement,
+            filiere__departement=departement,
             statut='EN_ATTENTE'
         ).count()
 
@@ -1578,10 +1951,10 @@ class DepartmentHeadDashboardView(LoginRequiredMixin, TemplateView):
         debut_annee = aujourd_hui.replace(month=1, day=1)
 
         evaluations = Evaluation.objects.filter(
-            matiere_module__module__niveau__filiere__departement=departement,
+            matiere__niveau__filiere__departement=departement,
             created_at__gte=debut_annee
         ).annotate(
-            month=ExtractMonth('created_at')  # Précise bien que c'est le champ Evaluation.created_at
+            month=ExtractMonth('created_at')
         ).values('month').annotate(count=Count('id'))
 
         stats = [0] * 12
@@ -1592,16 +1965,17 @@ class DepartmentHeadDashboardView(LoginRequiredMixin, TemplateView):
 
     def get_cours_recents(self, departement):
         return Cours.objects.filter(
-            matiere_module__module__niveau__filiere__departement=departement  # 🔧 CORRECTION du chemin
-        ).select_related('matiere_module', 'enseignant').order_by('-created_at')[:5]
+            matiere__niveau__filiere__departement=departement
+        ).select_related('matiere', 'enseignant', 'classe').order_by('-created_at')[:5]
 
     def get_evaluations_recentes(self, departement):
         return Evaluation.objects.filter(
-            matiere_module__module__niveau__filiere__departement=departement  # 🔧 CORRECTION du chemin
-        ).select_related('matiere_module', 'enseignant').order_by('-created_at')[:5]
+            matiere__niveau__filiere__departement=departement
+        ).select_related('matiere', 'enseignant').order_by('-created_at')[:5]
 
 class DepartmentHeadTeachersView(LoginRequiredMixin, ListView):
-    """Gestion des enseignants du département"""
+    """Gestion des enseignants du département - Vue optimisée"""
+    model = Utilisateur
     template_name = 'dashboard/department_head/teachers.html'
     context_object_name = 'teachers'
     paginate_by = 20
@@ -1610,19 +1984,200 @@ class DepartmentHeadTeachersView(LoginRequiredMixin, ListView):
         if request.user.role != 'CHEF_DEPARTEMENT':
             messages.error(request, "Accès non autorisé")
             return redirect('dashboard:redirect')
+
+        if not request.user.departement:
+            messages.error(request, "Aucun département assigné")
+            return redirect('dashboard:redirect')
+
         return super().dispatch(request, *args, **kwargs)
+
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
 
     def get_queryset(self):
         departement = self.request.user.departement
-        if not departement:
-            return Utilisateur.objects.none()
 
         queryset = Utilisateur.objects.filter(
             departement=departement,
             role='ENSEIGNANT'
-        ).select_related('profil_enseignant')
+        ).select_related(
+            'profil_enseignant',
+            'departement'
+        ).prefetch_related(
+            'matieres_responsable',
+            'cours_enseignes'
+        )
 
-        # Filtres
+        # Filtre par statut
+        est_actif = self.request.GET.get('est_actif')
+        if est_actif:
+            queryset = queryset.filter(est_actif=est_actif == 'True')
+
+        # Filtre par type
+        est_permanent = self.request.GET.get('est_permanent')
+        if est_permanent:
+            queryset = queryset.filter(
+                profil_enseignant__est_permanent=est_permanent == 'True'
+            )
+
+        # Filtre par spécialisation
+        specialisation = self.request.GET.get('specialisation')
+        if specialisation:
+            queryset = queryset.filter(
+                profil_enseignant__specialisation__icontains=specialisation
+            )
+
+        # Recherche textuelle
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(prenom__icontains=search) |
+                Q(nom__icontains=search) |
+                Q(matricule__icontains=search) |
+                Q(email__icontains=search) |
+                Q(profil_enseignant__specialisation__icontains=search)
+            )
+
+        # Tri
+        sort_by = self.request.GET.get('sort', '-date_creation')
+        valid_sorts = [
+            'nom', '-nom', 'prenom', '-prenom',
+            'date_creation', '-date_creation',
+            'email', '-email'
+        ]
+        if sort_by in valid_sorts:
+            queryset = queryset.order_by(sort_by)
+        else:
+            queryset = queryset.order_by('-date_creation')
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        departement = self.request.user.departement
+
+        # Statistiques
+        context['stats'] = {
+            'total': Utilisateur.objects.filter(
+                departement=departement,
+                role='ENSEIGNANT'
+            ).count(),
+            'actifs': Utilisateur.objects.filter(
+                departement=departement,
+                role='ENSEIGNANT',
+                est_actif=True
+            ).count(),
+            'permanents': Utilisateur.objects.filter(
+                departement=departement,
+                role='ENSEIGNANT',
+                profil_enseignant__est_permanent=True
+            ).count(),
+            'vacataires': Utilisateur.objects.filter(
+                departement=departement,
+                role='ENSEIGNANT',
+                profil_enseignant__est_permanent=False
+            ).count(),
+        }
+
+        # Filtres actifs
+        context['current_filters'] = {
+            'search': self.request.GET.get('search', ''),
+            'est_actif': self.request.GET.get('est_actif', ''),
+            'est_permanent': self.request.GET.get('est_permanent', ''),
+            'specialisation': self.request.GET.get('specialisation', ''),
+            'sort': self.request.GET.get('sort', '-date_creation'),
+            'per_page': self.request.GET.get('per_page', '20'),
+        }
+
+        # Spécialisations disponibles
+        context['specialisations'] = ProfilEnseignant.objects.filter(
+            utilisateur__departement=departement
+        ).exclude(
+            specialisation__isnull=True
+        ).exclude(
+            specialisation=''
+        ).values_list(
+            'specialisation', flat=True
+        ).distinct().order_by('specialisation')
+
+        context['departement'] = departement
+        context['page_title'] = f"Enseignants - {departement.nom}"
+
+        return context
+
+class DepartmentHeadStudentsView(LoginRequiredMixin, ListView):
+    """Gestion des étudiants du département - Vue optimisée"""
+    model = Utilisateur
+    template_name = 'dashboard/department_head/students.html'
+    context_object_name = 'students'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'CHEF_DEPARTEMENT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+
+        if not request.user.departement:
+            messages.error(request, "Aucun département assigné")
+            return redirect('dashboard:redirect')
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
+
+    def get_queryset(self):
+        departement = self.request.user.departement
+
+        queryset = Utilisateur.objects.filter(
+            departement=departement,
+            role='APPRENANT'
+        ).select_related(
+            'profil_apprenant__classe_actuelle',
+            'profil_apprenant__classe_actuelle__niveau__filiere'
+        )
+
+        # Filtre par filière
+        filiere = self.request.GET.get('filiere')
+        if filiere:
+            queryset = queryset.filter(
+                profil_apprenant__classe_actuelle__niveau__filiere_id=filiere
+            )
+
+        # Filtre par classe
+        classe = self.request.GET.get('classe')
+        if classe:
+            queryset = queryset.filter(
+                profil_apprenant__classe_actuelle_id=classe
+            )
+
+        # Filtre par statut de paiement
+        statut_paiement = self.request.GET.get('statut_paiement')
+        if statut_paiement:
+            queryset = queryset.filter(
+                profil_apprenant__statut_paiement=statut_paiement
+            )
+
+        # Filtre par statut actif
+        est_actif = self.request.GET.get('est_actif')
+        if est_actif:
+            queryset = queryset.filter(est_actif=est_actif == 'True')
+
+        # Recherche textuelle
         search = self.request.GET.get('search')
         if search:
             queryset = queryset.filter(
@@ -1632,55 +2187,77 @@ class DepartmentHeadTeachersView(LoginRequiredMixin, ListView):
                 Q(email__icontains=search)
             )
 
-        return queryset.order_by('-date_creation')
+        # Tri
+        sort_by = self.request.GET.get('sort', '-date_creation')
+        valid_sorts = [
+            'nom', '-nom', 'prenom', '-prenom',
+            'date_creation', '-date_creation',
+            'matricule', '-matricule'
+        ]
+        if sort_by in valid_sorts:
+            queryset = queryset.order_by(sort_by)
+        else:
+            queryset = queryset.order_by('-date_creation')
+
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['search_query'] = self.request.GET.get('search', '')
-        return context
-
-class DepartmentHeadStudentsView(LoginRequiredMixin, ListView):
-    """Gestion des étudiants du département"""
-    template_name = 'dashboard/department_head/students.html'
-    context_object_name = 'students'
-    paginate_by = 20
-
-    def dispatch(self, request, *args, **kwargs):
-        if request.user.role != 'CHEF_DEPARTEMENT':
-            messages.error(request, "Accès non autorisé")
-            return redirect('dashboard:redirect')
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_queryset(self):
         departement = self.request.user.departement
-        if not departement:
-            return Utilisateur.objects.none()
 
-        queryset = Utilisateur.objects.filter(
-            departement=departement,
-            role='APPRENANT'
-        ).select_related('profil_apprenant__classe_actuelle')
+        # Statistiques
+        context['stats'] = {
+            'total': Utilisateur.objects.filter(
+                departement=departement,
+                role='APPRENANT'
+            ).count(),
+            'actifs': Utilisateur.objects.filter(
+                departement=departement,
+                role='APPRENANT',
+                est_actif=True
+            ).count(),
+            'paiement_complet': Utilisateur.objects.filter(
+                departement=departement,
+                role='APPRENANT',
+                profil_apprenant__statut_paiement='COMPLETE'
+            ).count(),
+            'paiement_partiel': Utilisateur.objects.filter(
+                departement=departement,
+                role='APPRENANT',
+                profil_apprenant__statut_paiement='PARTIAL'
+            ).count(),
+        }
 
         # Filtres
-        filiere = self.request.GET.get('filiere')
-        if filiere:
-            queryset = queryset.filter(
-                profil_apprenant__classe_actuelle__niveau__filiere_id=filiere
-            )
+        context['filieres'] = Filiere.objects.filter(
+            departement=departement,
+            est_active=True
+        ).order_by('nom')
 
-        return queryset.order_by('-date_creation')
+        context['classes'] = Classe.objects.filter(
+            niveau__filiere__departement=departement,
+            est_active=True
+        ).select_related('niveau__filiere').order_by('nom')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        departement = self.request.user.departement
+        context['statuts_paiement'] = ProfilApprenant._meta.get_field('statut_paiement').choices
 
-        if departement:
-            context['filieres'] = Filiere.objects.filter(departement=departement)
+        context['current_filters'] = {
+            'search': self.request.GET.get('search', ''),
+            'filiere': self.request.GET.get('filiere', ''),
+            'classe': self.request.GET.get('classe', ''),
+            'statut_paiement': self.request.GET.get('statut_paiement', ''),
+            'est_actif': self.request.GET.get('est_actif', ''),
+            'sort': self.request.GET.get('sort', '-date_creation'),
+            'per_page': self.request.GET.get('per_page', '20'),
+        }
+
+        context['departement'] = departement
+        context['page_title'] = f"Étudiants - {departement.nom}"
 
         return context
 
 class DepartmentHeadCandidaturesView(LoginRequiredMixin, ListView):
-    """Gestion des candidatures"""
+    """Gestion des candidatures du département"""
     template_name = 'dashboard/department_head/candidatures.html'
     context_object_name = 'candidatures'
     paginate_by = 20
@@ -1689,115 +2266,348 @@ class DepartmentHeadCandidaturesView(LoginRequiredMixin, ListView):
         if request.user.role != 'CHEF_DEPARTEMENT':
             messages.error(request, "Accès non autorisé")
             return redirect('dashboard:redirect')
+
+        if not request.user.departement:
+            messages.error(request, "Aucun département assigné")
+            return redirect('dashboard:redirect')
+
         return super().dispatch(request, *args, **kwargs)
 
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
+
     def get_queryset(self):
-        etablissement = self.request.user.etablissement
+        departement = self.request.user.departement
+
         queryset = Candidature.objects.filter(
-            niveau__filiere__departement__etablissement=etablissement
-        ).select_related('niveau__filiere__departement', 'candidat')
+            filiere__departement=departement
+        ).select_related(
+            'filiere',
+            'niveau',
+            'annee_academique',
+            'examine_par'
+        ).annotate(
+            nombre_documents=Count('documents')
+        )
 
         # Filtres
         statut = self.request.GET.get('statut')
         if statut:
             queryset = queryset.filter(statut=statut)
 
-        departement = self.request.GET.get('departement')
-        if departement:
-            queryset = queryset.filter(niveau__filiere__departement_id=departement)
-
         filiere = self.request.GET.get('filiere')
         if filiere:
-            queryset = queryset.filter(niveau__filiere_id=filiere)
+            queryset = queryset.filter(filiere_id=filiere)
+
+        niveau = self.request.GET.get('niveau')
+        if niveau:
+            queryset = queryset.filter(niveau_id=niveau)
+
+        annee = self.request.GET.get('annee_academique')
+        if annee:
+            queryset = queryset.filter(annee_academique_id=annee)
 
         search = self.request.GET.get('search')
         if search:
             queryset = queryset.filter(
-                Q(prenom__icontains=search) |
-                Q(nom__icontains=search) |
                 Q(numero_candidature__icontains=search) |
+                Q(nom__icontains=search) |
+                Q(prenom__icontains=search) |
                 Q(email__icontains=search)
             )
 
-        return queryset.order_by('-date_soumission')
+        # Tri
+        sort_by = self.request.GET.get('sort', '-date_soumission')
+        valid_sorts = [
+            'date_soumission', '-date_soumission',
+            'nom', '-nom',
+            'statut', '-statut'
+        ]
+        if sort_by in valid_sorts:
+            queryset = queryset.order_by(sort_by)
+        else:
+            queryset = queryset.order_by('-date_soumission')
+
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        etablissement = self.request.user.etablissement
+        departement = self.request.user.departement
 
-        context.update({
-            'departements': Departement.objects.filter(etablissement=etablissement),
-            'filieres': Filiere.objects.filter(departement__etablissement=etablissement),
-            'statuts': Candidature._meta.get_field('statut').choices,
-            'current_filters': {
-                'statut': self.request.GET.get('statut', ''),
-                'departement': self.request.GET.get('departement', ''),
-                'filiere': self.request.GET.get('filiere', ''),
-                'search': self.request.GET.get('search', ''),
-            },
-        })
+        # Statistiques
+        context['stats'] = {
+            'total': self.get_queryset().count(),
+            'en_attente': self.get_queryset().filter(statut='EN_ATTENTE').count(),
+            'en_cours': self.get_queryset().filter(statut='EN_COURS_EXAMEN').count(),
+            'approuvees': self.get_queryset().filter(statut='APPROUVEE').count(),
+            'rejetees': self.get_queryset().filter(statut='REJETEE').count(),
+        }
+
+        context['filieres'] = Filiere.objects.filter(
+            departement=departement,
+            est_active=True
+        ).order_by('nom')
+
+        context['niveaux'] = Niveau.objects.filter(
+            filiere__departement=departement,
+            est_actif=True
+        ).select_related('filiere').order_by('ordre')
+
+        context['annees_academiques'] = AnneeAcademique.objects.filter(
+            etablissement=departement.etablissement
+        ).order_by('-nom')
+
+        context['statuts'] = Candidature.STATUTS_CANDIDATURE
+
+        context['current_filters'] = {
+            'statut': self.request.GET.get('statut', ''),
+            'filiere': self.request.GET.get('filiere', ''),
+            'niveau': self.request.GET.get('niveau', ''),
+            'annee_academique': self.request.GET.get('annee_academique', ''),
+            'search': self.request.GET.get('search', ''),
+            'sort': self.request.GET.get('sort', '-date_soumission'),
+            'per_page': self.request.GET.get('per_page', '20'),
+        }
+
+        context['departement'] = departement
+        context['page_title'] = f"Candidatures - {departement.nom}"
 
         return context
 
-class DepartmentHeadModulesView(LoginRequiredMixin, ListView):
-    """Gestion des modules du département"""
-    template_name = 'dashboard/department_head/modules.html'
-    context_object_name = 'modules'
+class DepartmentHeadInscriptionsView(LoginRequiredMixin, ListView):
+    """Gestion des inscriptions du département"""
+    template_name = 'dashboard/department_head/inscriptions.html'
+    context_object_name = 'inscriptions'
     paginate_by = 20
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.role != 'CHEF_DEPARTEMENT':
             messages.error(request, "Accès non autorisé")
             return redirect('dashboard:redirect')
+
+        if not request.user.departement:
+            messages.error(request, "Aucun département assigné")
+            return redirect('dashboard:redirect')
+
         return super().dispatch(request, *args, **kwargs)
 
-    def get_queryset(self):
-        from apps.courses.models import Module
-        departement = self.request.user.departement
-        if not departement:
-            return Module.objects.none()
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
 
-        queryset = Module.objects.filter(
-            niveau__filiere__departement=departement
+    def get_queryset(self):
+        departement = self.request.user.departement
+
+        queryset = Inscription.objects.filter(
+            candidature__filiere__departement=departement
         ).select_related(
-            'niveau__filiere',
-            'coordinateur'
-        ).annotate(
-            nombre_matieres=Count('matieremodule')
+            'apprenant',
+            'candidature__filiere',
+            'candidature__niveau',
+            'classe_assignee',
+            'cree_par'
         )
 
         # Filtres
-        filiere = self.request.GET.get('filiere')
-        if filiere:
-            queryset = queryset.filter(niveau__filiere_id=filiere)
+        statut = self.request.GET.get('statut')
+        if statut:
+            queryset = queryset.filter(statut=statut)
 
-        niveau = self.request.GET.get('niveau')
-        if niveau:
-            queryset = queryset.filter(niveau_id=niveau)
+        statut_paiement = self.request.GET.get('statut_paiement')
+        if statut_paiement:
+            queryset = queryset.filter(statut_paiement=statut_paiement)
+
+        classe = self.request.GET.get('classe')
+        if classe:
+            queryset = queryset.filter(classe_assignee_id=classe)
+
+        annee = self.request.GET.get('annee_academique')
+        if annee:
+            queryset = queryset.filter(candidature__annee_academique_id=annee)
 
         search = self.request.GET.get('search')
         if search:
             queryset = queryset.filter(
-                Q(nom__icontains=search) |
-                Q(code__icontains=search)
+                Q(numero_inscription__icontains=search) |
+                Q(apprenant__nom__icontains=search) |
+                Q(apprenant__prenom__icontains=search) |
+                Q(candidature__numero_candidature__icontains=search)
             )
 
-        return queryset.order_by('niveau__filiere__nom', 'nom')
+        # Tri
+        sort_by = self.request.GET.get('sort', '-date_inscription')
+        valid_sorts = [
+            'date_inscription', '-date_inscription',
+            'apprenant__nom', '-apprenant__nom',
+            'statut', '-statut'
+        ]
+        if sort_by in valid_sorts:
+            queryset = queryset.order_by(sort_by)
+        else:
+            queryset = queryset.order_by('-date_inscription')
+
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         departement = self.request.user.departement
 
-        if departement:
-            context.update({
-                'filieres': Filiere.objects.filter(departement=departement, est_active=True),
-                'niveaux': Niveau.objects.filter(filiere__departement=departement, est_actif=True),
-                'current_filters': {
-                    'filiere': self.request.GET.get('filiere', ''),
-                    'niveau': self.request.GET.get('niveau', ''),
-                    'search': self.request.GET.get('search', ''),
-                },
-            })
+        # Statistiques
+        context['stats'] = {
+            'total': self.get_queryset().count(),
+            'actives': self.get_queryset().filter(statut='ACTIVE').count(),
+            'paiement_complet': self.get_queryset().filter(statut_paiement='COMPLETE').count(),
+            'paiement_partiel': self.get_queryset().filter(statut_paiement='PARTIAL').count(),
+        }
+
+        context['classes'] = Classe.objects.filter(
+            niveau__filiere__departement=departement,
+            est_active=True
+        ).select_related('niveau__filiere').order_by('nom')
+
+        context['annees_academiques'] = AnneeAcademique.objects.filter(
+            etablissement=departement.etablissement
+        ).order_by('-nom')
+
+        context['statuts'] = Inscription.STATUTS_INSCRIPTION
+        context['statuts_paiement'] = Inscription.STATUTS_PAIEMENT
+
+        context['current_filters'] = {
+            'statut': self.request.GET.get('statut', ''),
+            'statut_paiement': self.request.GET.get('statut_paiement', ''),
+            'classe': self.request.GET.get('classe', ''),
+            'annee_academique': self.request.GET.get('annee_academique', ''),
+            'search': self.request.GET.get('search', ''),
+            'sort': self.request.GET.get('sort', '-date_inscription'),
+            'per_page': self.request.GET.get('per_page', '20'),
+        }
+
+        context['departement'] = departement
+        context['page_title'] = f"Inscriptions - {departement.nom}"
+
+        return context
+
+class DepartmentHeadPaiementsView(LoginRequiredMixin, ListView):
+    """Gestion des paiements du département"""
+    template_name = 'dashboard/department_head/paiements.html'
+    context_object_name = 'paiements'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'CHEF_DEPARTEMENT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+
+        if not request.user.departement:
+            messages.error(request, "Aucun département assigné")
+            return redirect('dashboard:redirect')
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
+
+    def get_queryset(self):
+        departement = self.request.user.departement
+
+        queryset = Paiement.objects.filter(
+            inscription_paiement__inscription__candidature__filiere__departement=departement
+        ).select_related(
+            'inscription_paiement__inscription__apprenant',
+            'tranche',
+            'traite_par'
+        )
+
+        # Filtres
+        statut = self.request.GET.get('statut')
+        if statut:
+            queryset = queryset.filter(statut=statut)
+
+        methode = self.request.GET.get('methode_paiement')
+        if methode:
+            queryset = queryset.filter(methode_paiement=methode)
+
+        date_debut = self.request.GET.get('date_debut')
+        if date_debut:
+            queryset = queryset.filter(date_paiement__gte=date_debut)
+
+        date_fin = self.request.GET.get('date_fin')
+        if date_fin:
+            queryset = queryset.filter(date_paiement__lte=date_fin)
+
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(numero_transaction__icontains=search) |
+                Q(reference_externe__icontains=search) |
+                Q(inscription_paiement__inscription__apprenant__nom__icontains=search) |
+                Q(inscription_paiement__inscription__apprenant__prenom__icontains=search)
+            )
+
+        # Tri
+        sort_by = self.request.GET.get('sort', '-date_paiement')
+        valid_sorts = [
+            'date_paiement', '-date_paiement',
+            'montant', '-montant',
+            'statut', '-statut'
+        ]
+        if sort_by in valid_sorts:
+            queryset = queryset.order_by(sort_by)
+        else:
+            queryset = queryset.order_by('-date_paiement')
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        queryset = self.get_queryset()
+
+        # Statistiques
+        context['stats'] = {
+            'total': queryset.count(),
+            'total_montant': queryset.filter(statut='CONFIRME').aggregate(
+                total=Sum('montant')
+            )['total'] or Decimal('0.00'),
+            'en_attente': queryset.filter(statut='EN_ATTENTE').count(),
+            'confirmes': queryset.filter(statut='CONFIRME').count(),
+        }
+
+        context['statuts'] = Paiement.STATUTS_PAIEMENT
+        context['methodes'] = Paiement.METHODES_PAIEMENT
+
+        context['current_filters'] = {
+            'statut': self.request.GET.get('statut', ''),
+            'methode_paiement': self.request.GET.get('methode_paiement', ''),
+            'date_debut': self.request.GET.get('date_debut', ''),
+            'date_fin': self.request.GET.get('date_fin', ''),
+            'search': self.request.GET.get('search', ''),
+            'sort': self.request.GET.get('sort', '-date_paiement'),
+            'per_page': self.request.GET.get('per_page', '20'),
+        }
+
+        context['departement'] = self.request.user.departement
+        context['page_title'] = f"Paiements - {self.request.user.departement.nom}"
+
         return context
 
 class DepartmentHeadFilieresView(LoginRequiredMixin, ListView):
@@ -1810,18 +2620,35 @@ class DepartmentHeadFilieresView(LoginRequiredMixin, ListView):
         if request.user.role != 'CHEF_DEPARTEMENT':
             messages.error(request, "Accès non autorisé")
             return redirect('dashboard:redirect')
+
+        if not request.user.departement:
+            messages.error(request, "Aucun département assigné")
+            return redirect('dashboard:redirect')
+
         return super().dispatch(request, *args, **kwargs)
+
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
 
     def get_queryset(self):
         departement = self.request.user.departement
-        if not departement:
-            return Filiere.objects.none()
 
         queryset = Filiere.objects.filter(
             departement=departement
         ).annotate(
             nombre_niveaux=Count('niveaux', filter=Q(niveaux__est_actif=True)),
-            nombre_etudiants=Count('niveaux__classe__profil_apprenant', distinct=True)
+            nombre_etudiants=Count(
+                'niveaux__classes__apprenants',
+                filter=Q(niveaux__classes__apprenants__utilisateur__est_actif=True),
+                distinct=True
+            )
         )
 
         # Filtres
@@ -1837,21 +2664,149 @@ class DepartmentHeadFilieresView(LoginRequiredMixin, ListView):
         if search:
             queryset = queryset.filter(
                 Q(nom__icontains=search) |
-                Q(code__icontains=search)
+                Q(code__icontains=search) |
+                Q(nom_diplome__icontains=search)
             )
 
-        return queryset.order_by('nom')
+        # Tri
+        sort_by = self.request.GET.get('sort', 'nom')
+        valid_sorts = ['nom', '-nom', 'code', '-code', 'nombre_etudiants', '-nombre_etudiants']
+        if sort_by in valid_sorts:
+            queryset = queryset.order_by(sort_by)
+        else:
+            queryset = queryset.order_by('nom')
+
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update({
-            'types_filiere': Filiere.TYPES_FILIERE,
-            'current_filters': {
-                'type_filiere': self.request.GET.get('type_filiere', ''),
-                'est_active': self.request.GET.get('est_active', ''),
-                'search': self.request.GET.get('search', ''),
-            },
-        })
+        departement = self.request.user.departement
+
+        # Statistiques
+        context['stats'] = {
+            'total': self.get_queryset().count(),
+            'actives': self.get_queryset().filter(est_active=True).count(),
+            'inactives': self.get_queryset().filter(est_active=False).count(),
+        }
+
+        context['types_filiere'] = Filiere.TYPES_FILIERE
+
+        context['current_filters'] = {
+            'type_filiere': self.request.GET.get('type_filiere', ''),
+            'est_active': self.request.GET.get('est_active', ''),
+            'search': self.request.GET.get('search', ''),
+            'sort': self.request.GET.get('sort', 'nom'),
+            'per_page': self.request.GET.get('per_page', '20'),
+        }
+
+        context['departement'] = departement
+        context['page_title'] = f"Filières - {departement.nom}"
+
+        return context
+
+class DepartmentHeadNiveauxView(LoginRequiredMixin, ListView):
+    """Gestion des niveaux du département"""
+    template_name = 'dashboard/department_head/niveaux.html'
+    context_object_name = 'niveaux'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'CHEF_DEPARTEMENT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+
+        if not request.user.departement:
+            messages.error(request, "Aucun département assigné")
+            return redirect('dashboard:redirect')
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
+
+    def get_queryset(self):
+        departement = self.request.user.departement
+
+        queryset = Niveau.objects.filter(
+            filiere__departement=departement
+        ).select_related(
+            'filiere'
+        ).annotate(
+            nombre_classes=Count('classes', filter=Q(classes__est_active=True)),
+            nombre_etudiants=Count(
+                'classes__apprenants',
+                filter=Q(classes__apprenants__utilisateur__est_actif=True),
+                distinct=True
+            )
+        )
+
+        # Filtres
+        filiere = self.request.GET.get('filiere')
+        if filiere:
+            queryset = queryset.filter(filiere_id=filiere)
+
+        est_actif = self.request.GET.get('est_actif')
+        if est_actif:
+            queryset = queryset.filter(est_actif=est_actif == 'True')
+
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(nom__icontains=search) |
+                Q(code__icontains=search) |
+                Q(filiere__nom__icontains=search)
+            )
+
+        # Tri
+        sort_by = self.request.GET.get('sort', 'ordre')
+        valid_sorts = [
+            'ordre', '-ordre',
+            'nom', '-nom',
+            'nombre_etudiants', '-nombre_etudiants'
+        ]
+        if sort_by in valid_sorts:
+            queryset = queryset.order_by(sort_by)
+        else:
+            queryset = queryset.order_by('filiere__nom', 'ordre')
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        departement = self.request.user.departement
+
+        # Statistiques
+        context['stats'] = {
+            'total': self.get_queryset().count(),
+            'actifs': self.get_queryset().filter(est_actif=True).count(),
+            'total_classes': self.get_queryset().aggregate(
+                total=Sum('nombre_classes')
+            )['total'] or 0,
+        }
+
+        context['filieres'] = Filiere.objects.filter(
+            departement=departement,
+            est_active=True
+        ).order_by('nom')
+
+        context['current_filters'] = {
+            'filiere': self.request.GET.get('filiere', ''),
+            'est_actif': self.request.GET.get('est_actif', ''),
+            'search': self.request.GET.get('search', ''),
+            'sort': self.request.GET.get('sort', 'ordre'),
+            'per_page': self.request.GET.get('per_page', '20'),
+        }
+
+        context['departement'] = departement
+        context['page_title'] = f"Niveaux - {departement.nom}"
+
         return context
 
 class DepartmentHeadClassesView(LoginRequiredMixin, ListView):
@@ -1864,21 +2819,38 @@ class DepartmentHeadClassesView(LoginRequiredMixin, ListView):
         if request.user.role != 'CHEF_DEPARTEMENT':
             messages.error(request, "Accès non autorisé")
             return redirect('dashboard:redirect')
+
+        if not request.user.departement:
+            messages.error(request, "Aucun département assigné")
+            return redirect('dashboard:redirect')
+
         return super().dispatch(request, *args, **kwargs)
+
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
 
     def get_queryset(self):
         departement = self.request.user.departement
-        if not departement:
-            return Classe.objects.none()
 
         queryset = Classe.objects.filter(
             niveau__filiere__departement=departement
         ).select_related(
             'niveau__filiere',
+            'annee_academique',
             'professeur_principal',
             'salle_principale'
         ).annotate(
-            nombre_etudiants=Count('profil_apprenant', filter=Q(profil_apprenant__utilisateur__est_actif=True))
+            nombre_etudiants=Count(
+                'apprenants',
+                filter=Q(apprenants__utilisateur__est_actif=True)
+            )
         )
 
         # Filtres
@@ -1889,6 +2861,10 @@ class DepartmentHeadClassesView(LoginRequiredMixin, ListView):
         niveau = self.request.GET.get('niveau')
         if niveau:
             queryset = queryset.filter(niveau_id=niveau)
+
+        annee_academique = self.request.GET.get('annee_academique')
+        if annee_academique:
+            queryset = queryset.filter(annee_academique_id=annee_academique)
 
         est_active = self.request.GET.get('est_active')
         if est_active:
@@ -1901,23 +2877,277 @@ class DepartmentHeadClassesView(LoginRequiredMixin, ListView):
                 Q(code__icontains=search)
             )
 
-        return queryset.order_by('niveau__filiere__nom', 'nom')
+        # Tri
+        sort_by = self.request.GET.get('sort', 'nom')
+        valid_sorts = ['nom', '-nom', 'nombre_etudiants', '-nombre_etudiants']
+        if sort_by in valid_sorts:
+            queryset = queryset.order_by(sort_by)
+        else:
+            queryset = queryset.order_by('niveau__filiere__nom', 'nom')
+
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         departement = self.request.user.departement
 
-        if departement:
-            context.update({
-                'filieres': Filiere.objects.filter(departement=departement, est_active=True),
-                'niveaux': Niveau.objects.filter(filiere__departement=departement, est_actif=True),
-                'current_filters': {
-                    'filiere': self.request.GET.get('filiere', ''),
-                    'niveau': self.request.GET.get('niveau', ''),
-                    'est_active': self.request.GET.get('est_active', ''),
-                    'search': self.request.GET.get('search', ''),
-                },
-            })
+        # Statistiques
+        context['stats'] = {
+            'total': self.get_queryset().count(),
+            'actives': self.get_queryset().filter(est_active=True).count(),
+            'total_etudiants': self.get_queryset().aggregate(
+                total=Sum('nombre_etudiants')
+            )['total'] or 0,
+        }
+
+        context['filieres'] = Filiere.objects.filter(
+            departement=departement,
+            est_active=True
+        ).order_by('nom')
+
+        context['niveaux'] = Niveau.objects.filter(
+            filiere__departement=departement,
+            est_actif=True
+        ).select_related('filiere').order_by('ordre')
+
+        context['annees_academiques'] = AnneeAcademique.objects.filter(
+            etablissement=departement.etablissement
+        ).order_by('-nom')
+
+        context['current_filters'] = {
+            'filiere': self.request.GET.get('filiere', ''),
+            'niveau': self.request.GET.get('niveau', ''),
+            'annee_academique': self.request.GET.get('annee_academique', ''),
+            'est_active': self.request.GET.get('est_active', ''),
+            'search': self.request.GET.get('search', ''),
+            'sort': self.request.GET.get('sort', 'nom'),
+            'per_page': self.request.GET.get('per_page', '20'),
+        }
+
+        context['departement'] = departement
+        context['page_title'] = f"Classes - {departement.nom}"
+
+        return context
+
+class DepartmentHeadModulesView(LoginRequiredMixin, ListView):
+    """Gestion des modules du département"""
+    template_name = 'dashboard/department_head/modules.html'
+    context_object_name = 'modules'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'CHEF_DEPARTEMENT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+
+        if not request.user.departement:
+            messages.error(request, "Aucun département assigné")
+            return redirect('dashboard:redirect')
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
+
+    def get_queryset(self):
+        departement = self.request.user.departement
+
+        queryset = Module.objects.filter(
+            niveau__filiere__departement=departement
+        ).select_related(
+            'niveau__filiere',
+            'coordinateur'
+        ).annotate(
+            nombre_matieres=Count('matieres'),
+            total_heures=Sum(
+                F('matieres__heures_cours_magistral') +
+                F('matieres__heures_travaux_diriges') +
+                F('matieres__heures_travaux_pratiques'),
+                output_field=IntegerField()
+            ),
+            credits_ects_total=Sum('matieres__credits_ects')
+        )
+
+        # Filtres
+        filiere = self.request.GET.get('filiere')
+        if filiere:
+            queryset = queryset.filter(niveau__filiere_id=filiere)
+
+        niveau = self.request.GET.get('niveau')
+        if niveau:
+            queryset = queryset.filter(niveau_id=niveau)
+
+        actif = self.request.GET.get('actif')
+        if actif:
+            queryset = queryset.filter(actif=actif == 'True')
+
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(nom__icontains=search) |
+                Q(code__icontains=search)
+            )
+
+        # Tri
+        sort_by = self.request.GET.get('sort', 'niveau__ordre')
+        valid_sorts = ['nom', '-nom', 'niveau__ordre', '-niveau__ordre', 'nombre_matieres', '-nombre_matieres']
+        if sort_by in valid_sorts:
+            queryset = queryset.order_by(sort_by, 'nom')
+        else:
+            queryset = queryset.order_by('niveau__ordre', 'nom')
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        departement = self.request.user.departement
+
+        # Statistiques
+        context['stats'] = {
+            'total': self.get_queryset().count(),
+            'actifs': self.get_queryset().filter(actif=True).count(),
+            'total_matieres': self.get_queryset().aggregate(
+                total=Sum('nombre_matieres')
+            )['total'] or 0,
+        }
+
+        context['filieres'] = Filiere.objects.filter(
+            departement=departement,
+            est_active=True
+        ).order_by('nom')
+
+        context['niveaux'] = Niveau.objects.filter(
+            filiere__departement=departement,
+            est_actif=True
+        ).select_related('filiere').order_by('ordre')
+
+        context['current_filters'] = {
+            'filiere': self.request.GET.get('filiere', ''),
+            'niveau': self.request.GET.get('niveau', ''),
+            'actif': self.request.GET.get('actif', ''),
+            'search': self.request.GET.get('search', ''),
+            'sort': self.request.GET.get('sort', 'niveau__ordre'),
+            'per_page': self.request.GET.get('per_page', '20'),
+        }
+
+        context['departement'] = departement
+        context['page_title'] = f"Modules - {departement.nom}"
+
+        return context
+
+class DepartmentHeadMatieresView(LoginRequiredMixin, ListView):
+    """Gestion des matières du département"""
+    template_name = 'dashboard/department_head/matieres.html'
+    context_object_name = 'matieres'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'CHEF_DEPARTEMENT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+
+        if not request.user.departement:
+            messages.error(request, "Aucun département assigné")
+            return redirect('dashboard:redirect')
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
+
+    def get_queryset(self):
+        departement = self.request.user.departement
+
+        queryset = Matiere.objects.filter(
+            niveau__filiere__departement=departement
+        ).select_related(
+            'niveau__filiere',
+            'module',
+            'enseignant_responsable'
+        )
+
+        # Filtres
+        niveau = self.request.GET.get('niveau')
+        if niveau:
+            queryset = queryset.filter(niveau_id=niveau)
+
+        module = self.request.GET.get('module')
+        if module == 'sans_module':
+            queryset = queryset.filter(module__isnull=True)
+        elif module:
+            queryset = queryset.filter(module_id=module)
+
+        actif = self.request.GET.get('actif')
+        if actif:
+            queryset = queryset.filter(actif=actif == 'True')
+
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(nom__icontains=search) |
+                Q(code__icontains=search)
+            )
+
+        # Tri
+        sort_by = self.request.GET.get('sort', 'niveau__ordre')
+        valid_sorts = [
+            'nom', '-nom',
+            'code', '-code',
+            'niveau__ordre', '-niveau__ordre'
+        ]
+        if sort_by in valid_sorts:
+            queryset = queryset.order_by(sort_by, 'nom')
+        else:
+            queryset = queryset.order_by('niveau__ordre', 'nom')
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        departement = self.request.user.departement
+
+        # Statistiques
+        context['stats'] = {
+            'total': self.get_queryset().count(),
+            'actives': self.get_queryset().filter(actif=True).count(),
+        }
+
+        context['niveaux'] = Niveau.objects.filter(
+            filiere__departement=departement,
+            est_actif=True
+        ).select_related('filiere').order_by('ordre')
+
+        context['modules'] = Module.objects.filter(
+            niveau__filiere__departement=departement,
+            actif=True
+        ).select_related('niveau__filiere').order_by('nom')
+
+        context['current_filters'] = {
+            'niveau': self.request.GET.get('niveau', ''),
+            'module': self.request.GET.get('module', ''),
+            'actif': self.request.GET.get('actif', ''),
+            'search': self.request.GET.get('search', ''),
+            'sort': self.request.GET.get('sort', 'niveau__ordre'),
+            'per_page': self.request.GET.get('per_page', '20'),
+        }
+
+        context['departement'] = departement
+        context['page_title'] = f"Matières - {departement.nom}"
+
         return context
 
 class DepartmentHeadCoursesView(LoginRequiredMixin, ListView):
@@ -1930,16 +3160,198 @@ class DepartmentHeadCoursesView(LoginRequiredMixin, ListView):
         if request.user.role != 'CHEF_DEPARTEMENT':
             messages.error(request, "Accès non autorisé")
             return redirect('dashboard:redirect')
+
+        if not request.user.departement:
+            messages.error(request, "Aucun département assigné")
+            return redirect('dashboard:redirect')
+
         return super().dispatch(request, *args, **kwargs)
+
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
 
     def get_queryset(self):
         departement = self.request.user.departement
-        if not departement:
-            return Cours.objects.none()
 
-        return Cours.objects.filter(
-            matiere__modules__filiere__departement=departement
-        ).select_related('matiere', 'enseignant').distinct().order_by('-date_creation')
+        queryset = Cours.objects.filter(
+            matiere__niveau__filiere__departement=departement
+        ).select_related(
+            'matiere__niveau__filiere',
+            'classe__niveau',
+            'enseignant',
+            'periode_academique',
+            'salle'
+        )
+
+        # Filtres
+        matiere_id = self.request.GET.get('matiere')
+        if matiere_id:
+            queryset = queryset.filter(matiere_id=matiere_id)
+
+        classe_id = self.request.GET.get('classe')
+        if classe_id:
+            queryset = queryset.filter(classe_id=classe_id)
+
+        enseignant_id = self.request.GET.get('enseignant')
+        if enseignant_id:
+            queryset = queryset.filter(enseignant_id=enseignant_id)
+
+        date_debut = self.request.GET.get('date_debut')
+        if date_debut:
+            queryset = queryset.filter(date_prevue__gte=date_debut)
+
+        date_fin = self.request.GET.get('date_fin')
+        if date_fin:
+            queryset = queryset.filter(date_prevue__lte=date_fin)
+
+        statut = self.request.GET.get('statut')
+        if statut:
+            queryset = queryset.filter(statut=statut)
+
+        type_cours = self.request.GET.get('type_cours')
+        if type_cours:
+            queryset = queryset.filter(type_cours=type_cours)
+
+        # Tri
+        sort_by = self.request.GET.get('sort', '-date_prevue')
+        valid_sorts = [
+            'date_prevue', '-date_prevue',
+            'matiere__nom', '-matiere__nom',
+            'classe__nom', '-classe__nom'
+        ]
+        if sort_by in valid_sorts:
+            queryset = queryset.order_by(sort_by)
+        else:
+            queryset = queryset.order_by('-date_prevue', '-heure_debut_prevue')
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        departement = self.request.user.departement
+
+        context['matieres'] = Matiere.objects.filter(
+            niveau__filiere__departement=departement,
+            actif=True
+        ).select_related('niveau__filiere').order_by('nom')
+
+        context['classes'] = Classe.objects.filter(
+            niveau__filiere__departement=departement,
+            est_active=True
+        ).select_related('niveau__filiere').order_by('nom')
+
+        context['enseignants'] = Utilisateur.objects.filter(
+            departement=departement,
+            role='ENSEIGNANT',
+            est_actif=True
+        ).order_by('nom', 'prenom')
+
+        context['statuts'] = StatutCours.choices
+        context['types_cours'] = TypeCours.choices
+
+        context['current_filters'] = {
+            'matiere': self.request.GET.get('matiere', ''),
+            'classe': self.request.GET.get('classe', ''),
+            'enseignant': self.request.GET.get('enseignant', ''),
+            'date_debut': self.request.GET.get('date_debut', ''),
+            'date_fin': self.request.GET.get('date_fin', ''),
+            'statut': self.request.GET.get('statut', ''),
+            'type_cours': self.request.GET.get('type_cours', ''),
+            'sort': self.request.GET.get('sort', '-date_prevue'),
+            'per_page': self.request.GET.get('per_page', '20'),
+        }
+
+        context['departement'] = departement
+        context['page_title'] = f"Cours - {departement.nom}"
+
+        return context
+
+class DepartmentHeadCahiersTexteView(LoginRequiredMixin, ListView):
+    """Gestion des cahiers de texte du département"""
+    template_name = 'dashboard/department_head/cahiers_texte.html'
+    context_object_name = 'cahiers'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'CHEF_DEPARTEMENT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
+
+    def get_queryset(self):
+        departement = self.request.user.departement
+        queryset = CahierTexte.objects.select_related(
+            'cours__matiere__niveau__filiere',
+            'cours__classe',
+            'cours__enseignant',
+            'rempli_par'
+        ).filter(
+            cours__matiere__niveau__filiere__departement=departement
+        )
+
+        # Filtres
+        classe_id = self.request.GET.get('classe')
+        if classe_id:
+            queryset = queryset.filter(cours__classe_id=classe_id)
+
+        enseignant_id = self.request.GET.get('enseignant')
+        if enseignant_id:
+            queryset = queryset.filter(cours__enseignant_id=enseignant_id)
+
+        matiere_id = self.request.GET.get('matiere')
+        if matiere_id:
+            queryset = queryset.filter(cours__matiere_id=matiere_id)
+
+        date_debut = self.request.GET.get('date_debut')
+        if date_debut:
+            queryset = queryset.filter(cours__date_prevue__gte=date_debut)
+
+        date_fin = self.request.GET.get('date_fin')
+        if date_fin:
+            queryset = queryset.filter(cours__date_prevue__lte=date_fin)
+
+        return queryset.order_by('-cours__date_prevue')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        departement = self.request.user.departement
+
+        context['classes'] = Classe.objects.filter(
+            niveau__filiere__departement=departement, est_active=True
+        )
+        context['enseignants'] = Utilisateur.objects.filter(
+            departement=departement, role='ENSEIGNANT', est_actif=True
+        )
+        context['matieres'] = Matiere.objects.filter(
+            niveau__filiere__departement=departement, actif=True
+        )
+        context['current_filters'] = {
+            'classe': self.request.GET.get('classe', ''),
+            'enseignant': self.request.GET.get('enseignant', ''),
+            'matiere': self.request.GET.get('matiere', ''),
+            'date_debut': self.request.GET.get('date_debut', ''),
+            'date_fin': self.request.GET.get('date_fin', ''),
+        }
+        context['departement'] = departement
+
+        return context
 
 class DepartmentHeadEvaluationsView(LoginRequiredMixin, ListView):
     """Gestion des évaluations du département"""
@@ -1955,12 +3367,222 @@ class DepartmentHeadEvaluationsView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         departement = self.request.user.departement
-        if not departement:
-            return Evaluation.objects.none()
 
-        return Evaluation.objects.filter(
-            cours__matiere__modules__filiere__departement=departement
-        ).select_related('cours__matiere', 'cours__enseignant').order_by('-date_creation')
+        queryset = Evaluation.objects.filter(
+            matiere__niveau__filiere__departement=departement
+        ).select_related(
+            'enseignant',
+            'matiere',
+            'matiere__niveau__filiere'
+        ).prefetch_related('classes').annotate(
+            nombre_compositions=Count('compositions')
+        )
+
+        # Filtres
+        type_eval = self.request.GET.get('type_evaluation')
+        if type_eval:
+            queryset = queryset.filter(type_evaluation=type_eval)
+
+        statut = self.request.GET.get('statut')
+        if statut:
+            queryset = queryset.filter(statut=statut)
+
+        enseignant = self.request.GET.get('enseignant')
+        if enseignant:
+            queryset = queryset.filter(enseignant_id=enseignant)
+
+        matiere = self.request.GET.get('matiere')
+        if matiere:
+            queryset = queryset.filter(matiere_id=matiere)
+
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(titre__icontains=search) |
+                Q(matiere__nom__icontains=search) |
+                Q(enseignant__prenom__icontains=search) |
+                Q(enseignant__nom__icontains=search)
+            )
+
+        return queryset.order_by('-date_debut')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        departement = self.request.user.departement
+
+        context['types_evaluation'] = Evaluation.TYPE_EVALUATION
+        context['statuts'] = Evaluation.STATUT
+        context['enseignants'] = Utilisateur.objects.filter(
+            departement=departement, role='ENSEIGNANT', est_actif=True
+        )
+        context['matieres'] = Matiere.objects.filter(
+            niveau__filiere__departement=departement, actif=True
+        )
+        context['current_filters'] = {
+            'type_evaluation': self.request.GET.get('type_evaluation', ''),
+            'statut': self.request.GET.get('statut', ''),
+            'enseignant': self.request.GET.get('enseignant', ''),
+            'matiere': self.request.GET.get('matiere', ''),
+            'search': self.request.GET.get('search', ''),
+        }
+        context['departement'] = departement
+
+        return context
+
+class DepartmentHeadEmploiDuTempsView(LoginRequiredMixin, ListView):
+    """Gestion des emplois du temps du département"""
+    template_name = 'dashboard/department_head/emplois_du_temps.html'
+    context_object_name = 'emplois_du_temps'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'CHEF_DEPARTEMENT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        departement = self.request.user.departement
+        queryset = EmploiDuTemps.objects.select_related(
+            'classe__niveau__filiere',
+            'enseignant',
+            'periode_academique',
+            'cree_par'
+        ).prefetch_related('creneaux').filter(
+            Q(classe__niveau__filiere__departement=departement) |
+            Q(enseignant__departement=departement)
+        )
+
+        # Filtres
+        filter_type = self.request.GET.get('type', 'classe')
+        if filter_type == 'classe':
+            classe_id = self.request.GET.get('classe')
+            if classe_id:
+                queryset = queryset.filter(classe_id=classe_id)
+        else:
+            enseignant_id = self.request.GET.get('enseignant')
+            if enseignant_id:
+                queryset = queryset.filter(enseignant_id=enseignant_id)
+
+        periode_id = self.request.GET.get('periode')
+        if periode_id:
+            queryset = queryset.filter(periode_academique_id=periode_id)
+
+        statut = self.request.GET.get('statut')
+        if statut == 'publie':
+            queryset = queryset.filter(publie=True)
+        elif statut == 'non_publie':
+            queryset = queryset.filter(publie=False)
+        elif statut == 'actuel':
+            queryset = queryset.filter(actuel=True)
+
+        return queryset.order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        departement = self.request.user.departement
+
+        context['classes'] = Classe.objects.filter(
+            niveau__filiere__departement=departement, est_active=True
+        ).select_related('niveau__filiere')
+        context['enseignants'] = Utilisateur.objects.filter(
+            departement=departement, role='ENSEIGNANT', est_actif=True
+        )
+        context['periodes'] = PeriodeAcademique.objects.filter(
+            etablissement=departement.etablissement, est_active=True
+        )
+        context['nombre_publies'] = self.get_queryset().filter(publie=True).count()
+        context['current_filters'] = {
+            'type': self.request.GET.get('type', 'classe'),
+            'classe': self.request.GET.get('classe', ''),
+            'enseignant': self.request.GET.get('enseignant', ''),
+            'periode': self.request.GET.get('periode', ''),
+            'statut': self.request.GET.get('statut', ''),
+        }
+        context['departement'] = departement
+
+        return context
+
+class DepartmentHeadRessourcesView(LoginRequiredMixin, ListView):
+    """Gestion des ressources du département"""
+    template_name = 'dashboard/department_head/ressources.html'
+    context_object_name = 'ressources'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'CHEF_DEPARTEMENT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
+
+    def get_queryset(self):
+        departement = self.request.user.departement
+        queryset = Ressource.objects.select_related(
+            'cours__matiere',
+            'cours__classe',
+            'cours__enseignant'
+        ).filter(
+            cours__matiere__niveau__filiere__departement=departement
+        )
+
+        # Filtres
+        type_ressource = self.request.GET.get('type')
+        if type_ressource:
+            queryset = queryset.filter(type_ressource=type_ressource)
+
+        cours_id = self.request.GET.get('cours')
+        if cours_id:
+            queryset = queryset.filter(cours_id=cours_id)
+
+        enseignant_id = self.request.GET.get('enseignant')
+        if enseignant_id:
+            queryset = queryset.filter(cours__enseignant_id=enseignant_id)
+
+        public = self.request.GET.get('public')
+        if public:
+            queryset = queryset.filter(public=public == 'True')
+
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(titre__icontains=search) | Q(description__icontains=search)
+            )
+
+        return queryset.order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        departement = self.request.user.departement
+
+        context['types_ressource'] = Ressource.TYPES_RESSOURCE
+        context['enseignants'] = Utilisateur.objects.filter(
+            departement=departement, role='ENSEIGNANT', est_actif=True
+        )
+        context['current_filters'] = {
+            'type': self.request.GET.get('type', ''),
+            'cours': self.request.GET.get('cours', ''),
+            'enseignant': self.request.GET.get('enseignant', ''),
+            'public': self.request.GET.get('public', ''),
+            'search': self.request.GET.get('search', ''),
+        }
+
+        # Stats
+        queryset = self.get_queryset()
+        context['total_telechargements'] = queryset.aggregate(Sum('nombre_telechargements'))['nombre_telechargements__sum'] or 0
+        context['total_vues'] = queryset.aggregate(Sum('nombre_vues'))['nombre_vues__sum'] or 0
+        context['departement'] = departement
+
+        return context
 
 class DepartmentHeadReportsView(LoginRequiredMixin, TemplateView):
     """Rapports du département"""
@@ -2003,7 +3625,7 @@ class DepartmentHeadReportsView(LoginRequiredMixin, TemplateView):
 # VUES ENSEIGNANT
 # ================================
 class TeacherDashboardView(LoginRequiredMixin, TemplateView):
-    """Tableau de bord enseignant"""
+    """Tableau de bord de l'enseignant"""
     template_name = 'dashboard/teacher/index.html'
 
     def dispatch(self, request, *args, **kwargs):
@@ -2014,239 +3636,287 @@ class TeacherDashboardView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        user = self.request.user
-
-        context.update({
-            'mes_cours': self.get_mes_cours(user),
-            'evaluations_recentes': self.get_evaluations_recentes(user),
-            'prochaines_evaluations': self.get_prochaines_evaluations(user),
-            'mes_classes': self.get_mes_classes(user),
-            'total_etudiants': self.get_total_etudiants(user),
-            'evaluations_a_corriger': self.get_evaluations_a_corriger(user),
-        })
-
-        return context
-
-    def get_mes_cours(self, user):
-        return Cours.objects.filter(enseignant=user).select_related(
-            'matiere_module__matiere', 'classe'
-        )[:5]
-
-    def get_evaluations_recentes(self, user):
-        return Evaluation.objects.filter(
-            matiere_module__enseignant=user
-        ).select_related(
-            'matiere_module__matiere', 'matiere_module__module'
-        ).order_by('-created_at')[:5]
-
-    def get_prochaines_evaluations(self, user):
-        return Evaluation.objects.filter(
-            matiere_module__enseignant=user,
-            date_debut__gt=timezone.now()
-        ).order_by('date_debut')[:5]
-
-    def get_mes_classes(self, user):
-        return Classe.objects.filter(
-            cours__enseignant=user
-        ).distinct()
-
-    def get_total_etudiants(self, user):
-        return Utilisateur.objects.filter(
-            profil_apprenant__classe_actuelle__cours__enseignant=user,
-            role='APPRENANT'
-        ).distinct().count()
-
-    def get_evaluations_a_corriger(self, user):
-        return Evaluation.objects.filter(
-            matiere_module__enseignant=user,
-            statut='TERMINE'
-        ).count()
-
-class TeacherCoursesView(LoginRequiredMixin, ListView):
-    """Liste des cours de l'enseignant"""
-    template_name = 'dashboard/teacher/courses.html'
-    context_object_name = 'courses'
-    paginate_by = 10
-
-    def dispatch(self, request, *args, **kwargs):
-        if request.user.role != 'ENSEIGNANT':
-            messages.error(request, "Accès non autorisé")
-            return redirect('dashboard:redirect')
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_queryset(self):
-        return Cours.objects.filter(
-            enseignant=self.request.user
-        ).select_related('matiere', 'classe')
-
-class TeacherLogbookView(RoleRequiredMixin, ListView):
-    """Cahier de textes de l'enseignant"""
-    model = CahierTexte
-    template_name = 'dashboard/teacher/logbook/list.html'
-    context_object_name = 'entrees_cahier'
-    paginate_by = 20
-
-    def dispatch(self, request, *args, **kwargs):
-        if request.user.role != 'ENSEIGNANT':
-            messages.error(request, "Accès non autorisé")
-            return redirect('dashboard:redirect')
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_queryset(self):
-        return CahierTexte.objects.filter(
-            cours__enseignant=self.request.user
-        ).select_related('cours__matiere_module__matiere', 'cours__classe').order_by('-cours__date_prevue')
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
         enseignant = self.request.user
-
-        # Mes cours pour ajouter une entrée
-        mes_cours = Cours.objects.filter(
-            enseignant=enseignant
-        ).select_related('matiere_module__matiere', 'classe')
-
-        # Séances récentes sans entrée dans le cahier
-        cours_sans_cahier = Cours.objects.filter(
-            enseignant=enseignant,
-            date_prevue__lte=timezone.now().date(),
-            cahier_texte__isnull=True
-        ).select_related('matiere_module__matiere', 'classe').order_by('-date_prevue')[:10]
 
         # Statistiques
-        total_entrees = self.get_queryset().count()
-        entrees_ce_mois = self.get_queryset().filter(
-            cours__date_prevue__gte=timezone.now().replace(day=1)
+        context['total_cours'] = Cours.objects.filter(
+            enseignant=enseignant, actif=True
         ).count()
 
-        # Progression par cours
-        progression_cours = {}
-        for cours in mes_cours:
-            nb_cours_prevus = Cours.objects.filter(
-                enseignant=enseignant,
-                matiere_module=cours.matiere_module,
-                date_prevue__lte=timezone.now().date()
-            ).count()
+        context['cours_aujourdhui'] = Cours.objects.filter(
+            enseignant=enseignant,
+            date_prevue=timezone.now().date(),
+            actif=True
+        ).count()
 
-            nb_entrees_cahier = CahierTexte.objects.filter(cours=cours).count()
+        context['evaluations_en_cours'] = Evaluation.objects.filter(
+            enseignant=enseignant,
+            statut='EN_COURS'
+        ).count()
 
-            if nb_cours_prevus > 0:
-                progression_cours[cours] = {
-                    'pourcentage': (nb_entrees_cahier / nb_cours_prevus) * 100,
-                    'entrees': nb_entrees_cahier,
-                    'cours_prevus': nb_cours_prevus,
-                }
-            else:
-                progression_cours[cours] = {
-                    'pourcentage': 0,
-                    'entrees': nb_entrees_cahier,
-                    'cours_prevus': 0,
-                }
+        context['corrections_en_attente'] = Evaluation.objects.filter(
+            enseignant=enseignant,
+            compositions__statut__in=['SOUMISE', 'EN_RETARD']
+        ).distinct().count()
 
-        context.update({
-            'mes_cours': mes_cours,
-            'cours_sans_cahier': cours_sans_cahier,
-            'total_entrees': total_entrees,
-            'entrees_ce_mois': entrees_ce_mois,
-            'progression_cours': progression_cours,
-        })
+        # Cours à venir
+        context['cours_a_venir'] = Cours.objects.filter(
+            enseignant=enseignant,
+            date_prevue__gte=timezone.now().date(),
+            actif=True
+        ).select_related('matiere', 'classe', 'salle').order_by('date_prevue', 'heure_debut_prevue')[:5]
+
+        # Évaluations récentes
+        context['evaluations_recentes'] = Evaluation.objects.filter(
+            enseignant=enseignant
+        ).select_related('matiere').order_by('-date_debut')[:5]
 
         return context
 
-class TeacherScheduleView(RoleRequiredMixin, TemplateView):
-    """Emploi du temps de l'enseignant"""
-    template_name = 'dashboard/teacher/schedule.html'
-    allowed_roles = ['ENSEIGNANT']
+class TeacherCoursesView(LoginRequiredMixin, ListView):
+    """Mes cours (enseignant)"""
+    template_name = 'dashboard/teacher/courses.html'
+    context_object_name = 'courses'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'ENSEIGNANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = Cours.objects.filter(
+            enseignant=self.request.user
+        ).select_related(
+            'matiere__niveau__filiere',
+            'classe',
+            'salle'
+        )
+
+        # Filtres
+        matiere_id = self.request.GET.get('matiere')
+        if matiere_id:
+            queryset = queryset.filter(matiere_id=matiere_id)
+
+        classe_id = self.request.GET.get('classe')
+        if classe_id:
+            queryset = queryset.filter(classe_id=classe_id)
+
+        date_debut = self.request.GET.get('date_debut')
+        if date_debut:
+            queryset = queryset.filter(date_prevue__gte=date_debut)
+
+        date_fin = self.request.GET.get('date_fin')
+        if date_fin:
+            queryset = queryset.filter(date_prevue__lte=date_fin)
+
+        statut = self.request.GET.get('statut')
+        if statut:
+            queryset = queryset.filter(statut=statut)
+
+        return queryset.order_by('-date_prevue', '-heure_debut_prevue')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         enseignant = self.request.user
 
-        # Semaine courante ou spécifiée
-        today = timezone.now().date()
-        week_start = today - timedelta(days=today.weekday())
-        week_end = week_start + timedelta(days=6)
-
-        # Mes cours de la semaine
-        cours_semaine = Cours.objects.filter(
-            enseignant=enseignant,
-            date_prevue__range=[week_start, week_end]
-        ).select_related('matiere_module__matiere', 'classe')
-
-        # Organisation par jour et heure
-        emploi_du_temps = {}
-        jours_semaine = [
-            ('LUNDI', week_start),
-            ('MARDI', week_start + timedelta(days=1)),
-            ('MERCREDI', week_start + timedelta(days=2)),
-            ('JEUDI', week_start + timedelta(days=3)),
-            ('VENDREDI', week_start + timedelta(days=4)),
-            ('SAMEDI', week_start + timedelta(days=5)),
-            ('DIMANCHE', week_start + timedelta(days=6)),
-        ]
-
-        for jour_nom, date_jour in jours_semaine:
-            emploi_du_temps[jour_nom] = {
-                'date': date_jour,
-                'cours': []
-            }
-
-            # Cours de ce jour
-            cours_jour = Cours.objects.filter(
-                enseignant=enseignant,
-                date_prevue=date_jour
-            ).select_related('matiere_module__matiere', 'classe').order_by('heure_debut_prevue')
-
-            emploi_du_temps[jour_nom]['cours'] = cours_jour
-
-        # Prochains cours (3 prochains)
-        prochains_cours = Cours.objects.filter(
-            enseignant=enseignant,
-            date_prevue__gte=today
-        ).select_related('matiere_module__matiere', 'classe').order_by('date_prevue', 'heure_debut_prevue')[:3]
-
-        # Statistiques de la semaine
-        total_heures_semaine = 0
-        total_cours_semaine = 0
-        classes_enseignees = set()
-
-        for cours in cours_semaine:
-            if cours.heure_fin_prevue and cours.heure_debut_prevue:
-                duree = (datetime.combine(today, cours.heure_fin_prevue) -
-                         datetime.combine(today, cours.heure_debut_prevue)).total_seconds() / 3600
-                total_heures_semaine += duree
-            total_cours_semaine += 1
-            classes_enseignees.add(cours.classe.nom if cours.classe else 'Non assignée')
-
-        # Cours du jour
-        cours_aujourd_hui = Cours.objects.filter(
-            enseignant=enseignant,
-            date_prevue=today
-        ).select_related('matiere_module__matiere', 'classe').order_by('heure_debut_prevue')
-
-        context.update({
-            'emploi_du_temps': emploi_du_temps,
-            'semaine_courante': {
-                'debut': week_start,
-                'fin': week_end,
-            },
-            'prochains_cours': prochains_cours,
-            'cours_aujourd_hui': cours_aujourd_hui,
-            'statistiques_semaine': {
-                'total_heures': round(total_heures_semaine, 1),
-                'total_cours': total_cours_semaine,
-                'nb_classes': len(classes_enseignees),
-                'classes': list(classes_enseignees),
-            }
-        })
+        context['matieres'] = Matiere.objects.filter(
+            enseignant_responsable=enseignant, actif=True
+        )
+        context['classes'] = Classe.objects.filter(
+            cours__enseignant=enseignant
+        ).distinct()
+        context['statuts'] = StatutCours.choices
+        context['current_filters'] = {
+            'matiere': self.request.GET.get('matiere', ''),
+            'classe': self.request.GET.get('classe', ''),
+            'date_debut': self.request.GET.get('date_debut', ''),
+            'date_fin': self.request.GET.get('date_fin', ''),
+            'statut': self.request.GET.get('statut', ''),
+        }
 
         return context
 
-class TeacherStudentsView(RoleRequiredMixin, ListView):
-    """Liste des étudiants de l'enseignant"""
-    model = Utilisateur
+class TeacherCahiersTexteView(LoginRequiredMixin, ListView):
+    """Cahiers de texte de l'enseignant"""
+    template_name = 'dashboard/teacher/cahiers_texte.html'
+    context_object_name = 'cahiers'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'ENSEIGNANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = CahierTexte.objects.filter(
+            cours__enseignant=self.request.user
+        ).select_related(
+            'cours__matiere',
+            'cours__classe',
+            'rempli_par'
+        )
+
+        # Filtres
+        classe_id = self.request.GET.get('classe')
+        if classe_id:
+            queryset = queryset.filter(cours__classe_id=classe_id)
+
+        date_debut = self.request.GET.get('date_debut')
+        if date_debut:
+            queryset = queryset.filter(cours__date_prevue__gte=date_debut)
+
+        date_fin = self.request.GET.get('date_fin')
+        if date_fin:
+            queryset = queryset.filter(cours__date_prevue__lte=date_fin)
+
+        return queryset.order_by('-cours__date_prevue')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        enseignant = self.request.user
+
+        context['classes'] = Classe.objects.filter(
+            cours__enseignant=enseignant
+        ).distinct()
+        context['current_filters'] = {
+            'classe': self.request.GET.get('classe', ''),
+            'date_debut': self.request.GET.get('date_debut', ''),
+            'date_fin': self.request.GET.get('date_fin', ''),
+        }
+
+        return context
+
+class TeacherEvaluationsView(LoginRequiredMixin, ListView):
+    """Mes évaluations (enseignant)"""
+    template_name = 'dashboard/teacher/evaluations.html'
+    context_object_name = 'evaluations'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'ENSEIGNANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = Evaluation.objects.filter(
+            enseignant=self.request.user
+        ).select_related(
+            'matiere__niveau__filiere'
+        ).prefetch_related('classes').annotate(
+            nombre_compositions=Count('compositions'),
+            nombre_corrections=Count('compositions', filter=Q(compositions__statut='CORRIGEE'))
+        )
+
+        # Filtres
+        type_eval = self.request.GET.get('type_evaluation')
+        if type_eval:
+            queryset = queryset.filter(type_evaluation=type_eval)
+
+        statut = self.request.GET.get('statut')
+        if statut:
+            queryset = queryset.filter(statut=statut)
+
+        matiere = self.request.GET.get('matiere')
+        if matiere:
+            queryset = queryset.filter(matiere_id=matiere)
+
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(titre__icontains=search) |
+                Q(matiere__nom__icontains=search)
+            )
+
+        return queryset.order_by('-date_debut')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        enseignant = self.request.user
+
+        context['types_evaluation'] = Evaluation.TYPE_EVALUATION
+        context['statuts'] = Evaluation.STATUT
+        context['matieres'] = Matiere.objects.filter(
+            enseignant_responsable=enseignant, actif=True
+        )
+        context['current_filters'] = {
+            'type_evaluation': self.request.GET.get('type_evaluation', ''),
+            'statut': self.request.GET.get('statut', ''),
+            'matiere': self.request.GET.get('matiere', ''),
+            'search': self.request.GET.get('search', ''),
+        }
+
+        return context
+
+class TeacherCorrectionView(LoginRequiredMixin, ListView):
+    """Corriger une évaluation"""
+    model = Evaluation
+    template_name = 'dashboard/teacher/correction.html'
+    context_object_name = 'evaluation'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'ENSEIGNANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return Evaluation.objects.filter(enseignant=self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        evaluation = self.object
+
+        context['compositions'] = evaluation.compositions.select_related(
+            'apprenant'
+        ).order_by('apprenant__nom', 'apprenant__prenom')
+
+        return context
+
+class TeacherPresencesView(LoginRequiredMixin, ListView):
+    """Gestion des présences"""
+    template_name = 'dashboard/teacher/presences.html'
+    context_object_name = 'presences'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'ENSEIGNANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = Presence.objects.filter(
+            cours__enseignant=self.request.user
+        ).select_related(
+            'cours__matiere',
+            'cours__classe',
+            'etudiant'
+        )
+
+        # Filtres
+        cours_id = self.request.GET.get('cours')
+        if cours_id:
+            queryset = queryset.filter(cours_id=cours_id)
+
+        statut = self.request.GET.get('statut')
+        if statut:
+            queryset = queryset.filter(statut=statut)
+
+        return queryset.order_by('-cours__date_prevue')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['statuts_presence'] = Presence.STATUTS_PRESENCE
+        return context
+
+class TeacherStudentsView(LoginRequiredMixin, ListView):
+    """Mes étudiants (enseignant)"""
     template_name = 'dashboard/teacher/students.html'
-    context_object_name = 'etudiants'
+    context_object_name = 'students'
     paginate_by = 20
 
     def dispatch(self, request, *args, **kwargs):
@@ -2257,340 +3927,83 @@ class TeacherStudentsView(RoleRequiredMixin, ListView):
 
     def get_queryset(self):
         enseignant = self.request.user
-        return Utilisateur.objects.filter(
-            inscriptions__classe_attribuee__cours__enseignant=enseignant,
-            role='APPRENANT'
-        ).distinct().select_related('etablissement')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        enseignant = self.request.user
-
-        # Statistiques par étudiant
-        for etudiant in context['etudiants']:
-            # Moyenne de l'étudiant dans mes cours
-            etudiant.moyenne_generale = Note.objects.filter(
-                etudiant=etudiant,
-                evaluation__cours__enseignant=enseignant,
-                statut='PUBLIEE'
-            ).aggregate(moyenne=Avg('valeur'))['moyenne'] or 0
-
-            # Taux de présence
-            total_presences = Presence.objects.filter(
-                etudiant=etudiant,
-                seance__cours__enseignant=enseignant
-            ).count()
-
-            if total_presences > 0:
-                presences = Presence.objects.filter(
-                    etudiant=etudiant,
-                    seance__cours__enseignant=enseignant,
-                    statut__in=['PRESENT', 'RETARD']
-                ).count()
-                etudiant.taux_presence = (presences / total_presences) * 100
-            else:
-                etudiant.taux_presence = 0
-
-        return context
-
-class TeacherEvaluationsView(RoleRequiredMixin, ListView):
-    """Liste des évaluations de l'enseignant"""
-    model = Evaluation
-    template_name = 'evaluations/enseignant/list.html'
-    context_object_name = 'evaluations'
-    paginate_by = 15
-
-    def dispatch(self, request, *args, **kwargs):
-        if request.user.role != 'ENSEIGNANT':
-            messages.error(request, "Accès non autorisé")
-            return redirect('dashboard:redirect')
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_queryset(self):
-        return Evaluation.objects.filter(
-            matiere_module__enseignant=self.request.user
-        ).select_related('matiere_module__matiere', 'matiere_module__module').order_by('-date_debut')
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        enseignant = self.request.user
-
-        # Statistiques des évaluations
-        total_evaluations = self.get_queryset().count()
-        evaluations_programmees = self.get_queryset().filter(statut='PROGRAMMEE').count()
-        evaluations_en_cours = self.get_queryset().filter(statut='EN_COURS').count()
-        evaluations_terminees = self.get_queryset().filter(statut='TERMINEE').count()
-
-        # Évaluations à venir dans les 7 prochains jours
-        prochaines_evaluations = self.get_queryset().filter(
-            date_debut__gte=timezone.now(),
-            date_debut__lte=timezone.now() + timedelta(days=7),
-            statut='PROGRAMMEE'
-        )
-
-        # Notes en attente de correction (notes sans valeur ou avec valeur nulle)
-        notes_a_corriger = Note.objects.filter(
-            evaluation__matiere_module__enseignant=enseignant,
-            valeur__isnull=True  # Correction : utiliser valeur au lieu de statut
-        ).count()
-
-        # Mes matières-modules pour créer une nouvelle évaluation
-        mes_matiere_modules = MatiereModule.objects.filter(
-            enseignant=enseignant
-        ).select_related('matiere', 'module')
-
-        context.update({
-            'total_evaluations': total_evaluations,
-            'evaluations_programmees': evaluations_programmees,
-            'evaluations_en_cours': evaluations_en_cours,
-            'evaluations_terminees': evaluations_terminees,
-            'prochaines_evaluations': prochaines_evaluations,
-            'notes_a_corriger': notes_a_corriger,
-            'mes_matiere_modules': mes_matiere_modules,
-        })
-
-        return context
-
-class TeacherGradesView(RoleRequiredMixin, TemplateView):
-    """Vue complète pour la gestion des notes"""
-    template_name = 'dashboard/teacher/grades/dashboard.html'
-    allowed_roles = ['ENSEIGNANT']
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        enseignant = self.request.user
-
-        # Notes non attribuées (sans valeur)
-        notes_non_attribuees = Note.objects.filter(
-            evaluation__matiere_module__enseignant=enseignant,
-            valeur__isnull=True  # Notes sans valeur = à corriger
-        ).select_related('etudiant', 'evaluation__matiere_module__matiere').order_by('-created_at')
-
-        # Notes récemment attribuées
-        notes_attribuees = Note.objects.filter(
-            evaluation__matiere_module__enseignant=enseignant,
-            valeur__isnull=False,  # Notes avec valeur = publiées
-            updated_at__gte=timezone.now() - timedelta(days=7)
-        ).select_related('etudiant', 'evaluation__matiere_module__matiere').order_by('-updated_at')
-
-        # Évaluations en attente de notation (sans aucune note)
-        evaluations_a_noter = Evaluation.objects.filter(
-            matiere_module__enseignant=enseignant,
-            statut='TERMINEE',
-            notes__isnull=True
-        ).distinct().select_related('matiere_module__matiere', 'matiere_module__module')
-
-        # Évaluations avec notes incomplètes (certaines notes manquantes)
-        evaluations_incompletes = []
-        evaluations_terminees = Evaluation.objects.filter(
-            matiere_module__enseignant=enseignant,
-            statut='TERMINEE'
-        ).select_related('matiere_module__matiere', 'matiere_module__module')
-
-        for evaluation in evaluations_terminees:
-            total_etudiants = evaluation.classes.aggregate(
-                total=Count('etudiants', distinct=True)
-            )['total'] or 0
-
-            notes_attribuees_count = evaluation.notes.filter(valeur__isnull=False).count()
-
-            if 0 < notes_attribuees_count < total_etudiants:
-                evaluations_incompletes.append({
-                    'evaluation': evaluation,
-                    'notes_attribuees': notes_attribuees_count,
-                    'total_etudiants': total_etudiants,
-                    'pourcentage': (notes_attribuees_count / total_etudiants) * 100
-                })
-
-        # Statistiques générales
-        stats = {
-            'total_notes_non_attribuees': notes_non_attribuees.count(),
-            'total_notes_attribuees_semaine': notes_attribuees.count(),
-            'evaluations_a_noter': evaluations_a_noter.count(),
-            'evaluations_incompletes': len(evaluations_incompletes),
-        }
-
-        # Moyennes par matière
-        moyennes_matieres = {}
-        mes_matiere_modules = MatiereModule.objects.filter(enseignant=enseignant)
-
-        for matiere_module in mes_matiere_modules:
-            key = f"{matiere_module.matiere.nom} - {matiere_module.module.nom}"
-            moyenne = Note.objects.filter(
-                evaluation__matiere_module=matiere_module,
-                valeur__isnull=False  # Seulement les notes attribuées
-            ).aggregate(moyenne=Avg('valeur'))['moyenne']
-
-            if moyenne is not None:
-                moyennes_matieres[key] = round(moyenne, 2)
-
-        # Alertes
-        alertes = []
-
-        # Alertes pour évaluations anciennes non notées
-        evaluations_anciennes = Evaluation.objects.filter(
-            matiere_module__enseignant=enseignant,
-            statut='TERMINEE',
-            date_fin__lt=timezone.now() - timedelta(days=7)
-        ).exclude(
-            notes__valeur__isnull=False  # Évaluations sans aucune note attribuée
+        queryset = Utilisateur.objects.filter(
+            role='APPRENANT',
+            profil_apprenant__classe_actuelle__cours__enseignant=enseignant,
+            est_actif=True
+        ).select_related(
+            'profil_apprenant__classe_actuelle__niveau__filiere'
         ).distinct()
 
-        if evaluations_anciennes.exists():
-            alertes.append({
-                'type': 'warning',
-                'message': f"{evaluations_anciennes.count()} évaluation(s) terminée(s) il y a plus de 7 jours sans notes attribuées",
-                'action_url': 'teacher_evaluations',
-            })
+        # Filtres
+        classe_id = self.request.GET.get('classe')
+        if classe_id:
+            queryset = queryset.filter(profil_apprenant__classe_actuelle_id=classe_id)
 
-        # Alertes pour matières avec moyenne faible
-        for matiere_nom, moyenne in moyennes_matieres.items():
-            if moyenne < 10:
-                alertes.append({
-                    'type': 'danger',
-                    'message': f"Moyenne faible en {matiere_nom}: {moyenne}/20",
-                })
-
-        context.update({
-            'notes_non_attribuees': notes_non_attribuees[:10],
-            'notes_attribuees': notes_attribuees[:10],
-            'evaluations_a_noter': evaluations_a_noter[:5],
-            'evaluations_incompletes': evaluations_incompletes[:5],
-            'statistiques': stats,
-            'moyennes_matieres': moyennes_matieres,
-            'alertes': alertes,
-        })
-
-        return context
-
-class TeacherGradeEvaluationView(RoleRequiredMixin, TemplateView):
-    """Gestion des notes par évaluation"""
-    template_name = 'dashboard/teacher/grades/by_evaluation.html'
-    allowed_roles = ['ENSEIGNANT']
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        enseignant = self.request.user
-        evaluation_id = self.kwargs.get('evaluation_id')
-
-        try:
-            evaluation = Evaluation.objects.get(
-                id=evaluation_id,
-                cours__enseignant=enseignant
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(prenom__icontains=search) |
+                Q(nom__icontains=search) |
+                Q(matricule__icontains=search)
             )
 
-            # Notes de cette évaluation
-            notes = Note.objects.filter(
-                evaluation=evaluation
-            ).select_related('etudiant').order_by('etudiant__nom', 'etudiant__prenoms')
-
-            # Étudiants sans note
-            etudiants_avec_note = notes.values_list('etudiant__id', flat=True)
-
-            if evaluation.cours.classe:
-                etudiants_sans_note = evaluation.cours.classe.etudiants.exclude(
-                    id__in=etudiants_avec_note
-                )
-            else:
-                etudiants_sans_note = []
-
-            # Statistiques de l'évaluation
-            if notes.exists():
-                stats_evaluation = {
-                    'moyenne': notes.aggregate(moyenne=Avg('valeur'))['moyenne'],
-                    'note_max': notes.aggregate(max=Max('valeur'))['max'],
-                    'note_min': notes.aggregate(min=Min('valeur'))['min'],
-                    'nb_notes': notes.count(),
-                    'nb_admis': notes.filter(valeur__gte=10).count(),
-                    'taux_reussite': (notes.filter(valeur__gte=10).count() / notes.count()) * 100,
-                }
-            else:
-                stats_evaluation = {
-                    'moyenne': 0,
-                    'note_max': 0,
-                    'note_min': 0,
-                    'nb_notes': 0,
-                    'nb_admis': 0,
-                    'taux_reussite': 0,
-                }
-
-            context.update({
-                'evaluation': evaluation,
-                'notes': notes,
-                'etudiants_sans_note': etudiants_sans_note,
-                'stats_evaluation': stats_evaluation,
-            })
-
-        except Evaluation.DoesNotExist:
-            context['error'] = "Évaluation non trouvée ou non autorisée"
-
-        return context
-
-class TeacherAttendanceView(RoleRequiredMixin, TemplateView):
-    """Gestion des présences par l'enseignant"""
-    template_name = 'dashboard/teacher/attendance.html'
-    allowed_roles = ['ENSEIGNANT']
+        return queryset.order_by('nom', 'prenom')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         enseignant = self.request.user
 
-        # Cours récents pour la prise de présence
-        cours_recents = Cours.objects.filter(
+        context['classes'] = Classe.objects.filter(
+            cours__enseignant=enseignant
+        ).distinct()
+        context['current_filters'] = {
+            'classe': self.request.GET.get('classe', ''),
+            'search': self.request.GET.get('search', ''),
+        }
+
+        return context
+
+class TeacherEmploiDuTempsView(LoginRequiredMixin, TemplateView):
+    """Emploi du temps de l'enseignant"""
+    template_name = 'dashboard/teacher/emplois_du_temps.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'ENSEIGNANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        enseignant = self.request.user
+
+        # Emploi du temps actuel
+        context['emploi_du_temps'] = EmploiDuTemps.objects.filter(
             enseignant=enseignant,
-            date_prevue__lte=timezone.now().date()
-        ).select_related('classe', 'matiere').order_by('-date_prevue')[:10]
+            actuel=True,
+            publie=True
+        ).first()
 
-        # Statistiques de présence par classe
-        stats_presence = {}
-        for cours in cours_recents:
-            if cours.classe not in stats_presence:
-                total_etudiants = cours.classe.etudiants.count()
-                if total_etudiants > 0:
-                    presences = Presence.objects.filter(
-                        seance__cours__classe=cours.classe,
-                        seance__cours__enseignant=enseignant,
-                        statut__in=['PRESENT', 'RETARD']
-                    ).count()
-                    total_seances = Presence.objects.filter(
-                        seance__cours__classe=cours.classe,
-                        seance__cours__enseignant=enseignant
-                    ).count()
+        # Cours de la semaine
+        today = timezone.now().date()
+        start_week = today - timedelta(days=today.weekday())
+        end_week = start_week + timedelta(days=6)
 
-                    if total_seances > 0:
-                        stats_presence[cours.classe] = {
-                            'taux_presence': (presences / total_seances) * 100,
-                            'total_etudiants': total_etudiants
-                        }
-
-        # Étudiants avec faible assiduité
-        etudiants_absents = Utilisateur.objects.filter(
-            inscriptions__classe_attribuee__cours__enseignant=enseignant,
-            role='APPRENANT'
-        ).annotate(
-            taux_presence=Avg(
-                Case(
-                    When(presences__statut__in=['PRESENT', 'RETARD'], then=100),
-                    default=0,
-                    output_field=FloatField()
-                )
-            )
-        ).filter(taux_presence__lt=70).distinct()
-
-        context.update({
-            'cours_recents': cours_recents,
-            'stats_presence': stats_presence,
-            'etudiants_absents': etudiants_absents,
-        })
+        context['cours_semaine'] = Cours.objects.filter(
+            enseignant=enseignant,
+            date_prevue__range=[start_week, end_week],
+            actif=True
+        ).select_related('matiere', 'classe', 'salle').order_by('date_prevue', 'heure_debut_prevue')
 
         return context
 
-class TeacherResourcesView(RoleRequiredMixin, ListView):
-    """Ressources de l'enseignant"""
-    model = Ressource
-    template_name = 'dashboard/teacher/resources.html'
-    context_object_name = 'resources'
-    paginate_by = 15
+class TeacherResourcesView(LoginRequiredMixin, ListView):
+    """Mes ressources pédagogiques"""
+    template_name = 'dashboard/teacher/ressources.html'
+    context_object_name = 'ressources'
+    paginate_by = 20
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.role != 'ENSEIGNANT':
@@ -2599,40 +4012,40 @@ class TeacherResourcesView(RoleRequiredMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        return Ressource.objects.filter(
+        queryset = Ressource.objects.filter(
             cours__enseignant=self.request.user
-        ).select_related('cours__matiere', 'cours__classe').order_by('-created_at')
+        ).select_related('cours__matiere', 'cours__classe')
+
+        # Filtres
+        type_ressource = self.request.GET.get('type')
+        if type_ressource:
+            queryset = queryset.filter(type_ressource=type_ressource)
+
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(titre__icontains=search) | Q(description__icontains=search)
+            )
+
+        return queryset.order_by('-created_at')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        enseignant = self.request.user
-
-        # Mes cours pour l'ajout de ressources
-        mes_cours = Cours.objects.filter(
-            enseignant=enseignant
-        ).select_related('matiere', 'classe')
-
-        # Statistiques d'utilisation
-        stats_telechargements = Ressource.objects.filter(
-            cours__enseignant=enseignant
-        ).aggregate(
-            total_telechargements=Sum('nb_telechargements'),
-            total_ressources=Count('id')
-        )
-
-        context.update({
-            'mes_cours': mes_cours,
-            'stats_telechargements': stats_telechargements,
-        })
+        context['types_ressource'] = Ressource.TYPES_RESSOURCE
+        context['current_filters'] = {
+            'type': self.request.GET.get('type', ''),
+            'search': self.request.GET.get('search', ''),
+        }
 
         return context
 
-class TeacherReportsView(RoleRequiredMixin, TemplateView):
-    """Rapports de l'enseignant"""
-    template_name = 'dashboard/teacher/reports.html'
+class TeacherReportsView(LoginRequiredMixin, TemplateView):
+    template_name = "dashboard/teacher/reports.html"
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.role != 'ENSEIGNANT':
+            from django.shortcuts import redirect
+            from django.contrib import messages
             messages.error(request, "Accès non autorisé")
             return redirect('dashboard:redirect')
         return super().dispatch(request, *args, **kwargs)
@@ -2641,78 +4054,69 @@ class TeacherReportsView(RoleRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         enseignant = self.request.user
 
-        # Rapport de performance par classe
-        classes = Classe.objects.filter(cours__enseignant=enseignant).distinct()
-        rapports_classes = []
+        # Récupérer toutes les évaluations du professeur
+        evaluations = Evaluation.objects.filter(enseignant=enseignant)
 
-        for classe in classes:
-            # Moyenne générale de la classe
-            moyenne_classe = Note.objects.filter(
-                evaluation__cours__classe=classe,
-                evaluation__cours__enseignant=enseignant,
-                statut='PUBLIEE'
-            ).aggregate(moyenne=Avg('valeur'))['moyenne'] or 0
+        report_data = []
 
-            # Taux de présence
-            total_presences = Presence.objects.filter(
-                seance__cours__classe=classe,
-                seance__cours__enseignant=enseignant
-            ).count()
+        for eval in evaluations:
+            # Classes concernées
+            classes = eval.classes.all()
+            classes_data = []
 
-            if total_presences > 0:
-                presences = Presence.objects.filter(
-                    seance__cours__classe=classe,
-                    seance__cours__enseignant=enseignant,
-                    statut__in=['PRESENT', 'RETARD']
-                ).count()
-                taux_presence = (presences / total_presences) * 100
-            else:
-                taux_presence = 0
+            for classe in classes:
+                # Nombre d'apprenants dans la classe
+                nb_apprenants = classe.apprenants.count()  # <-- corrigé ici
 
-            rapports_classes.append({
-                'classe': classe,
-                'moyenne_generale': round(moyenne_classe, 2),
-                'taux_presence': round(taux_presence, 1),
-                'nb_etudiants': classe.etudiants.count(),
+                # Notes des apprenants de cette classe pour cette évaluation
+                notes = Note.objects.filter(
+                    evaluation=eval,
+                    apprenant__inscription__classe_assignee=classe
+                )
+
+                moyenne_classe = notes.aggregate(moyenne=Avg('valeur'))['moyenne'] or 0
+                repartition_notes = notes.values('valeur').annotate(count=Count('id')).order_by('valeur')
+
+                # Taux de soumission et de correction
+                total_compositions = eval.compositions.filter(apprenant__inscription__classe_assignee=classe)
+                nb_soumises = total_compositions.filter(statut__in=['SOUMISE', 'EN_RETARD', 'CORRIGEE']).count()
+                nb_corrigees = total_compositions.filter(statut='CORRIGEE').count()
+
+                taux_soumission = (nb_soumises / nb_apprenants * 100) if nb_apprenants else 0
+                taux_correction = (nb_corrigees / nb_soumises * 100) if nb_soumises else 0
+
+                classes_data.append({
+                    'classe': classe,
+                    'nb_apprenants': nb_apprenants,
+                    'moyenne_classe': round(moyenne_classe, 2),
+                    'repartition_notes': repartition_notes,
+                    'taux_soumission': round(taux_soumission, 2),
+                    'taux_correction': round(taux_correction, 2),
+                })
+
+            report_data.append({
+                'evaluation': eval,
+                'classes_data': classes_data,
+                'taux_soumission_global': round(eval.taux_soumission, 2),
+                'taux_correction_global': round(eval.taux_correction, 2),
             })
 
-        # Évolution mensuelle des notes
-        evolution_notes = self.get_monthly_grades_evolution(enseignant)
-
-        context.update({
-            'rapports_classes': rapports_classes,
-            'evolution_notes': evolution_notes,
-        })
-
+        context['report_data'] = report_data
         return context
-
-    def get_monthly_grades_evolution(self, enseignant):
-        """Évolution des notes sur les 6 derniers mois"""
-        from django.db.models import Extract
-
-        six_mois_ago = timezone.now() - timedelta(days=180)
-
-        evolution = Note.objects.filter(
-            evaluation__cours__enseignant=enseignant,
-            statut='PUBLIEE',
-            created_at__gte=six_mois_ago
-        ).annotate(
-            mois=Extract('created_at', 'month'),
-            annee=Extract('created_at', 'year')
-        ).values('mois', 'annee').annotate(
-            moyenne=Avg('valeur'),
-            nb_notes=Count('id')
-        ).order_by('annee', 'mois')
-
-        return list(evolution)
 
 # ================================
 # VUES APPRENANT
 # ================================
-class StudentDashboardView(RoleRequiredMixin, TemplateView):
+class StudentDashboardView(LoginRequiredMixin, TemplateView):
     """Tableau de bord principal de l'apprenant avec gestion complète des paiements"""
     template_name = 'dashboard/student/index.html'
     allowed_roles = ['APPRENANT']
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'APPRENANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -2721,7 +4125,7 @@ class StudentDashboardView(RoleRequiredMixin, TemplateView):
         try:
             # Vérification de l'inscription active
             inscription = Inscription.objects.filter(
-                etudiant=etudiant,
+                apprenant=etudiant,
                 statut='ACTIVE'
             ).select_related(
                 'candidature__filiere',
@@ -2730,1122 +4134,467 @@ class StudentDashboardView(RoleRequiredMixin, TemplateView):
             ).first()
 
             if inscription:
-                # L'étudiant a une inscription active - Charger le dashboard complet
                 context['inscription'] = inscription
                 context['peut_acceder'] = True
-
-                # Données du dashboard
                 dashboard_data = self.get_dashboard_data(etudiant, inscription)
                 context.update(dashboard_data)
-
             else:
-                # Pas d'inscription active - Vérifier le statut pour le modal
                 context['inscription'] = None
                 context['peut_acceder'] = False
-
-                # Données de statut pour le modal JavaScript
                 statut_data = self.get_inscription_status_data(etudiant)
                 context.update(statut_data)
 
         except Exception as e:
-            # En cas d'erreur, bloquer l'accès et afficher une erreur
             context['inscription'] = None
             context['peut_acceder'] = False
             context['erreur_statut'] = str(e)
 
         return context
 
-    def get_inscription_status_data(self, etudiant):
-        """Récupère les données de statut d'inscription pour le modal"""
-        try:
-            # Vérifier s'il y a des paiements en cours
-            paiements_en_cours = Paiement.objects.filter(
-                inscription_paiement__inscription__etudiant=etudiant,
-                statut__in=['EN_ATTENTE', 'EN_COURS']
-            ).count()
-
-            if paiements_en_cours > 0:
-                return {
-                    'statut_modal': 'paiement_en_cours',
-                    'paiements_en_cours': paiements_en_cours,
-                    'message_modal': f"{paiements_en_cours} paiement(s) en cours de traitement"
-                }
-
-            # Vérifier les candidatures approuvées
-            candidatures_approuvees = etudiant.candidatures.filter(
-                statut='APPROUVEE'
-            ).count()
-
-            if candidatures_approuvees == 0:
-                return {
-                    'statut_modal': 'aucune_candidature',
-                    'message_modal': "Aucune candidature approuvée trouvée"
-                }
-
-            # L'étudiant doit s'inscrire
-            return {
-                'statut_modal': 'inscription_requise',
-                'candidatures_approuvees': candidatures_approuvees,
-                'message_modal': "Finalisation d'inscription requise"
-            }
-
-        except Exception as e:
-            return {
-                'statut_modal': 'erreur',
-                'message_modal': f"Erreur de vérification: {str(e)}"
-            }
-
-    def get_dashboard_data(self, etudiant, inscription):
-        """Récupère toutes les données du dashboard pour un étudiant inscrit"""
-        try:
-            data = {}
-
-            # === COURS ET ACADÉMIQUE ===
-            mes_cours = []
-            prochain_cours = None
-
-            if inscription.classe_assignee:
-                # Cours de l'étudiant
-                mes_cours = list(Cours.objects.filter(
-                    classe=inscription.classe_assignee
-                ).select_related('matiere', 'enseignant')[:5])
-
-                # Prochain cours (simulation - à adapter selon votre modèle de planning)
-                try:
-                    from apps.courses.models import SeanceCours
-                    prochain_cours = SeanceCours.objects.filter(
-                        cours__classe=inscription.classe_assignee,
-                        date_prevue__gt=timezone.now(),
-                        statut='PROGRAMMEE'
-                    ).select_related(
-                        'cours__matiere', 'cours__enseignant', 'salle'
-                    ).order_by('date_prevue').first()
-                except ImportError:
-                    pass
-
-            data.update({
-                'mes_cours': mes_cours,
-                'total_cours': len(mes_cours),
-                'prochain_cours': prochain_cours,
-                'classe_assignee': inscription.classe_assignee,
-            })
-
-            # === ÉVALUATIONS ===
-            evaluations_a_venir = []
-            dernieres_notes = []
-            moyenne_generale = 0
-
-            try:
-                from apps.evaluation.models import Evaluation, Note
-
-                if inscription.classe_assignee:
-                    evaluations_a_venir = list(Evaluation.objects.filter(
-                        cours__classe=inscription.classe_assignee,
-                        date_evaluation__gte=timezone.now(),
-                        statut='PROGRAMMEE'
-                    ).select_related('cours__matiere').order_by('date_evaluation')[:5])
-
-                # Dernières notes
-                dernieres_notes = list(Note.objects.filter(
-                    etudiant=etudiant,
-                    statut='PUBLIEE'
-                ).select_related(
-                    'evaluation__cours__matiere'
-                ).order_by('-created_at')[:5])
-
-                # Moyenne générale
-                if dernieres_notes:
-                    moyenne_generale = Note.objects.filter(
-                        etudiant=etudiant,
-                        statut='PUBLIEE'
-                    ).aggregate(moyenne=Avg('valeur'))['moyenne'] or 0
-
-            except ImportError:
-                pass
-
-            data.update({
-                'evaluations_a_venir': evaluations_a_venir,
-                'dernieres_notes': dernieres_notes,
-                'moyenne_generale': round(moyenne_generale, 2),
-            })
-
-            # === PRÉSENCE ===
-            taux_presence = self.get_taux_presence(etudiant)
-            data['taux_presence'] = round(taux_presence, 1)
-
-            # === PAIEMENTS ET FINANCES ===
-            inscription_paiement = None
-            statut_financier = {}
-
-            try:
-                inscription_paiement = InscriptionPaiement.objects.select_related(
-                    'plan'
-                ).prefetch_related(
-                    'paiements'
-                ).get(inscription=inscription)
-
-                statut_financier = self.get_statut_financier(inscription_paiement)
-
-            except InscriptionPaiement.DoesNotExist:
-                pass
-
-            data.update({
-                'inscription_paiement': inscription_paiement,
-                'statut_financier': statut_financier,
-                # Compatibilité avec le template existant
-                'total_paye': statut_financier.get('total_paye', 0),
-                'reste_a_payer': statut_financier.get('solde', 0),
-                'pourcentage_paye': statut_financier.get('pourcentage', 0),
-                'statut_paiement': statut_financier.get('statut_display', 'Non défini'),
-            })
-
-            # === NOTIFICATIONS ===
-            notifications = self.get_recent_notifications(etudiant, inscription_paiement)
-            data['notifications'] = notifications
-
-            # === DATES UTILES ===
-            data['today'] = timezone.now().date()
-
-            return data
-
-        except Exception as e:
-            return {
-                'erreur_donnees': str(e),
-                'total_cours': 0,
-                'moyenne_generale': 0,
-                'taux_presence': 0,
-                'statut_paiement': 'Erreur',
-                'today': timezone.now().date(),
-            }
-
-    def get_taux_presence(self, etudiant):
-        """Calcule le taux de présence de l'étudiant"""
-        try:
-            total_seances = Presence.objects.filter(etudiant=etudiant).count()
-            if total_seances == 0:
-                return 100  # Nouveau étudiant, considérer comme 100%
-
-            presentes = Presence.objects.filter(
-                etudiant=etudiant,
-                statut__in=['PRESENT', 'RETARD']
-            ).count()
-
-            return (presentes / total_seances) * 100
-        except Exception:
-            return 0
-
-    def get_statut_financier(self, inscription_paiement):
-        """Retourne le statut financier détaillé de l'étudiant"""
-        if not inscription_paiement:
-            return {}
-
-        try:
-            # Calculs de base
-            total_du = inscription_paiement.montant_total_du
-            total_paye = inscription_paiement.montant_total_paye
-            solde = inscription_paiement.solde_restant
-            pourcentage = inscription_paiement.pourcentage_paye
-
-            # Prochaine tranche à payer
-            prochaine_tranche = inscription_paiement.get_prochaine_tranche_due()
-
-            # Statut textuel pour affichage
-            statut_display_map = {
-                'COMPLET': 'Soldé',
-                'PARTIEL': 'Partiel',
-                'EN_ATTENTE': 'En attente',
-                'EN_RETARD': 'En retard'
-            }
-
-            statut_display = statut_display_map.get(
-                inscription_paiement.statut,
-                inscription_paiement.get_statut_display()
-            )
-
-            # Informations sur les paiements récents
-            dernier_paiement = inscription_paiement.paiements.filter(
-                statut='CONFIRME'
-            ).order_by('-date_confirmation').first()
-
-            return {
-                'total_du': total_du,
-                'total_paye': total_paye,
-                'solde': solde,
-                'pourcentage': pourcentage,
-                'statut': inscription_paiement.statut,
-                'statut_display': statut_display,
-                'type_paiement': inscription_paiement.get_type_paiement_display(),
-                'prochaine_tranche': prochaine_tranche,
-                'dernier_paiement': dernier_paiement,
-                'peut_payer_tranche': solde > 0 and prochaine_tranche is not None,
-                'est_en_retard': inscription_paiement.statut == 'EN_RETARD',
-            }
-
-        except Exception as e:
-            return {
-                'erreur': str(e),
-                'statut_display': 'Erreur',
-                'pourcentage': 0
-            }
-
-    def get_recent_notifications(self, etudiant, inscription_paiement=None):
-        """Génère les notifications récentes pour l'étudiant"""
-        notifications = []
-
-        try:
-            # Notifications de paiement
-            if inscription_paiement:
-                # Paiement récent confirmé
-                dernier_paiement = inscription_paiement.paiements.filter(
-                    statut='CONFIRME'
-                ).order_by('-date_confirmation').first()
-
-                if dernier_paiement and dernier_paiement.date_confirmation:
-                    if dernier_paiement.date_confirmation >= timezone.now() - timedelta(days=7):
-                        notifications.append({
-                            'type': 'payment_success',
-                            'title': 'Paiement confirmé',
-                            'message': f'Paiement de {dernier_paiement.montant} XOF confirmé',
-                            'timestamp': dernier_paiement.date_confirmation,
-                            'color': '#28a745',
-                            'icon': 'fas fa-check-circle'
-                        })
-
-                # Tranche à payer bientôt
-                prochaine_tranche = inscription_paiement.get_prochaine_tranche_due()
-                if prochaine_tranche and prochaine_tranche.date_limite:
-                    jours_restants = (prochaine_tranche.date_limite - timezone.now().date()).days
-                    if 0 <= jours_restants <= 7:
-                        notifications.append({
-                            'type': 'payment_reminder',
-                            'title': 'Échéance proche',
-                            'message': f'Tranche {prochaine_tranche.numero} à payer avant le {prochaine_tranche.date_limite.strftime("%d/%m/%Y")}',
-                            'timestamp': timezone.now() - timedelta(hours=1),
-                            'color': '#ffc107',
-                            'icon': 'fas fa-exclamation-triangle'
-                        })
-
-            # Notifications académiques (simulation)
-            if len(notifications) < 3:
-                notifications.extend([
-                    {
-                        'type': 'course',
-                        'title': 'Nouvelle ressource',
-                        'message': 'Un nouveau cours est disponible dans votre matière principale',
-                        'timestamp': timezone.now() - timedelta(hours=3),
-                        'color': '#667eea',
-                        'icon': 'fas fa-book'
-                    },
-                    {
-                        'type': 'schedule',
-                        'title': 'Emploi du temps',
-                        'message': 'Votre emploi du temps a été mis à jour',
-                        'timestamp': timezone.now() - timedelta(days=1),
-                        'color': '#36b9cc',
-                        'icon': 'fas fa-calendar-alt'
-                    }
-                ])
-
-            # Limiter à 5 notifications maximum
-            return notifications[:5]
-
-        except Exception as e:
-            return [{
-                'type': 'error',
-                'title': 'Erreur notifications',
-                'message': f'Impossible de charger les notifications: {str(e)}',
-                'timestamp': timezone.now(),
-                'color': '#dc3545',
-                'icon': 'fas fa-exclamation-circle'
-            }]
-
-class StudentCoursesView(RoleRequiredMixin, ListView):
-    """Liste des cours de l'apprenant"""
-    model = Cours
+class StudentCoursesView(LoginRequiredMixin, ListView):
+    """Mes cours (étudiant)"""
     template_name = 'dashboard/student/courses.html'
-    context_object_name = 'cours'
-    allowed_roles = ['APPRENANT']
-    paginate_by = 10
-
-    def get_queryset(self):
-        etudiant = self.request.user
-        inscription = etudiant.inscriptions.filter(statut='ACTIVE').first()
-        
-        if inscription:
-            return Cours.objects.filter(
-                classe=inscription.classe_attribuee
-            ).select_related('matiere', 'enseignant').order_by('matiere__nom')
-        
-        return Cours.objects.none()
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        etudiant = self.request.user
-        
-        # Progression par cours
-        for cours in context['cours']:
-            # Calcul de progression (à personnaliser selon votre logique)
-            cours.progression = self.get_course_progress(etudiant, cours)
-            cours.statut = self.get_course_status(etudiant, cours)
-            
-        return context
-
-    def get_course_progress(self, etudiant, cours):
-        """Calcule la progression de l'étudiant dans un cours"""
-        # Logique de progression basée sur les présences, évaluations, etc.
-        total_seances = cours.seances.count()
-        presences = Presence.objects.filter(
-            etudiant=etudiant,
-            seance__cours=cours,
-            statut__in=['PRESENT', 'RETARD']
-        ).count()
-        
-        if total_seances > 0:
-            return (presences / total_seances) * 100
-        return 0
-
-    def get_course_status(self, etudiant, cours):
-        """Détermine le statut du cours pour l'étudiant"""
-        progression = self.get_course_progress(etudiant, cours)
-        
-        if progression >= 70:
-            return 'success'
-        elif progression >= 50:
-            return 'warning'
-        else:
-            return 'danger'
-
-class StudentScheduleView(RoleRequiredMixin, TemplateView):
-    """Emploi du temps de l'apprenant"""
-    template_name = 'dashboard/student/schedule.html'
-    allowed_roles = ['APPRENANT']
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        etudiant = self.request.user
-        
-        inscription = etudiant.inscriptions.filter(statut='ACTIVE').first()
-        if inscription:
-            # Emploi du temps de la semaine
-            context['emploi_du_temps'] = self.get_weekly_schedule(inscription.classe_attribuee)
-            context['prochains_cours'] = self.get_upcoming_courses(inscription.classe_attribuee)
-            
-        return context
-
-    def get_weekly_schedule(self, classe):
-        """Récupère l'emploi du temps de la semaine"""
-        # À adapter selon votre modèle d'emploi du temps
-        cours = Cours.objects.filter(classe=classe).select_related('matiere', 'enseignant')
-        
-        # Organiser par jour et heure
-        emploi_du_temps = {}
-        for cours_item in cours:
-            # Logique pour organiser les cours par créneaux horaires
-            pass
-            
-        return emploi_du_temps
-
-    def get_upcoming_courses(self, classe):
-        """Récupère les prochains cours"""
-        today = timezone.now().date()
-        return Cours.objects.filter(
-            classe=classe,
-            seances__date_prevue__gte=today
-        ).select_related('matiere', 'enseignant').order_by('seances__date_prevue')[:3]
-
-class StudentEvaluationsView(RoleRequiredMixin, TemplateView):
-    """Évaluations de l'apprenant"""
-    template_name = 'evaluations/apprenant/list.html'
-    allowed_roles = ['APPRENANT']
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        etudiant = self.request.user
-
-        inscription = etudiant.inscriptions.filter(statut='ACTIVE').first()
-        if inscription:
-            # Évaluations à venir
-            evaluations_a_venir = Evaluation.objects.filter(
-                cours__classe=inscription.classe_attribuee,
-                date_debut__gte=timezone.now(),
-                statut='PROGRAMMEE'
-            ).select_related('cours__matiere').order_by('date_debut')
-
-            # Évaluations en cours
-            evaluations_en_cours = Evaluation.objects.filter(
-                cours__classe=inscription.classe_attribuee,
-                date_debut__lte=timezone.now(),
-                date_fin__gte=timezone.now(),
-                statut='EN_COURS'
-            ).select_related('cours__matiere')
-
-            # Évaluations terminées
-            evaluations_terminees = Evaluation.objects.filter(
-                cours__classe=inscription.classe_attribuee,
-                date_fin__lt=timezone.now(),
-                statut='TERMINEE'
-            ).select_related('cours__matiere').order_by('-date_fin')[:10]
-
-            context.update({
-                'evaluations_a_venir': evaluations_a_venir,
-                'evaluations_en_cours': evaluations_en_cours,
-                'evaluations_terminees': evaluations_terminees,
-            })
-
-        return context
-
-class StudentResultsView(RoleRequiredMixin, ListView):
-    """Notes et résultats de l'apprenant - Vue complète"""
-    model = Note
-    template_name = 'dashboard/student/results.html'
-    context_object_name = 'notes'
-    allowed_roles = ['APPRENANT']
+    context_object_name = 'courses'
     paginate_by = 20
 
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'APPRENANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
     def get_queryset(self):
-        return Note.objects.filter(
-            etudiant=self.request.user,
-            statut='PUBLIEE'
-        ).select_related('evaluation__cours__matiere').order_by('-created_at')
+        etudiant = self.request.user
+
+        try:
+            classe_actuelle = etudiant.profil_apprenant.classe_actuelle
+        except:
+            return Cours.objects.none()
+
+        queryset = Cours.objects.filter(
+            classe=classe_actuelle,
+            actif=True
+        ).select_related(
+            'matiere__niveau__filiere',
+            'enseignant',
+            'salle'
+        )
+
+        # Filtres
+        matiere_id = self.request.GET.get('matiere')
+        if matiere_id:
+            queryset = queryset.filter(matiere_id=matiere_id)
+
+        date_debut = self.request.GET.get('date_debut')
+        if date_debut:
+            queryset = queryset.filter(date_prevue__gte=date_debut)
+
+        date_fin = self.request.GET.get('date_fin')
+        if date_fin:
+            queryset = queryset.filter(date_prevue__lte=date_fin)
+
+        return queryset.order_by('-date_prevue', '-heure_debut_prevue')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         etudiant = self.request.user
 
-        # Moyennes par matière
-        moyennes_matieres = Note.objects.filter(
-            etudiant=etudiant,
-            statut='PUBLIEE'
-        ).values(
-            'evaluation__cours__matiere__nom'
-        ).annotate(
-            moyenne=Avg('valeur'),
-            nb_notes=Count('id')
-        ).order_by('evaluation__cours__matiere__nom')
+        try:
+            classe_actuelle = etudiant.profil_apprenant.classe_actuelle
+            context['matieres'] = Matiere.objects.filter(
+                cours__classe=classe_actuelle
+            ).distinct()
+        except:
+            context['matieres'] = []
+
+        context['current_filters'] = {
+            'matiere': self.request.GET.get('matiere', ''),
+            'date_debut': self.request.GET.get('date_debut', ''),
+            'date_fin': self.request.GET.get('date_fin', ''),
+        }
+
+        return context
+
+class StudentEmploiDuTempsView(LoginRequiredMixin, TemplateView):
+    """Emploi du temps de l'étudiant"""
+    template_name = 'dashboard/student/emplois_du_temps.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'APPRENANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        etudiant = self.request.user
+
+        try:
+            classe_actuelle = etudiant.profil_apprenant.classe_actuelle
+
+            # Emploi du temps actuel
+            context['emploi_du_temps'] = EmploiDuTemps.objects.filter(
+                classe=classe_actuelle,
+                actuel=True,
+                publie=True
+            ).first()
+
+            # Cours de la semaine
+            today = timezone.now().date()
+            start_week = today - timedelta(days=today.weekday())
+            end_week = start_week + timedelta(days=6)
+
+            context['cours_semaine'] = Cours.objects.filter(
+                classe=classe_actuelle,
+                date_prevue__range=[start_week, end_week],
+                actif=True
+            ).select_related('matiere', 'enseignant', 'salle').order_by('date_prevue', 'heure_debut_prevue')
+        except:
+            context['emploi_du_temps'] = None
+            context['cours_semaine'] = []
+
+        return context
+
+class StudentEvaluationsView(LoginRequiredMixin, ListView):
+    """Mes évaluations (étudiant)"""
+    template_name = 'dashboard/student/evaluations.html'
+    context_object_name = 'evaluations'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'APPRENANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        etudiant = self.request.user
+
+        try:
+            classe_actuelle = etudiant.profil_apprenant.classe_actuelle
+        except:
+            return Evaluation.objects.none()
+
+        queryset = Evaluation.objects.filter(
+            classes=classe_actuelle
+        ).select_related(
+            'matiere__niveau__filiere',
+            'enseignant'
+        ).prefetch_related(
+            'compositions'
+        )
+
+        # Filtres
+        type_eval = self.request.GET.get('type_evaluation')
+        if type_eval:
+            queryset = queryset.filter(type_evaluation=type_eval)
+
+        statut = self.request.GET.get('statut')
+        if statut:
+            queryset = queryset.filter(statut=statut)
+
+        matiere = self.request.GET.get('matiere')
+        if matiere:
+            queryset = queryset.filter(matiere_id=matiere)
+
+        return queryset.order_by('-date_debut')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        etudiant = self.request.user
+
+        context['types_evaluation'] = Evaluation.TYPE_EVALUATION
+        context['statuts'] = Evaluation.STATUT
+
+        try:
+            classe_actuelle = etudiant.profil_apprenant.classe_actuelle
+            context['matieres'] = Matiere.objects.filter(
+                evaluations__classes=classe_actuelle
+            ).distinct()
+        except:
+            context['matieres'] = []
+
+        context['current_filters'] = {
+            'type_evaluation': self.request.GET.get('type_evaluation', ''),
+            'statut': self.request.GET.get('statut', ''),
+            'matiere': self.request.GET.get('matiere', ''),
+        }
+
+        return context
+
+class StudentResultatsView(LoginRequiredMixin, ListView):
+    """Notes et résultats de l'étudiant"""
+    template_name = 'dashboard/student/resultats.html'
+    context_object_name = 'notes'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'APPRENANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = Note.objects.filter(
+            apprenant=self.request.user
+        ).select_related(
+            'matiere__niveau__filiere',
+            'evaluation',
+            'attribuee_par'
+        )
+
+        # Filtres
+        matiere_id = self.request.GET.get('matiere')
+        if matiere_id:
+            queryset = queryset.filter(matiere_id=matiere_id)
+
+        return queryset.order_by('-date_attribution')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        etudiant = self.request.user
 
         # Moyenne générale
-        moyenne_generale = Note.objects.filter(
-            etudiant=etudiant,
-            statut='PUBLIEE'
-        ).aggregate(moyenne=Avg('valeur'))['moyenne'] or 0
+        notes = Note.objects.filter(apprenant=etudiant)
+        if notes.exists():
+            total_points = sum(
+                float(note.note_sur_20) * float(note.evaluation.coefficient)
+                for note in notes
+            )
+            total_coefficients = sum(
+                float(note.evaluation.coefficient)
+                for note in notes
+            )
+            context['moyenne_generale'] = round(total_points / total_coefficients, 2) if total_coefficients > 0 else 0
+        else:
+            context['moyenne_generale'] = 0
 
-        # Statistiques
-        total_notes = Note.objects.filter(etudiant=etudiant, statut='PUBLIEE').count()
-        notes_au_dessus_10 = Note.objects.filter(
-            etudiant=etudiant,
-            statut='PUBLIEE',
-            valeur__gte=10
-        ).count()
+        context['matieres'] = Matiere.objects.filter(
+            notes__apprenant=etudiant
+        ).distinct()
 
-        # Calcul du rang dans la classe
-        inscription = etudiant.inscriptions.filter(statut='ACTIVE').first()
-        rang_classe = 1
-        moyenne_classe = 0
-
-        if inscription:
-            # Toutes les moyennes des étudiants de la classe
-            moyennes_classe = []
-            etudiants_classe = inscription.classe_attribuee.etudiants.all()
-
-            for etudiant_classe in etudiants_classe:
-                moy = Note.objects.filter(
-                    etudiant=etudiant_classe,
-                    statut='PUBLIEE'
-                ).aggregate(moyenne=Avg('valeur'))['moyenne'] or 0
-                moyennes_classe.append(moy)
-
-            if moyennes_classe:
-                moyenne_classe = sum(moyennes_classe) / len(moyennes_classe)
-                moyennes_classe.sort(reverse=True)
-                try:
-                    rang_classe = moyennes_classe.index(moyenne_generale) + 1
-                except ValueError:
-                    rang_classe = len(moyennes_classe)
-
-        # Évolution des notes (progression)
-        notes_chronologiques = Note.objects.filter(
-            etudiant=etudiant,
-            statut='PUBLIEE'
-        ).order_by('created_at')
-
-        progression = 0
-        if notes_chronologiques.count() >= 2:
-            # Comparer les moyennes des 3 dernières notes avec les 3 précédentes
-            dernieres_notes = list(notes_chronologiques[-3:])
-            notes_precedentes = list(
-                notes_chronologiques[-6:-3] if notes_chronologiques.count() >= 6 else notes_chronologiques[:-3])
-
-            if dernieres_notes and notes_precedentes:
-                moy_recente = sum([n.valeur for n in dernieres_notes]) / len(dernieres_notes)
-                moy_precedente = sum([n.valeur for n in notes_precedentes]) / len(notes_precedentes)
-                progression = moy_recente - moy_precedente
-
-        context.update({
-            'moyennes_matieres': moyennes_matieres,
-            'moyenne_generale': round(moyenne_generale, 2),
-            'total_notes': total_notes,
-            'notes_au_dessus_10': notes_au_dessus_10,
-            'rang_classe': rang_classe,
-            'moyenne_classe': round(moyenne_classe, 2),
-            'progression': round(progression, 2),
-        })
+        context['current_filters'] = {
+            'matiere': self.request.GET.get('matiere', ''),
+        }
 
         return context
 
-class StudentAttendanceView(RoleRequiredMixin, ListView):
-    """Présences de l'apprenant - Vue complète"""
-    model = Presence
-    template_name = 'dashboard/student/attendance.html'
+class StudentPresencesView(LoginRequiredMixin, ListView):
+    """Présences de l'étudiant"""
+    template_name = 'dashboard/student/presences.html'
     context_object_name = 'presences'
-    allowed_roles = ['APPRENANT']
-    paginate_by = 50
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'APPRENANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        return Presence.objects.filter(
+        queryset = Presence.objects.filter(
             etudiant=self.request.user
-        ).select_related('seance__cours__matiere', 'seance__cours__enseignant').order_by('-seance__date')
+        ).select_related(
+            'cours__matiere',
+            'cours__classe',
+            'cours__enseignant'
+        )
+
+        # Filtres
+        statut = self.request.GET.get('statut')
+        if statut:
+            queryset = queryset.filter(statut=statut)
+
+        return queryset.order_by('-cours__date_prevue')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         etudiant = self.request.user
 
-        # Statistiques générales
-        total_seances = Presence.objects.filter(etudiant=etudiant).count()
+        # Statistiques de présence
+        total_cours = Presence.objects.filter(etudiant=etudiant).count()
         presences = Presence.objects.filter(etudiant=etudiant, statut='PRESENT').count()
-        absences = Presence.objects.filter(etudiant=etudiant, statut='ABSENT').count()
-        retards = Presence.objects.filter(etudiant=etudiant, statut='RETARD').count()
 
-        taux_presence = (presences / total_seances * 100) if total_seances > 0 else 0
+        context['taux_presence'] = round((presences / total_cours * 100), 2) if total_cours > 0 else 0
+        context['total_absences'] = Presence.objects.filter(etudiant=etudiant, statut='ABSENT').count()
+        context['total_retards'] = Presence.objects.filter(etudiant=etudiant, statut='LATE').count()
 
-        # Présences par matière
-        presences_par_matiere = Presence.objects.filter(
-            etudiant=etudiant
-        ).values(
-            'seance__cours__matiere__nom'
-        ).annotate(
-            total=Count('id'),
-            presents=Count('id', filter=Q(statut='PRESENT')),
-            absents=Count('id', filter=Q(statut='ABSENT')),
-            retards=Count('id', filter=Q(statut='RETARD'))
-        ).order_by('seance__cours__matiere__nom')
-
-        # Calcul du taux par matière
-        for matiere in presences_par_matiere:
-            if matiere['total'] > 0:
-                matiere['taux_presence'] = (matiere['presents'] + matiere['retards']) / matiere['total'] * 100
-            else:
-                matiere['taux_presence'] = 0
-
-        # Alertes
-        alertes = []
-        for matiere in presences_par_matiere:
-            if matiere['taux_presence'] < 70:  # Seuil minimum
-                alertes.append({
-                    'type': 'danger',
-                    'message': f"Votre taux de présence en {matiere['seance__cours__matiere__nom']} ({matiere['taux_presence']:.0f}%) est en dessous du minimum requis (70%)"
-                })
-
-        # Vérifier les retards consécutifs
-        retards_consecutifs = self.get_consecutive_tardiness(etudiant)
-        if retards_consecutifs >= 3:
-            alertes.append({
-                'type': 'warning',
-                'message': f"{retards_consecutifs} retards consécutifs détectés. Merci de respecter les horaires."
-            })
-
-        context.update({
-            'total_seances': total_seances,
-            'presences': presences,
-            'absences': absences,
-            'retards': retards,
-            'taux_presence': round(taux_presence, 1),
-            'presences_par_matiere': presences_par_matiere,
-            'alertes': alertes,
-        })
+        context['statuts_presence'] = Presence.STATUTS_PRESENCE
+        context['current_filters'] = {
+            'statut': self.request.GET.get('statut', ''),
+        }
 
         return context
 
-    def get_consecutive_tardiness(self, etudiant):
-        """Compte les retards consécutifs récents"""
-        dernieres_presences = Presence.objects.filter(
-            etudiant=etudiant
-        ).order_by('-seance__date')[:10]
+class StudentCandidaturesView(LoginRequiredMixin, ListView):
+    """Mes candidatures"""
+    template_name = 'dashboard/student/candidatures.html'
+    context_object_name = 'candidatures'
+    paginate_by = 10
 
-        retards_consecutifs = 0
-        for presence in dernieres_presences:
-            if presence.statut == 'RETARD':
-                retards_consecutifs += 1
-            else:
-                break
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'APPRENANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
 
-        return retards_consecutifs
+    def get_queryset(self):
+        return Candidature.objects.filter(
+            email=self.request.user.email
+        ).select_related(
+            'filiere__departement',
+            'niveau',
+            'annee_academique'
+        ).order_by('-created_at')
 
-class StudentPaymentsView(LoginRequiredMixin, ListView):
-    """Vue mise à jour pour les paiements de l'étudiant"""
-    template_name = 'dashboard/student/payments.html'
+class StudentInscriptionsView(LoginRequiredMixin, ListView):
+    """Mes inscriptions"""
+    template_name = 'dashboard/student/inscriptions.html'
+    context_object_name = 'inscriptions'
+    paginate_by = 10
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'APPRENANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return Inscription.objects.filter(
+            apprenant=self.request.user
+        ).select_related(
+            'candidature__filiere',
+            'candidature__niveau',
+            'classe_assignee'
+        ).order_by('-date_inscription')
+
+class StudentPaiementsView(LoginRequiredMixin, ListView):
+    """Mes paiements"""
+    template_name = 'dashboard/student/paiements.html'
     context_object_name = 'paiements'
     paginate_by = 20
 
     def dispatch(self, request, *args, **kwargs):
-        # Vérifier que l'utilisateur est un apprenant
         if request.user.role != 'APPRENANT':
-            messages.error(request, "Accès non autorisé.")
+            messages.error(request, "Accès non autorisé")
             return redirect('dashboard:redirect')
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         return Paiement.objects.filter(
-            inscription_paiement__inscription__etudiant=self.request.user
+            inscription_paiement__inscription__apprenant=self.request.user
         ).select_related(
-            'inscription_paiement__plan',
-            'tranche',
-            'traite_par'
+            'inscription_paiement__inscription',
+            'tranche'
         ).order_by('-date_paiement')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        etudiant = self.request.user
 
-        # Récupérer l'inscription active
+        # Inscription active
         inscription_active = Inscription.objects.filter(
-            etudiant=self.request.user,
+            apprenant=etudiant,
             statut='ACTIVE'
-        ).select_related('plan_paiement_inscription__plan').first()
+        ).first()
 
         if inscription_active:
-            inscription_paiement = getattr(inscription_active, 'plan_paiement_inscription', None)
-
-            if inscription_paiement:
-                context.update({
-                    'inscription_paiement': inscription_paiement,
-                    'prochaine_tranche': inscription_paiement.get_prochaine_tranche_due(),
-                    'peut_payer_tranche': inscription_paiement.solde_restant > 0,
-                    'plan_actif': inscription_paiement.plan,
-                })
+            try:
+                plan_paiement = inscription_active.plan_paiement_inscription
+                context['inscription_active'] = inscription_active
+                context['plan_paiement'] = plan_paiement
+                context['solde_restant'] = plan_paiement.solde_restant
+                context['pourcentage_paye'] = plan_paiement.pourcentage_paye
+            except:
+                context['inscription_active'] = inscription_active
+                context['plan_paiement'] = None
 
         return context
 
-class StudentResourcesView(RoleRequiredMixin, ListView):
-    """Ressources pédagogiques de l'apprenant"""
-    model = Ressource
-    template_name = 'dashboard/student/resources.html'
-    context_object_name = 'resources'
-    allowed_roles = ['APPRENANT']
+class StudentRessourcesView(LoginRequiredMixin, ListView):
+    """Ressources pédagogiques de l'étudiant"""
+    template_name = 'dashboard/student/ressources.html'
+    context_object_name = 'ressources'
     paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'APPRENANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         etudiant = self.request.user
-        inscription = etudiant.inscriptions.filter(statut='ACTIVE').first()
-        
-        if inscription:
-            queryset = Ressource.objects.filter(
-                cours__classe=inscription.classe_attribuee,
-                statut='PUBLIE'
-            ).select_related('cours__matiere', 'cours__enseignant')
-            
-            # Filtres
-            matiere = self.request.GET.get('matiere')
-            type_fichier = self.request.GET.get('type_fichier')
-            recherche = self.request.GET.get('recherche')
-            
-            if matiere:
-                queryset = queryset.filter(cours__matiere__id=matiere)
-            
-            if type_fichier:
-                queryset = queryset.filter(type_fichier=type_fichier)
-            
-            if recherche:
-                queryset = queryset.filter(
-                    Q(titre__icontains=recherche) |
-                    Q(description__icontains=recherche)
-                )
-            
-            return queryset.order_by('-created_at')
-        
-        return Ressource.objects.none()
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        etudiant = self.request.user
-        inscription = etudiant.inscriptions.filter(statut='ACTIVE').first()
-        
-        if inscription:
-            # Matières disponibles pour le filtre
-            matieres = Matiere.objects.filter(
-                cours__classe=inscription.classe_attribuee
-            ).distinct().order_by('nom')
-            
-            context['matieres'] = matieres
-            
-        # Types de fichiers pour le filtre
-        context['types_fichiers'] = Ressource.TYPE_FICHIER_CHOICES
-        
-        return context
-
-class StudentDocumentsView(RoleRequiredMixin, TemplateView):
-    """Documents administratifs de l'apprenant"""
-    template_name = 'dashboard/student/documents.html'
-    allowed_roles = ['APPRENANT']
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        etudiant = self.request.user
-        
-        # Demandes de documents
-        demandes = DemandeDocument.objects.filter(
-            etudiant=etudiant
-        ).order_by('-date_demande')
-        
-        # Types de documents disponibles
-        types_documents = [
-            {
-                'code': 'CARTE_ETUDIANT',
-                'nom': 'Carte Étudiant',
-                'description': 'Téléchargez votre carte d\'étudiant officielle',
-                'icon': 'fas fa-id-card',
-                'disponible': True
-            },
-            {
-                'code': 'RELEVE_NOTES',
-                'nom': 'Relevé de Notes',
-                'description': 'Bulletin de notes du semestre en cours',
-                'icon': 'fas fa-receipt',
-                'disponible': True
-            },
-            {
-                'code': 'ATTESTATION_SCOLARITE',
-                'nom': 'Attestation de Scolarité',
-                'description': 'Certificat prouvant votre inscription',
-                'icon': 'fas fa-certificate',
-                'disponible': True
-            },
-            {
-                'code': 'RECU_PAIEMENT',
-                'nom': 'Reçus de Paiement',
-                'description': 'Tous vos reçus de paiement',
-                'icon': 'fas fa-file-invoice',
-                'disponible': True
-            },
-            {
-                'code': 'RELEVE_PRESENCE',
-                'nom': 'Relevé de Présences',
-                'description': 'Historique détaillé de vos présences',
-                'icon': 'fas fa-calendar-check',
-                'disponible': True
-            },
-            {
-                'code': 'DIPLOME',
-                'nom': 'Diplôme',
-                'description': 'Disponible après obtention',
-                'icon': 'fas fa-graduation-cap',
-                'disponible': False
-            }
-        ]
-        
-        context.update({
-            'demandes': demandes,
-            'types_documents': types_documents,
-        })
-        
-        return context
-
-class StudentProfileView(RoleRequiredMixin, TemplateView):
-    """Profil de l'apprenant"""
-    template_name = 'dashboard/student/profile.html'
-    allowed_roles = ['APPRENANT']
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        etudiant = self.request.user
-        
-        inscription = etudiant.inscriptions.filter(statut='ACTIVE').first()
-        
-        context.update({
-            'etudiant': etudiant,
-            'inscription': inscription,
-        })
-        
-        return context
-
-    def post(self, request, *args, **kwargs):
-        """Mise à jour du profil"""
-        etudiant = request.user
-        
-        # Mise à jour des informations modifiables
-        email = request.POST.get('email')
-        telephone = request.POST.get('telephone')
-        adresse = request.POST.get('adresse')
-        
-        if email:
-            etudiant.email = email
-        if telephone:
-            etudiant.telephone = telephone
-        if adresse:
-            etudiant.adresse = adresse
-            
-        etudiant.save()
-        
-        messages.success(request, "Votre profil a été mis à jour avec succès.")
-        return redirect('dashboard:student_profile')
-
-
-# ================================
-# VUES PROFIL COMMUNES
-# ================================
-class ProfileView(LoginRequiredMixin, TemplateView):
-    """Vue du profil utilisateur"""
-    template_name = 'dashboard/profile.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        user = self.request.user
-        context['user'] = user
-
-        # ✅ Calculer l’âge si date_naissance existe
-        if user.date_naissance:
-            context['age_str'] = timesince(user.date_naissance, now=date.today()).split(",")[0]
-            today = date.today()
-            context['age_years'] = today.year - user.date_naissance.year - (
-                (today.month, today.day) < (user.date_naissance.month, user.date_naissance.day)
-            )
-        else:
-            context['age_str'] = None
-            context['age_years'] = None
-
-        # ================================
-        # 👤 Profil APPRENANT
-        # ================================
-        if user.role == 'APPRENANT':
-            try:
-                profil_apprenant = user.profil_apprenant
-                context['profil_apprenant'] = profil_apprenant
-
-                # Inscription active
-                inscription = Inscription.objects.filter(
-                    etudiant=user,
-                    statut='ACTIVE'
-                ).select_related(
-                    'candidature__filiere',
-                    'candidature__niveau',
-                    'classe_assignee'
-                ).first()
-                context['inscription'] = inscription
-
-                # 📚 Statistiques académiques
-                if inscription and inscription.classe_assignee:
-                    context['total_cours'] = Cours.objects.filter(
-                        classe=inscription.classe_assignee
-                    ).count()
-
-                    total_presences = Presence.objects.filter(etudiant=user).count()
-                    if total_presences > 0:
-                        presences_valides = Presence.objects.filter(
-                            etudiant=user,
-                            statut__in=['PRESENT', 'RETARD']
-                        ).count()
-                        context['taux_presence'] = round((presences_valides / total_presences) * 100, 1)
-                    else:
-                        context['taux_presence'] = 100
-
-                    # 📊 Moyenne générale
-                    try:
-                        from apps.evaluations.models import Note
-                        notes = Note.objects.filter(
-                            etudiant=user,
-                            statut='PUBLIEE'
-                        ).aggregate(moyenne=models.Avg('valeur'))
-                        context['moyenne_generale'] = round(notes['moyenne'] or 0, 2)
-                    except:
-                        context['moyenne_generale'] = 0
-
-                # 💳 Paiement
-                try:
-                    inscription_paiement = InscriptionPaiement.objects.get(inscription=inscription)
-                    context['inscription_paiement'] = inscription_paiement
-                    context['statut_paiement'] = inscription_paiement.get_statut_display()
-                    context['pourcentage_paye'] = inscription_paiement.pourcentage_paye
-                except:
-                    pass
-
-            except ProfilApprenant.DoesNotExist:
-                pass
-
-        # ================================
-        # 👨‍🏫 Profil ENSEIGNANT
-        # ================================
-        elif user.role == 'ENSEIGNANT':
-            try:
-                profil_enseignant = user.profil_enseignant
-                context['profil_enseignant'] = profil_enseignant
-
-                context['mes_cours'] = Cours.objects.filter(
-                    enseignant=user
-                ).select_related('matiere', 'classe').count()
-
-                context['mes_classes'] = Classe.objects.filter(
-                    cours__enseignant=user
-                ).distinct().count()
-
-                context['total_etudiants'] = Utilisateur.objects.filter(
-                    profil_apprenant__classe_actuelle__cours__enseignant=user,
-                    role='APPRENANT'
-                ).distinct().count()
-
-                context['evaluations_creees'] = Evaluation.objects.filter(
-                    enseignant=user
-                ).count()
-
-            except ProfilEnseignant.DoesNotExist:
-                pass
-
-        # ================================
-        # 🛠️ Profil ADMIN ou CHEF_DEPARTEMENT
-        # ================================
-        elif user.role in ['ADMIN', 'CHEF_DEPARTEMENT']:
-            if user.role == 'ADMIN':
-                etablissement = user.etablissement
-                context['total_users'] = Utilisateur.objects.filter(
-                    etablissement=etablissement
-                ).count()
-                context['total_departements'] = Departement.objects.filter(
-                    etablissement=etablissement
-                ).count()
-
-                # ✅ Ajoutés pour éviter les erreurs
-                context['total_enseignants'] = Utilisateur.objects.filter(
-                    etablissement=etablissement,
-                    role='ENSEIGNANT'
-                ).count()
-                context['total_apprenants'] = Utilisateur.objects.filter(
-                    etablissement=etablissement,
-                    role='APPRENANT'
-                ).count()
-
-            else:  # CHEF_DEPARTEMENT
-                departement = user.departement
-                context['total_enseignants'] = Utilisateur.objects.filter(
-                    departement=departement,
-                    role='ENSEIGNANT'
-                ).count()
-                context['total_apprenants'] = Utilisateur.objects.filter(
-                    departement=departement,
-                    role='APPRENANT'
-                ).count()
-
-        # ================================
-        # 🔎 Profil utilisateur étendu
-        # ================================
         try:
-            context['profil_utilisateur'] = user.profil
+            classe_actuelle = etudiant.profil_apprenant.classe_actuelle
         except:
-            pass
+            return Ressource.objects.none()
 
-        # 📅 Dernière activité
-        context['derniere_activite'] = user.last_login or user.date_creation
-
-        return context
-
-class EditProfileView(LoginRequiredMixin, UpdateView):
-    """Vue de modification du profil"""
-    model = Utilisateur
-    template_name = 'dashboard/edit_profile.html'
-    success_url = reverse_lazy('dashboard:profile')
-
-    def get_object(self):
-        return self.request.user
-
-    def get_form_class(self):
-        """Retourne le formulaire selon le rôle"""
-        user = self.request.user
-
-        if user.role == 'APPRENANT':
-            from apps.accounts.forms import StudentProfileForm
-            return StudentProfileForm
-        elif user.role == 'ENSEIGNANT':
-            from apps.accounts.forms import TeacherProfileForm
-            return TeacherProfileForm
-        else:
-            from apps.accounts.forms import BasicProfileForm
-            return BasicProfileForm
-
-    def form_valid(self, form):
-        messages.success(self.request, "Votre profil a été mis à jour avec succès.")
-
-        # Si c'est une requête AJAX
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': 'Profil mis à jour avec succès'
-            })
-
-        return super().form_valid(form)
-
-    def form_invalid(self, form):
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': False,
-                'errors': form.errors
-            }, status=400)
-
-        return super().form_invalid(form)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['title'] = 'Modifier mon profil'
-        context['is_modal'] = self.request.GET.get('modal') == '1'
-        return context
-
-class ChangePasswordView(LoginRequiredMixin, FormView):
-    """Vue de changement de mot de passe"""
-    template_name = 'dashboard/change_password.html'
-    form_class = PasswordChangeForm
-    success_url = reverse_lazy('dashboard:profile')
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs['user'] = self.request.user
-        return kwargs
-
-    def form_valid(self, form):
-        user = form.save()
-        # Maintenir la session après changement de mot de passe
-        update_session_auth_hash(self.request, user)
-
-        messages.success(
-            self.request,
-            "Votre mot de passe a été modifié avec succès."
+        queryset = Ressource.objects.filter(
+            Q(cours__classe=classe_actuelle) | Q(public=True)
+        ).select_related(
+            'cours__matiere',
+            'cours__enseignant'
         )
 
-        # Si c'est une requête AJAX
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'message': 'Mot de passe modifié avec succès'
-            })
+        # Filtres
+        type_ressource = self.request.GET.get('type')
+        if type_ressource:
+            queryset = queryset.filter(type_ressource=type_ressource)
 
-        return super().form_valid(form)
+        matiere_id = self.request.GET.get('matiere')
+        if matiere_id:
+            queryset = queryset.filter(cours__matiere_id=matiere_id)
 
-    def form_invalid(self, form):
-        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': False,
-                'errors': form.errors
-            }, status=400)
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(titre__icontains=search) | Q(description__icontains=search)
+            )
 
-        return super().form_invalid(form)
+        return queryset.order_by('-created_at')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Changer mon mot de passe'
-        context['is_modal'] = self.request.GET.get('modal') == '1'
+        etudiant = self.request.user
+
+        context['types_ressource'] = Ressource.TYPES_RESSOURCE
+
+        try:
+            classe_actuelle = etudiant.profil_apprenant.classe_actuelle
+            context['matieres'] = Matiere.objects.filter(
+                cours__classe=classe_actuelle
+            ).distinct()
+        except:
+            context['matieres'] = []
+
+        context['current_filters'] = {
+            'type': self.request.GET.get('type', ''),
+            'matiere': self.request.GET.get('matiere', ''),
+            'search': self.request.GET.get('search', ''),
+        }
+
         return context
 
-@login_required
-def upload_profile_photo(request):
-    if request.method == 'POST' and request.FILES.get('photo'):
-        request.user.photo = request.FILES['photo']
-        request.user.save()
-        return redirect('profile')  # ou le nom de ta page profil
-    return redirect('profile')
+class StudentDocumentsView(LoginRequiredMixin, ListView):
+    """Documents de l'étudiant"""
+    template_name = 'dashboard/student/documents.html'
+    context_object_name = 'demandes'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'APPRENANT':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return DemandeDocument.objects.filter(
+            demandeur=self.request.user
+        ).order_by('-date_demande')
+
+
 # ================================
 # VUES AJAX ET API
 # ================================

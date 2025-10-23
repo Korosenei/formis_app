@@ -1,0 +1,403 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Corriger - {{ composition.apprenant.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="correction-container">
+    <div class="correction-header">
+        <div class="breadcrumb-nav">
+            <a href="{% url 'evaluations:list_enseignant' %}">Évaluations</a>
+            <i class="fas fa-chevron-right"></i>
+            <a href="{% url 'evaluations:evaluation_detail_enseignant' composition.evaluation.id %}">{{ composition.evaluation.titre }}</a>
+            <i class="fas fa-chevron-right"></i>
+            <span class="current">Correction</span>
+        </div>
+        <h1>Correction de composition</h1>
+    </div>
+
+    <div class="correction-layout">
+        <!-- Colonne gauche : Fichiers de l'étudiant -->
+        <div class="files-column">
+            <div class="section-card">
+                <div class="section-header">
+                    <h3><i class="fas fa-user-graduate"></i> Apprenant</h3>
+                </div>
+                <div class="student-info">
+                    <div class="student-avatar">
+                        {% if composition.apprenant.photo_profil %}
+                            <img src="{{ composition.apprenant.photo_profil.url }}" alt="{{ composition.apprenant.get_full_name }}">
+                        {% else %}
+                            <i class="fas fa-user-circle"></i>
+                        {% endif %}
+                    </div>
+                    <div class="student-details">
+                        <h4>{{ composition.apprenant.get_full_name }}</h4>
+                        <p class="matricule">{{ composition.apprenant.matricule }}</p>
+                        {% if composition.date_soumission %}
+                            <p class="submission-date">
+                                <i class="fas fa-calendar-check"></i>
+                                Soumis le {{ composition.date_soumission|date:"d/m/Y à H:i" }}
+                            </p>
+                            {% if composition.est_en_retard %}
+                                <span class="badge badge-warning">
+                                    <i class="fas fa-exclamation-triangle"></i> En retard
+                                </span>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
+                    <h3><i class="fas fa-folder-open"></i> Fichiers soumis ({{ fichiers.count }})</h3>
+                </div>
+                <div class="files-list">
+                    {% for fichier in fichiers %}
+                    <div class="file-item" onclick="viewFile('{{ fichier.id }}')">
+                        <div class="file-icon">
+                            {% if 'pdf' in fichier.type_mime %}
+                                <i class="fas fa-file-pdf"></i>
+                            {% elif 'word' in fichier.type_mime or 'document' in fichier.type_mime %}
+                                <i class="fas fa-file-word"></i>
+                            {% elif 'image' in fichier.type_mime %}
+                                <i class="fas fa-file-image"></i>
+                            {% else %}
+                                <i class="fas fa-file"></i>
+                            {% endif %}
+                        </div>
+                        <div class="file-info">
+                            <div class="file-name">{{ fichier.nom_original }}</div>
+                            <div class="file-size">{{ fichier.taille|filesizeformat }}</div>
+                        </div>
+                        <button class="btn-icon-sm" onclick="event.stopPropagation(); downloadFile('{{ fichier.id }}')">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                    {% empty %}
+                    <div class="empty-state-small">
+                        <i class="fas fa-folder-open"></i>
+                        <p>Aucun fichier soumis</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Visionneuse de fichier -->
+            <div class="section-card" id="fileViewer" style="display: none;">
+                <div class="section-header">
+                    <h3><i class="fas fa-eye"></i> Aperçu</h3>
+                    <button class="btn-icon" onclick="closeViewer()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="viewer-container">
+                    <iframe id="viewerFrame" frameborder="0"></iframe>
+                </div>
+            </div>
+        </div>
+
+        <!-- Colonne droite : Formulaire de correction -->
+        <div class="correction-column">
+            <form method="post" enctype="multipart/form-data" class="correction-form">
+                {% csrf_token %}
+
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3><i class="fas fa-star"></i> Notation</h3>
+                    </div>
+                    <div class="section-content">
+                        <div class="note-input-group">
+                            <div class="form-group">
+                                <label class="required">Note obtenue</label>
+                                <div class="note-input-container">
+                                    <input type="number"
+                                           name="note_obtenue"
+                                           id="noteInput"
+                                           class="note-input"
+                                           step="0.25"
+                                           min="0"
+                                           max="{{ composition.evaluation.note_maximale }}"
+                                           value="{% if composition.note_obtenue %}{{ composition.note_obtenue }}{% endif %}"
+                                           required>
+                                    <span class="note-separator">/</span>
+                                    <span class="note-max">{{ composition.evaluation.note_maximale }}</span>
+                                </div>
+                                <div class="note-feedback" id="noteFeedback"></div>
+                            </div>
+
+                            <div class="note-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label">Sur 20</span>
+                                    <span class="stat-value" id="noteSur20">-</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Coefficient</span>
+                                    <span class="stat-value">{{ composition.evaluation.coefficient }}</span>
+                                </div>
+                                {% if composition.est_en_retard and composition.evaluation.penalite_retard > 0 %}
+                                <div class="stat-item warning">
+                                    <span class="stat-label">Pénalité retard</span>
+                                    <span class="stat-value">-{{ composition.evaluation.penalite_retard }}%</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Note finale</span>
+                                    <span class="stat-value" id="noteFinale">-</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Grille de notation rapide -->
+                        <div class="quick-notes">
+                            <p class="quick-notes-label">Notes rapides:</p>
+                            <div class="quick-notes-grid">
+                                <button type="button" class="quick-note-btn" onclick="setNote(0)">0</button>
+                                <button type="button" class="quick-note-btn" onclick="setNote(5)">5</button>
+                                <button type="button" class="quick-note-btn" onclick="setNote(10)">10</button>
+                                <button type="button" class="quick-note-btn" onclick="setNote(12)">12</button>
+                                <button type="button" class="quick-note-btn" onclick="setNote(14)">14</button>
+                                <button type="button" class="quick-note-btn" onclick="setNote(16)">16</button>
+                                <button type="button" class="quick-note-btn" onclick="setNote(18)">18</button>
+                                <button type="button" class="quick-note-btn" onclick="setNote({{ composition.evaluation.note_maximale }})">{{ composition.evaluation.note_maximale }}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3><i class="fas fa-comment"></i> Commentaire</h3>
+                    </div>
+                    <div class="section-content">
+                        <div class="form-group">
+                            <textarea name="commentaire_correction"
+                                      class="form-control"
+                                      rows="6"
+                                      placeholder="Saisissez vos commentaires et observations sur le travail de l'étudiant...">{% if composition.commentaire_correction %}{{ composition.commentaire_correction }}{% endif %}</textarea>
+                        </div>
+
+                        <!-- Commentaires prédéfinis -->
+                        <div class="predefined-comments">
+                            <p class="predefined-label">Commentaires rapides:</p>
+                            <div class="comments-grid">
+                                <button type="button" class="comment-btn" onclick="addComment('Excellent travail !')">
+                                    <i class="fas fa-thumbs-up"></i> Excellent
+                                </button>
+                                <button type="button" class="comment-btn" onclick="addComment('Bon travail, continuez ainsi.')">
+                                    <i class="fas fa-smile"></i> Bon travail
+                                </button>
+                                <button type="button" class="comment-btn" onclick="addComment('Travail correct, mais peut mieux faire.')">
+                                    <i class="fas fa-meh"></i> Correct
+                                </button>
+                                <button type="button" class="comment-btn" onclick="addComment('Travail insuffisant, à revoir.')">
+                                    <i class="fas fa-frown"></i> Insuffisant
+                                </button>
+                                <button type="button" class="comment-btn" onclick="addComment('Attention à la présentation.')">
+                                    <i class="fas fa-file-alt"></i> Présentation
+                                </button>
+                                <button type="button" class="comment-btn" onclick="addComment('Revoir les bases.')">
+                                    <i class="fas fa-book"></i> Revoir bases
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3><i class="fas fa-file-upload"></i> Correction personnalisée (optionnel)</h3>
+                    </div>
+                    <div class="section-content">
+                        <div class="form-group">
+                            <label>Fichier de correction</label>
+                            <input type="file"
+                                   name="fichier_correction"
+                                   class="form-control"
+                                   accept=".pdf,.doc,.docx,.txt">
+                            <small class="form-text">
+                                <i class="fas fa-info-circle"></i>
+                                Vous pouvez joindre une correction annotée (PDF recommandé)
+                            </small>
+                            {% if composition.fichier_correction_personnalise %}
+                            <div class="current-file">
+                                <i class="fas fa-file-pdf"></i>
+                                <a href="{{ composition.fichier_correction_personnalise.url }}" target="_blank">
+                                    Voir la correction actuelle
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <a href="{% url 'evaluations:evaluation_detail_enseignant' composition.evaluation.id %}" class="btn btn-outline">
+                        <i class="fas fa-times"></i> Annuler
+                    </a>
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="fas fa-check"></i> Enregistrer la correction
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.correction-container { padding: 15px; max-width: 1600px; margin: 0 auto; }
+.correction-header { margin-bottom: 20px; }
+.breadcrumb-nav { font-size: 12px; color: #6b7280; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+.breadcrumb-nav a { color: #2563eb; text-decoration: none; }
+.breadcrumb-nav .current { color: #1f2937; font-weight: 500; }
+.correction-header h1 { margin: 0; font-size: 24px; font-weight: 600; color: #1f2937; }
+.correction-layout { display: grid; grid-template-columns: 400px 1fr; gap: 20px; }
+.section-card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; overflow: hidden; }
+.section-header { padding: 15px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: #f9fafb; }
+.section-header h3 { margin: 0; font-size: 14px; font-weight: 600; color: #1f2937; display: flex; align-items: center; gap: 8px; }
+.section-content { padding: 20px; }
+.student-info { padding: 20px; display: flex; gap: 15px; align-items: center; }
+.student-avatar { width: 60px; height: 60px; border-radius: 50%; background: #e5e7eb; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.student-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.student-avatar i { font-size: 32px; color: #9ca3af; }
+.student-details h4 { margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #1f2937; }
+.matricule { margin: 0 0 8px 0; font-size: 12px; color: #6b7280; }
+.submission-date { margin: 0; font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 5px; }
+.badge { padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: 500; margin-top: 8px; display: inline-block; }
+.badge-warning { background: #fef3c7; color: #92400e; }
+.files-list { padding: 15px; }
+.file-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
+.file-item:hover { background: #f3f4f6; border-color: #2563eb; }
+.file-icon { width: 36px; height: 36px; background: #2563eb; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; }
+.file-info { flex: 1; }
+.file-name { font-size: 13px; font-weight: 500; color: #1f2937; margin-bottom: 2px; }
+.file-size { font-size: 11px; color: #6b7280; }
+.viewer-container { padding: 20px; }
+.viewer-container iframe { width: 100%; height: 500px; border: 1px solid #e5e7eb; border-radius: 6px; }
+.note-input-group { margin-bottom: 20px; }
+.note-input-container { display: flex; align-items: center; gap: 10px; }
+.note-input { width: 100px; padding: 12px; font-size: 24px; font-weight: 700; text-align: center; border: 2px solid #e5e7eb; border-radius: 8px; }
+.note-input:focus { border-color: #2563eb; outline: none; }
+.note-separator { font-size: 24px; color: #6b7280; font-weight: 700; }
+.note-max { font-size: 24px; color: #6b7280; font-weight: 700; }
+.note-feedback { margin-top: 8px; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+.note-feedback.excellent { background: #d1fae5; color: #065f46; }
+.note-feedback.good { background: #dbeafe; color: #1e40af; }
+.note-feedback.average { background: #fef3c7; color: #92400e; }
+.note-feedback.poor { background: #fee2e2; color: #991b1b; }
+.note-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 15px; }
+.stat-item { padding: 12px; background: #f9fafb; border-radius: 6px; text-align: center; }
+.stat-item.warning { background: #fef3c7; }
+.stat-label { display: block; font-size: 11px; color: #6b7280; margin-bottom: 4px; }
+.stat-value { display: block; font-size: 18px; font-weight: 700; color: #1f2937; }
+.quick-notes { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+.quick-notes-label { margin: 0 0 10px 0; font-size: 12px; color: #6b7280; font-weight: 500; }
+.quick-notes-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.quick-note-btn { padding: 8px; background: white; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; font-weight: 600; color: #1f2937; transition: all 0.2s; }
+.quick-note-btn:hover { background: #2563eb; color: white; border-color: #2563eb; }
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; font-weight: 500; color: #374151; margin-bottom: 6px; font-size: 14px; }
+.form-group label.required::after { content: "*"; color: #ef4444; margin-left: 4px; }
+.form-control { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; font-family: inherit; }
+.form-control:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+textarea.form-control { resize: vertical; }
+.form-text { display: block; margin-top: 6px; font-size: 12px; color: #6b7280; }
+.current-file { margin-top: 10px; padding: 10px; background: #f3f4f6; border-radius: 6px; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+.current-file a { color: #2563eb; text-decoration: none; }
+.predefined-comments { margin-top: 15px; }
+.predefined-label { margin: 0 0 10px 0; font-size: 12px; color: #6b7280; font-weight: 500; }
+.comments-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.comment-btn { padding: 10px; background: white; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; font-size: 12px; color: #1f2937; display: flex; align-items: center; gap: 6px; transition: all 0.2s; text-align: left; }
+.comment-btn:hover { background: #f3f4f6; border-color: #2563eb; }
+.form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+.btn { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s; text-decoration: none; }
+.btn-lg { padding: 12px 24px; font-size: 15px; }
+.btn-success { background: #10b981; color: white; }
+.btn-success:hover { background: #059669; }
+.btn-outline { background: white; border: 1px solid #d1d5db; color: #374151; }
+.btn-outline:hover { background: #f3f4f6; }
+.btn-icon { width: 32px; height: 32px; border: none; background: none; cursor: pointer; color: #6b7280; }
+.btn-icon-sm { width: 28px; height: 28px; border: none; background: white; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer; color: #6b7280; }
+.empty-state-small { text-align: center; padding: 30px 20px; color: #6b7280; }
+.empty-state-small i { font-size: 32px; opacity: 0.5; margin-bottom: 10px; }
+
+@media (max-width: 1200px) {
+    .correction-layout { grid-template-columns: 1fr; }
+    .viewer-container iframe { height: 400px; }
+}
+</style>
+
+<script>
+const noteInput = document.getElementById('noteInput');
+const noteFeedback = document.getElementById('noteFeedback');
+const noteSur20 = document.getElementById('noteSur20');
+const noteFinale = document.getElementById('noteFinale');
+const noteMax = {{ composition.evaluation.note_maximale }};
+const penalite = {{ composition.evaluation.penalite_retard|default:0 }};
+const estEnRetard = {{ composition.est_en_retard|yesno:"true,false" }};
+
+noteInput?.addEventListener('input', function() {
+    const valeur = parseFloat(this.value) || 0;
+
+    // Calculer note sur 20
+    const sur20 = (valeur / noteMax) * 20;
+    noteSur20.textContent = sur20.toFixed(2) + '/20';
+
+    // Calculer note finale avec pénalité
+    if (estEnRetard && penalite > 0 && noteFinale) {
+        const avecPenalite = valeur - (valeur * penalite / 100);
+        noteFinale.textContent = avecPenalite.toFixed(2) + '/' + noteMax;
+    }
+
+    // Feedback visuel
+    noteFeedback.className = 'note-feedback';
+    if (sur20 >= 16) {
+        noteFeedback.textContent = '🌟 Excellent travail !';
+        noteFeedback.classList.add('excellent');
+    } else if (sur20 >= 14) {
+        noteFeedback.textContent = '✓ Très bon travail';
+        noteFeedback.classList.add('good');
+    } else if (sur20 >= 10) {
+        noteFeedback.textContent = '→ Travail correct';
+        noteFeedback.classList.add('average');
+    } else {
+        noteFeedback.textContent = '⚠ Travail insuffisant';
+        noteFeedback.classList.add('poor');
+    }
+});
+
+// Trigger au chargement si note existante
+if (noteInput?.value) {
+    noteInput.dispatchEvent(new Event('input'));
+}
+
+function setNote(valeur) {
+    noteInput.value = valeur;
+    noteInput.dispatchEvent(new Event('input'));
+}
+
+function addComment(texte) {
+    const textarea = document.querySelector('textarea[name="commentaire_correction"]');
+    const currentValue = textarea.value.trim();
+    textarea.value = currentValue ? currentValue + '\n' + texte : texte;
+}
+
+function viewFile(fileId) {
+    const viewer = document.getElementById('fileViewer');
+    const frame = document.getElementById('viewerFrame');
+    frame.src = `/evaluations/voir/composition/${fileId}/`;
+    viewer.style.display = 'block';
+    viewer.scrollIntoView({ behavior: 'smooth' });
+}
+
+function closeViewer() {
+    const viewer = document.getElementById('fileViewer');
+    viewer.style.display = 'none';
+}
+
+function downloadFile(fileId) {
+    window.location.href = `/evaluations/fichier-composition/${fileId}/telecharger/`;
+}
+</script>
+{% endblock %}

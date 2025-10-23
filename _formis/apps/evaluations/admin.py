@@ -2,17 +2,17 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils import timezone
-from .models import Evaluation, Composition, FichierComposition, Note, MoyenneModule
+from .models import Evaluation, Composition, FichierComposition, Note
 
 
 @admin.register(Evaluation)
 class EvaluationAdmin(admin.ModelAdmin):
     list_display = [
-        'titre', 'enseignant', 'matiere_module', 'type_evaluation',
+        'titre', 'enseignant', 'matiere', 'type_evaluation',
         'coefficient', 'date_debut', 'date_fin', 'statut', 'nb_compositions'
     ]
     list_filter = [
-        'type_evaluation', 'statut', 'date_debut', 'matiere_module__matiere',
+        'type_evaluation', 'statut', 'date_debut', 'matiere',
         'enseignant'
     ]
     search_fields = ['titre', 'description', 'enseignant__username']
@@ -21,7 +21,7 @@ class EvaluationAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Informations de base', {
-            'fields': ('enseignant', 'matiere_module', 'titre', 'description', 'type_evaluation')
+            'fields': ('enseignant', 'matiere', 'titre', 'description', 'type_evaluation')
         }),
         ('Notation', {
             'fields': ('coefficient', 'note_maximale')
@@ -73,7 +73,7 @@ class CompositionAdmin(admin.ModelAdmin):
     ]
     list_filter = [
         'statut', 'evaluation__type_evaluation', 'date_soumission',
-        'evaluation__matiere_module'
+        'evaluation__matiere'
     ]
     search_fields = [
         'apprenant__username', 'apprenant__first_name',
@@ -143,7 +143,7 @@ class NoteAdmin(admin.ModelAdmin):
         'note_sur_20_display', 'coefficient_pondere', 'attribuee_par'
     ]
     list_filter = [
-        'evaluation__type_evaluation', 'evaluation__matiere_module',
+        'evaluation__type_evaluation', 'evaluation__matiere',
         'date_attribution', 'attribuee_par'
     ]
     search_fields = [
@@ -154,7 +154,7 @@ class NoteAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Informations de base', {
-            'fields': ('apprenant', 'matiere_module', 'evaluation', 'composition')
+            'fields': ('apprenant', 'matiere', 'evaluation', 'composition')
         }),
         ('Note', {
             'fields': ('valeur', 'note_sur', 'note_sur_20_display')
@@ -179,60 +179,3 @@ class NoteAdmin(admin.ModelAdmin):
             return qs.filter(apprenant=request.user)
         return qs
 
-@admin.register(MoyenneModule)
-class MoyenneModuleAdmin(admin.ModelAdmin):
-    list_display = [
-        'apprenant', 'module', 'annee_academique',
-        'moyenne_generale_display', 'total_credits', 'validee'
-    ]
-    list_filter = [
-        'validee', 'annee_academique', 'module',
-        'date_validation'
-    ]
-    search_fields = [
-        'apprenant__username', 'apprenant__first_name',
-        'apprenant__last_name', 'module__nom'
-    ]
-    readonly_fields = ['created_at', 'updated_at']
-
-    fieldsets = (
-        ('Informations de base', {
-            'fields': ('apprenant', 'module', 'annee_academique')
-        }),
-        ('Résultats', {
-            'fields': ('moyenne_generale', 'total_credits')
-        }),
-        ('Validation', {
-            'fields': ('validee', 'date_validation')
-        }),
-        ('Métadonnées', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        })
-    )
-
-    def moyenne_generale_display(self, obj):
-        if obj.moyenne_generale:
-            if obj.moyenne_generale >= 10:
-                return format_html(
-                    '<span style="color: green; font-weight: bold;">{:.2f}/20</span>',
-                    obj.moyenne_generale
-                )
-            else:
-                return format_html(
-                    '<span style="color: red; font-weight: bold;">{:.2f}/20</span>',
-                    obj.moyenne_generale
-                )
-        return "N/A"
-    moyenne_generale_display.short_description = 'Moyenne'
-
-    actions = ['calculer_moyennes']
-
-    def calculer_moyennes(self, request, queryset):
-        for moyenne in queryset:
-            moyenne.calculer_moyenne()
-        self.message_user(
-            request,
-            f"{queryset.count()} moyennes ont été recalculées."
-        )
-    calculer_moyennes.short_description = "Recalculer les moyennes sélectionnées"

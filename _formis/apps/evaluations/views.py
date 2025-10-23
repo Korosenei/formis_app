@@ -1,22 +1,22 @@
+# apps/evaluations/views.py
+from django.db import models
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponse, Http404, HttpResponseRedirect
-from django.views.decorators.http import require_POST, require_GET
-from django.core.paginator import Paginator
-from django.db.models import Q, Count, Sum, Avg, F
+from django.http import JsonResponse, FileResponse, HttpResponse
+from django.views.decorators.http import require_POST
+from django.db.models import Q, Count, Sum, Avg, Max, Min
+from decimal import Decimal
 from django.utils import timezone
-from django.urls import reverse, reverse_lazy
-from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
-from django.core.exceptions import PermissionDenied
 import json
-import mimetypes
-import os
 import csv
-from io import TextIOWrapper
+from io import BytesIO
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+import mimetypes
 
-from .models import Evaluation, Composition, FichierComposition, Note, MoyenneModule
+from .models import Evaluation, Composition, FichierComposition, Note
 from .forms import (
     EvaluationForm, CompositionUploadForm, CorrectionForm,
     NoteForm, EvaluationSearchForm, PublierCorrectionForm,
@@ -28,167 +28,297 @@ from apps.core.decorators import (
     check_evaluation_availability, composition_can_be_modified,
     active_academic_year_required, require_evaluation_file_access
 )
+
 from apps.establishments.models import AnneeAcademique
+from apps.courses.models import Matiere
 from apps.academic.models import Classe
+from apps.accounts.models import Utilisateur
 
 
 # ============ VUES ENSEIGNANT ============
-
 @login_required
-@role_required(['ENSEIGNANT'])
 def evaluations_enseignant(request):
-    """Liste des évaluations créées par l'enseignant avec recherche et pagination"""
-    form = EvaluationSearchForm(request.GET, user=request.user)
-    evaluations = Evaluation.objects.filter(enseignant=request.user).select_related(
-        'matiere_module__matiere', 'matiere_module__module'
-    )
+    """Liste des évaluations de l'enseignant"""
+    if request.user.role != 'ENSEIGNANT':
+        messages.error(request, "Accès non autorisé")
+        return redirect('dashboard:redirect')
 
-    # Filtrage
-    if form.is_valid():
-        if form.cleaned_data['titre']:
-            evaluations = evaluations.filter(titre__icontains=form.cleaned_data['titre'])
-        if form.cleaned_data['type_evaluation']:
-            evaluations = evaluations.filter(type_evaluation=form.cleaned_data['type_evaluation'])
-        if form.cleaned_data['statut']:
-            evaluations = evaluations.filter(statut=form.cleaned_data['statut'])
-        if form.cleaned_data['matiere']:
-            evaluations = evaluations.filter(matiere_module=form.cleaned_data['matiere'])
-        if form.cleaned_data['classe']:
-            evaluations = evaluations.filter(classes=form.cleaned_data['classe'])
-        if form.cleaned_data['date_debut']:
-            evaluations = evaluations.filter(date_debut__date__gte=form.cleaned_data['date_debut'])
-        if form.cleaned_data['date_fin']:
-            evaluations = evaluations.filter(date_fin__date__lte=form.cleaned_data['date_fin'])
+    evaluations = Evaluation.objects.filter(
+        enseignant=request.user
+    ).select_related('matiere').prefetch_related('classes').order_by('-date_debut')
 
-    # Annotations pour les statistiques
-    evaluations = evaluations.annotate(
-        nb_compositions=Count('compositions'),
-        nb_corrigees=Count('compositions', filter=Q(compositions__statut='CORRIGEE')),
-        nb_en_cours=Count('compositions', filter=Q(compositions__statut='EN_COURS')),
-        nb_soumises=Count('compositions', filter=Q(compositions__statut__in=['SOUMISE', 'EN_RETARD']))
-    ).order_by('-date_creation')
+    # Filtres
+    statut = request.GET.get('statut')
+    if statut:
+        evaluations = evaluations.filter(statut=statut)
 
-    # Statistiques générales
-    stats_generales = {
+    matiere_id = request.GET.get('matiere')
+    if matiere_id:
+        evaluations = evaluations.filter(matiere_id=matiere_id)
+
+    # Statistiques
+    stats = {
         'total': evaluations.count(),
-        'brouillons': evaluations.filter(statut='BROUILLON').count(),
+        'brouillon': evaluations.filter(statut='BROUILLON').count(),
         'programmees': evaluations.filter(statut='PROGRAMMEE').count(),
         'en_cours': evaluations.filter(statut='EN_COURS').count(),
         'terminees': evaluations.filter(statut='TERMINEE').count(),
     }
 
-    # Pagination
-    paginator = Paginator(evaluations, 12)
-    page = request.GET.get('page')
-    evaluations = paginator.get_page(page)
+    # Mes matières
+    matieres = Matiere.objects.filter(
+        enseignant_responsable=request.user,
+        actif=True
+    )
 
-    return render(request, 'evaluations/enseignant/list.html', {
+    context = {
         'evaluations': evaluations,
-        'form': form,
-        'stats_generales': stats_generales
-    })
+        'stats': stats,
+        'matieres': matieres,
+        'statuts': Evaluation.STATUT,
+    }
+
+    return render(request, 'evaluations/enseignant/list.html', context)
 
 @login_required
-@role_required(['ENSEIGNANT'])
 def creer_evaluation(request):
     """Créer une nouvelle évaluation"""
+    if request.user.role != 'ENSEIGNANT':
+        messages.error(request, "Accès non autorisé")
+        return redirect('dashboard:redirect')
+
     if request.method == 'POST':
-        form = EvaluationForm(request.POST, request.FILES, user=request.user)
-        if form.is_valid():
-            try:
-                with transaction.atomic():
-                    evaluation = form.save(commit=False)
-                    evaluation.enseignant = request.user
-                    evaluation.save()
-                    form.save_m2m()  # Pour les classes (ManyToMany)
+        try:
+            matiere = get_object_or_404(Matiere, id=request.POST.get('matiere'))
 
-                    messages.success(
-                        request,
-                        f'Évaluation "{evaluation.titre}" créée avec succès.'
-                    )
+            # Vérifier le coefficient disponible
+            coefficient = Decimal(request.POST.get('coefficient', '1.0'))
+            total_utilise = Evaluation.objects.filter(
+                matiere=matiere,
+                enseignant=request.user,
+                statut__in=['PROGRAMMEE', 'EN_COURS', 'TERMINEE']
+            ).aggregate(total=models.Sum('coefficient'))['total'] or Decimal('0')
 
-                    # Rediriger selon le choix de l'utilisateur
-                    if 'save_and_continue' in request.POST:
-                        return redirect('evaluations:edit', pk=evaluation.pk)
-                    elif 'save_and_new' in request.POST:
-                        return redirect('evaluations:create')
-                    else:
-                        return redirect('evaluations:detail_enseignant', pk=evaluation.pk)
-            except Exception as e:
-                messages.error(request, f'Erreur lors de la création: {str(e)}')
-    else:
-        form = EvaluationForm(user=request.user)
+            coef_restant = Decimal(str(matiere.coefficient)) - total_utilise
 
-    return render(request, 'evaluations/enseignant/create.html', {
-        'form': form
-    })
+            if coefficient > coef_restant:
+                messages.error(
+                    request,
+                    f"Coefficient insuffisant. Disponible: {coef_restant}, Demandé: {coefficient}"
+                )
+                return redirect('evaluations:evaluation_create')
 
-@login_required
-@role_required(['ENSEIGNANT'])
-@enseignant_owns_evaluation
-def detail_evaluation_enseignant(request, pk):
-    """Détail d'une évaluation pour l'enseignant avec statistiques"""
-    evaluation = get_object_or_404(Evaluation, pk=pk, enseignant=request.user)
-
-    # Mettre à jour le statut automatiquement
-    EvaluationUtils.mettre_a_jour_statut_evaluation(evaluation)
-
-    # Récupérer les compositions avec données associées
-    compositions = evaluation.compositions.select_related(
-        'apprenant__classe'
-    ).prefetch_related(
-        'fichiers_composition', 'note'
-    ).order_by('apprenant__last_name', 'apprenant__first_name')
-
-    # Statistiques détaillées
-    stats = EvaluationUtils.obtenir_statistiques_evaluation(evaluation)
-    temps_restant = EvaluationUtils.obtenir_temps_restant(evaluation)
-
-    # Statistiques par classe
-    stats_par_classe = {}
-    for classe in evaluation.classes.all():
-        compositions_classe = compositions.filter(apprenant__classe=classe)
-        if compositions_classe.exists():
-            notes_classe = [
-                comp.note_obtenue for comp in compositions_classe
-                if comp.note_obtenue is not None
-            ]
-            stats_par_classe[classe.nom] = {
-                'total_apprenants': compositions_classe.count(),
-                'compositions_soumises': compositions_classe.filter(
-                    statut__in=['SOUMISE', 'EN_RETARD', 'CORRIGEE']
-                ).count(),
-                'compositions_corrigees': compositions_classe.filter(
-                    statut='CORRIGEE'
-                ).count(),
-                'moyenne_classe': sum(notes_classe) / len(notes_classe) if notes_classe else None,
-                'nb_notes': len(notes_classe)
-            }
-
-    # Formulaires pour actions rapides
-    bulk_note_form = None
-    if evaluation.statut == 'TERMINEE':
-        compositions_non_corrigees = compositions.filter(
-            statut__in=['SOUMISE', 'EN_RETARD']
-        )
-        if compositions_non_corrigees.exists():
-            bulk_note_form = BulkNoteForm(
-                compositions=compositions_non_corrigees,
-                evaluation=evaluation
+            # Créer l'évaluation
+            evaluation = Evaluation.objects.create(
+                enseignant=request.user,
+                matiere=matiere,
+                titre=request.POST.get('titre'),
+                description=request.POST.get('description'),
+                type_evaluation=request.POST.get('type_evaluation'),
+                coefficient=coefficient,
+                note_maximale=request.POST.get('note_maximale', 20),
+                date_debut=request.POST.get('date_debut'),
+                date_fin=request.POST.get('date_fin'),
+                duree_minutes=request.POST.get('duree_minutes'),
+                correction_visible_immediatement=request.POST.get('correction_visible_immediatement') == 'on',
+                autorise_retard=request.POST.get('autorise_retard') == 'on',
+                penalite_retard=request.POST.get('penalite_retard', 0),
+                statut=request.POST.get('statut', 'BROUILLON')
             )
 
-    return render(request, 'evaluations/enseignant/detail.html', {
+            # Gérer le fichier d'évaluation
+            if 'fichier_evaluation' in request.FILES:
+                evaluation.fichier_evaluation = request.FILES['fichier_evaluation']
+                evaluation.save()
+
+            # Ajouter les classes
+            classes_ids = request.POST.getlist('classes')
+            evaluation.classes.set(classes_ids)
+
+            messages.success(request, "Évaluation créée avec succès")
+            return redirect('evaluations:evaluation_detail_enseignant', pk=evaluation.pk)
+
+        except Exception as e:
+            messages.error(request, f"Erreur lors de la création: {str(e)}")
+            return redirect('evaluations:evaluation_create')
+
+    # GET
+    matieres = Matiere.objects.filter(
+        enseignant_responsable=request.user,
+        actif=True
+    )
+
+    # Calculer le coefficient restant pour chaque matière
+    for matiere in matieres:
+        total_utilise = Evaluation.objects.filter(
+            matiere=matiere,
+            enseignant=request.user,
+            statut__in=['PROGRAMMEE', 'EN_COURS', 'TERMINEE']
+        ).aggregate(total=models.Sum('coefficient'))['total'] or Decimal('0')
+
+        matiere.coefficient_restant = float(Decimal(str(matiere.coefficient)) - total_utilise)
+
+    classes = Classe.objects.filter(
+        niveau__filiere__etablissement=request.user.etablissement,
+        est_active=True
+    )
+
+    context = {
+        'matieres': matieres,
+        'classes': classes,
+        'types_evaluation': Evaluation.TYPE_EVALUATION,
+    }
+
+    return render(request, 'evaluations/evaluation/form.html', context)
+
+@login_required
+def detail_evaluation_enseignant(request, pk):
+    """Détail d'une évaluation pour l'enseignant"""
+    evaluation = get_object_or_404(
+        Evaluation.objects.prefetch_related('classes', 'compositions__apprenant'),
+        pk=pk,
+        enseignant=request.user
+    )
+
+    # Statistiques de soumission
+    compositions = evaluation.compositions.all()
+    total_apprenants = sum(classe.apprenants.count() for classe in evaluation.classes.all())
+
+    stats = {
+        'total_apprenants': total_apprenants,
+        'soumises': compositions.filter(statut__in=['SOUMISE', 'EN_RETARD']).count(),
+        'corrigees': compositions.filter(statut='CORRIGEE').count(),
+        'en_cours': compositions.filter(statut='EN_COURS').count(),
+        'taux_soumission': evaluation.taux_soumission,
+        'taux_correction': evaluation.taux_correction,
+    }
+
+    # Statistiques de notes (si corrigées)
+    notes_stats = None
+    if compositions.filter(statut='CORRIGEE').exists():
+        notes = Note.objects.filter(evaluation=evaluation)
+        notes_stats = {
+            'moyenne': notes.aggregate(Avg('valeur'))['valeur__avg'] or 0,
+            'max': notes.aggregate(models.Max('valeur'))['valeur__max'] or 0,
+            'min': notes.aggregate(models.Min('valeur'))['valeur__min'] or 0,
+        }
+
+    context = {
         'evaluation': evaluation,
         'compositions': compositions,
         'stats': stats,
-        'stats_par_classe': stats_par_classe,
-        'temps_restant': temps_restant,
-        'bulk_note_form': bulk_note_form
-    })
+        'notes_stats': notes_stats,
+    }
+
+    return render(request, 'evaluations/evaluation/detail.html', context)
+
+@login_required
+def corriger_composition(request, pk):
+    """Corriger une composition"""
+    composition = get_object_or_404(
+        Composition.objects.select_related('evaluation', 'apprenant'),
+        pk=pk,
+        evaluation__enseignant=request.user
+    )
+
+    if request.method == 'POST':
+        try:
+            note_obtenue = Decimal(request.POST.get('note_obtenue'))
+
+            # Vérifier que la note ne dépasse pas la note maximale
+            if note_obtenue > composition.evaluation.note_maximale:
+                messages.error(request, f"La note ne peut pas dépasser {composition.evaluation.note_maximale}")
+                return redirect('evaluations:corriger_composition', pk=pk)
+
+            # Mettre à jour la composition
+            composition.note_obtenue = note_obtenue
+            composition.commentaire_correction = request.POST.get('commentaire_correction')
+            composition.statut = 'CORRIGEE'
+            composition.corrigee_par = request.user
+            composition.date_correction = timezone.now()
+
+            # Gérer le fichier de correction personnalisé
+            if 'fichier_correction' in request.FILES:
+                composition.fichier_correction_personnalise = request.FILES['fichier_correction']
+
+            composition.save()
+
+            # Créer ou mettre à jour la note
+            note, created = Note.objects.update_or_create(
+                apprenant=composition.apprenant,
+                evaluation=composition.evaluation,
+                defaults={
+                    'matiere': composition.evaluation.matiere,
+                    'composition': composition,
+                    'valeur': composition.note_avec_penalite or note_obtenue,
+                    'note_sur': composition.evaluation.note_maximale,
+                    'attribuee_par': request.user,
+                    'commentaire': composition.commentaire_correction,
+                }
+            )
+
+            messages.success(request, "Composition corrigée avec succès")
+            return redirect('evaluations:detail_enseignant', pk=composition.evaluation.pk)
+
+        except Exception as e:
+            messages.error(request, f"Erreur lors de la correction: {str(e)}")
+
+    context = {
+        'composition': composition,
+        'fichiers': composition.fichiers_composition.all(),
+    }
+
+    return render(request, 'evaluations/composition/corriger.html', context)
+
+@login_required
+def correction_en_masse(request, pk):
+    """Correction en masse des compositions"""
+    evaluation = get_object_or_404(Evaluation, pk=pk, enseignant=request.user)
+
+    if request.method == 'POST':
+        try:
+            compositions_data = request.POST.getlist('compositions')
+            for comp_data in compositions_data:
+                comp_id, note = comp_data.split(':')
+                composition = Composition.objects.get(id=comp_id, evaluation=evaluation)
+
+                composition.note_obtenue = Decimal(note)
+                composition.statut = 'CORRIGEE'
+                composition.corrigee_par = request.user
+                composition.date_correction = timezone.now()
+                composition.save()
+
+                # Créer la note
+                Note.objects.update_or_create(
+                    apprenant=composition.apprenant,
+                    evaluation=evaluation,
+                    defaults={
+                        'matiere': evaluation.matiere,
+                        'composition': composition,
+                        'valeur': composition.note_avec_penalite or composition.note_obtenue,
+                        'note_sur': evaluation.note_maximale,
+                        'attribuee_par': request.user,
+                    }
+                )
+
+            messages.success(request, "Corrections enregistrées avec succès")
+            return redirect('evaluations:detail_enseignant', pk=pk)
+
+        except Exception as e:
+            messages.error(request, f"Erreur: {str(e)}")
+
+    compositions = evaluation.compositions.filter(statut__in=['SOUMISE', 'EN_RETARD']).select_related('apprenant')
+
+    context = {
+        'evaluation': evaluation,
+        'compositions': compositions,
+    }
+
+    return render(request, 'evaluations/composition/correction_masse.html', context)
+
 
 @login_required
 @role_required(['ENSEIGNANT'])
-@enseignant_owns_evaluation
 def modifier_evaluation(request, pk):
     """Modifier une évaluation existante"""
     evaluation = get_object_or_404(Evaluation, pk=pk, enseignant=request.user)
@@ -216,7 +346,7 @@ def modifier_evaluation(request, pk):
                         request,
                         f'Évaluation "{evaluation.titre}" modifiée avec succès.'
                     )
-                    return redirect('evaluations:detail_enseignant', pk=pk)
+                    return redirect('evaluations:evaluation_detail_enseignant', pk=pk)
             except Exception as e:
                 messages.error(request, f'Erreur lors de la modification: {str(e)}')
     else:
@@ -229,199 +359,6 @@ def modifier_evaluation(request, pk):
 
 @login_required
 @role_required(['ENSEIGNANT'])
-@enseignant_owns_evaluation
-def corriger_composition(request, pk):
-    """Corriger une composition individuelle"""
-    composition = get_object_or_404(
-        Composition,
-        pk=pk,
-        evaluation__enseignant=request.user,
-        statut__in=['SOUMISE', 'EN_RETARD']
-    )
-
-    if request.method == 'POST':
-        correction_form = CorrectionForm(request.POST, request.FILES, instance=composition)
-        note_form = NoteForm(request.POST, evaluation=composition.evaluation)
-
-        if correction_form.is_valid() and note_form.is_valid():
-            try:
-                with transaction.atomic():
-                    # Sauvegarder la correction
-                    composition = correction_form.save(commit=False)
-                    composition.statut = 'CORRIGEE'
-                    composition.corrigee_par = request.user
-                    composition.date_correction = timezone.now()
-                    composition.save()
-
-                    # Sauvegarder ou mettre à jour la note
-                    note, created = Note.objects.update_or_create(
-                        apprenant=composition.apprenant,
-                        evaluation=composition.evaluation,
-                        defaults={
-                            'matiere_module': composition.evaluation.matiere_module,
-                            'composition': composition,
-                            'valeur': note_form.cleaned_data['valeur'],
-                            'note_sur': note_form.cleaned_data['note_sur'],
-                            'commentaire': note_form.cleaned_data['commentaire'],
-                            'attribuee_par': request.user
-                        }
-                    )
-
-                    # Mettre à jour la note dans la composition
-                    composition.note_obtenue = note.valeur
-                    composition.save()
-
-                    # Mettre à jour les moyennes
-                    try:
-                        annee_academique = AnneeAcademique.objects.get(active=True)
-                        MoyenneCalculator.mettre_a_jour_moyennes_module(
-                            composition.apprenant,
-                            composition.evaluation.matiere_module.module,
-                            annee_academique
-                        )
-                    except AnneeAcademique.DoesNotExist:
-                        pass
-
-                    action = 'créée' if created else 'mise à jour'
-                    messages.success(
-                        request,
-                        f'Composition corrigée et note {action} avec succès.'
-                    )
-
-                    # Redirection selon le choix
-                    if 'save_and_next' in request.POST:
-                        # Trouver la composition suivante à corriger
-                        prochaine_composition = Composition.objects.filter(
-                            evaluation=composition.evaluation,
-                            statut__in=['SOUMISE', 'EN_RETARD'],
-                            id__gt=composition.id
-                        ).first()
-
-                        if prochaine_composition:
-                            return redirect('evaluations:corriger_composition', pk=prochaine_composition.pk)
-
-                    return redirect('evaluations:detail_enseignant', pk=composition.evaluation.pk)
-
-            except Exception as e:
-                messages.error(request, f'Erreur lors de la correction: {str(e)}')
-    else:
-        correction_form = CorrectionForm(instance=composition)
-
-        # Pré-remplir la note si elle existe
-        try:
-            note_existante = Note.objects.get(
-                apprenant=composition.apprenant,
-                evaluation=composition.evaluation
-            )
-            note_form = NoteForm(instance=note_existante, evaluation=composition.evaluation)
-        except Note.DoesNotExist:
-            note_form = NoteForm(evaluation=composition.evaluation)
-
-    # Informations contextuelles
-    context = {
-        'composition': composition,
-        'correction_form': correction_form,
-        'note_form': note_form,
-        'evaluation': composition.evaluation,
-        'apprenant': composition.apprenant,
-        'fichiers_composition': composition.fichiers_composition.all()
-    }
-
-    # Ajouter les compositions suivantes pour navigation
-    prochaines_compositions = Composition.objects.filter(
-        evaluation=composition.evaluation,
-        statut__in=['SOUMISE', 'EN_RETARD'],
-        id__gt=composition.id
-    )[:3]  # Les 3 suivantes
-    context['prochaines_compositions'] = prochaines_compositions
-
-    return render(request, 'evaluations/enseignant/corriger.html', context)
-
-@login_required
-@role_required(['ENSEIGNANT'])
-@enseignant_owns_evaluation
-@require_POST
-def correction_en_masse(request, pk):
-    """Correction en masse des compositions"""
-    evaluation = get_object_or_404(Evaluation, pk=pk, enseignant=request.user)
-
-    compositions = evaluation.compositions.filter(
-        statut__in=['SOUMISE', 'EN_RETARD']
-    )
-
-    form = BulkNoteForm(
-        request.POST,
-        compositions=compositions,
-        evaluation=evaluation
-    )
-
-    if form.is_valid():
-        try:
-            with transaction.atomic():
-                notes_creees = 0
-                notes_modifiees = 0
-
-                for composition in compositions:
-                    note_value = form.cleaned_data.get(f'note_{composition.id}')
-                    commentaire = form.cleaned_data.get(f'commentaire_{composition.id}')
-
-                    if note_value is not None:
-                        # Créer ou mettre à jour la note
-                        note, created = Note.objects.update_or_create(
-                            apprenant=composition.apprenant,
-                            evaluation=evaluation,
-                            defaults={
-                                'matiere_module': evaluation.matiere_module,
-                                'composition': composition,
-                                'valeur': note_value,
-                                'note_sur': evaluation.note_maximale,
-                                'commentaire': commentaire or '',
-                                'attribuee_par': request.user
-                            }
-                        )
-
-                        # Mettre à jour la composition
-                        composition.note_obtenue = note_value
-                        composition.statut = 'CORRIGEE'
-                        composition.corrigee_par = request.user
-                        composition.date_correction = timezone.now()
-                        composition.save()
-
-                        if created:
-                            notes_creees += 1
-                        else:
-                            notes_modifiees += 1
-
-                # Mettre à jour les moyennes pour tous les apprenants concernés
-                try:
-                    annee_academique = AnneeAcademique.objects.get(active=True)
-                    apprenants = {comp.apprenant for comp in compositions}
-
-                    for apprenant in apprenants:
-                        MoyenneCalculator.mettre_a_jour_moyennes_module(
-                            apprenant,
-                            evaluation.matiere_module.module,
-                            annee_academique
-                        )
-                except AnneeAcademique.DoesNotExist:
-                    pass
-
-                messages.success(
-                    request,
-                    f'Correction en masse terminée: {notes_creees} notes créées, '
-                    f'{notes_modifiees} notes modifiées.'
-                )
-
-        except Exception as e:
-            messages.error(request, f'Erreur lors de la correction en masse: {str(e)}')
-    else:
-        messages.error(request, 'Erreurs dans le formulaire de correction.')
-
-    return redirect('evaluations:detail_enseignant', pk=pk)
-
-@login_required
-@role_required(['ENSEIGNANT'])
-@enseignant_owns_evaluation
 def publier_correction(request, pk):
     """Publier la correction d'une évaluation"""
     evaluation = get_object_or_404(Evaluation, pk=pk, enseignant=request.user)
@@ -432,7 +369,7 @@ def publier_correction(request, pk):
             try:
                 form.save()
                 messages.success(request, 'Correction publiée avec succès.')
-                return redirect('evaluations:detail_enseignant', pk=pk)
+                return redirect('evaluations:evaluation_detail_enseignant', pk=pk)
             except Exception as e:
                 messages.error(request, f'Erreur lors de la publication: {str(e)}')
     else:
@@ -480,10 +417,9 @@ def supprimer_evaluation(request, pk):
         'evaluation': evaluation
     })
 
-
 @login_required
 @role_required(['ENSEIGNANT'])
-@enseignant_owns_evaluation
+#@enseignant_owns_evaluation
 def statistiques_evaluation(request, pk):
     """Statistiques détaillées d'une évaluation"""
     evaluation = get_object_or_404(Evaluation, pk=pk, enseignant=request.user)
@@ -502,105 +438,71 @@ def statistiques_evaluation(request, pk):
 
 
 # ============ VUES APPRENANT ============
-
 @login_required
-@role_required(['APPRENANT'])
 def evaluations_apprenant(request):
-    """Liste des évaluations disponibles pour l'apprenant"""
-    try:
-        classe_apprenant = request.user.classe
-        evaluations_base = Evaluation.objects.filter(
-            classes=classe_apprenant,
-            statut__in=['PROGRAMMEE', 'EN_COURS', 'TERMINEE']
-        ).select_related(
-            'matiere_module__matiere', 'matiere_module__module', 'enseignant'
-        ).order_by('date_debut')
-    except AttributeError:
-        evaluations_base = Evaluation.objects.none()
-        messages.warning(request, 'Vous n\'êtes assigné à aucune classe.')
+    """Liste des évaluations pour l'apprenant"""
+    if request.user.role != 'APPRENANT':
+        messages.error(request, "Accès non autorisé")
+        return redirect('dashboard:redirect')
 
-    # Filtrage optionnel
-    form = EvaluationSearchForm(request.GET, user=request.user)
-    if form.is_valid():
-        if form.cleaned_data['titre']:
-            evaluations_base = evaluations_base.filter(
-                titre__icontains=form.cleaned_data['titre']
-            )
-        if form.cleaned_data['type_evaluation']:
-            evaluations_base = evaluations_base.filter(
-                type_evaluation=form.cleaned_data['type_evaluation']
-            )
-        if form.cleaned_data['matiere']:
-            evaluations_base = evaluations_base.filter(
-                matiere_module=form.cleaned_data['matiere']
-            )
+    # Récupérer la classe de l'apprenant
+    classe = None
+    if hasattr(request.user, 'profil_apprenant') and request.user.profil_apprenant.classe_actuelle:
+        classe = request.user.profil_apprenant.classe_actuelle
 
-    # Ajouter des informations contextuelles
-    evaluations_avec_info = []
-    for evaluation in evaluations_base:
-        disponibilite = EvaluationUtils.verifier_disponibilite_evaluation(
-            evaluation, request.user
-        )
-        temps_restant = EvaluationUtils.obtenir_temps_restant(evaluation)
+    if not classe:
+        messages.warning(request, "Vous n'êtes pas inscrit dans une classe")
+        return render(request, 'evaluations/apprenant/list.html', {'evaluations': []})
 
-        # Récupérer la composition de l'apprenant
+    # Évaluations de la classe
+    evaluations = Evaluation.objects.filter(
+        classes=classe,
+        statut__in=['PROGRAMMEE', 'EN_COURS', 'TERMINEE']
+    ).select_related('matiere', 'enseignant').order_by('-date_debut')
+
+    # Ajouter les informations de composition pour chaque évaluation
+    for evaluation in evaluations:
         try:
-            composition = Composition.objects.get(
+            evaluation.ma_composition = Composition.objects.get(
                 evaluation=evaluation,
                 apprenant=request.user
             )
         except Composition.DoesNotExist:
-            composition = None
+            evaluation.ma_composition = None
 
-        # Note obtenue
-        note = None
-        if composition and composition.statut == 'CORRIGEE':
-            try:
-                note = Note.objects.get(
-                    apprenant=request.user,
-                    evaluation=evaluation
-                )
-            except Note.DoesNotExist:
-                pass
+    # Filtrer par statut
+    filtre_statut = request.GET.get('statut')
+    if filtre_statut == 'a_faire':
+        evaluations = [e for e in evaluations if not e.ma_composition or e.ma_composition.statut == 'EN_COURS']
+    elif filtre_statut == 'soumises':
+        evaluations = [e for e in evaluations if
+                       e.ma_composition and e.ma_composition.statut in ['SOUMISE', 'EN_RETARD']]
+    elif filtre_statut == 'corrigees':
+        evaluations = [e for e in evaluations if e.ma_composition and e.ma_composition.statut == 'CORRIGEE']
 
-        evaluations_avec_info.append({
-            'evaluation': evaluation,
-            'disponibilite': disponibilite,
-            'temps_restant': temps_restant,
-            'composition': composition,
-            'note': note,
-        })
-
-    # Statistiques personnelles
-    stats_personnelles = {
-        'total_evaluations': len(evaluations_avec_info),
-        'compositions_soumises': sum(1 for e in evaluations_avec_info if
-                                     e['composition'] and e['composition'].statut in ['SOUMISE', 'EN_RETARD',
-                                                                                      'CORRIGEE']),
-        'compositions_corrigees': sum(
-            1 for e in evaluations_avec_info if e['composition'] and e['composition'].statut == 'CORRIGEE'),
-        'en_cours': sum(1 for e in evaluations_avec_info if e['composition'] and e['composition'].statut == 'EN_COURS'),
+    context = {
+        'evaluations': evaluations,
     }
 
-    return render(request, 'evaluations/apprenant/list.html', {
-        'evaluations_avec_info': evaluations_avec_info,
-        'form': form,
-        'stats_personnelles': stats_personnelles
-    })
-
+    return render(request, 'evaluations/apprenant/list.html', context)
 
 @login_required
-@role_required(['APPRENANT'])
-@apprenant_in_evaluation_classes
 def detail_evaluation_apprenant(request, pk):
     """Détail d'une évaluation pour l'apprenant"""
+    if request.user.role != 'APPRENANT':
+        messages.error(request, "Accès non autorisé")
+        return redirect('dashboard:redirect')
+
     evaluation = get_object_or_404(Evaluation, pk=pk)
 
-    # Vérifier la disponibilité
-    disponibilite = EvaluationUtils.verifier_disponibilite_evaluation(
-        evaluation, request.user
-    )
-    temps_restant = EvaluationUtils.obtenir_temps_restant(evaluation)
+    # Vérifier que l'apprenant est dans une des classes concernées
+    classe = None
+    if hasattr(request.user, 'profil_apprenant') and request.user.profil_apprenant.classe_actuelle:
+        classe = request.user.profil_apprenant.classe_actuelle
+
+    if classe not in evaluation.classes.all():
+        messages.error(request, "Vous n'avez pas accès à cette évaluation")
+        return redirect('evaluations:list_apprenant')
 
     # Récupérer ou créer la composition
     composition, created = Composition.objects.get_or_create(
@@ -608,50 +510,28 @@ def detail_evaluation_apprenant(request, pk):
         apprenant=request.user
     )
 
-    # Récupérer les fichiers de composition
-    fichiers_composition = composition.fichiers_composition.all().order_by('-date_creation')
-
-    # Note et correction
-    note = None
-    if composition.statut == 'CORRIGEE':
-        try:
-            note = Note.objects.get(
-                apprenant=request.user,
-                evaluation=evaluation
-            )
-        except Note.DoesNotExist:
-            pass
+    # Récupérer la note si elle existe
+    try:
+        note = Note.objects.get(evaluation=evaluation, apprenant=request.user)
+    except Note.DoesNotExist:
+        note = None
 
     context = {
         'evaluation': evaluation,
         'composition': composition,
-        'fichiers_composition': fichiers_composition,
-        'disponibilite': disponibilite,
-        'temps_restant': temps_restant,
         'note': note,
+        'fichiers': composition.fichiers_composition.all() if composition else [],
     }
 
     return render(request, 'evaluations/apprenant/detail.html', context)
 
-
 @login_required
-@role_required(['APPRENANT'])
-@apprenant_in_evaluation_classes
-@composition_can_be_modified
-@require_POST
 def upload_composition(request, pk):
-    """Upload des fichiers de composition via AJAX"""
-    evaluation = get_object_or_404(Evaluation, pk=pk)
+    """Uploader un fichier de composition"""
+    if request.user.role != 'APPRENANT':
+        return JsonResponse({'success': False, 'error': 'Non autorisé'})
 
-    # Vérifier la disponibilité
-    disponibilite = EvaluationUtils.verifier_disponibilite_evaluation(
-        evaluation, request.user
-    )
-    if not disponibilite['peut_composer']:
-        return JsonResponse({
-            'success': False,
-            'error': disponibilite['raison']
-        })
+    evaluation = get_object_or_404(Evaluation, pk=pk)
 
     # Récupérer la composition
     composition, created = Composition.objects.get_or_create(
@@ -659,66 +539,45 @@ def upload_composition(request, pk):
         apprenant=request.user
     )
 
-    # Vérifier si la composition peut encore être modifiée
     if not composition.peut_soumettre:
-        return JsonResponse({
-            'success': False,
-            'error': 'Vous ne pouvez plus modifier cette composition.'
-        })
+        return JsonResponse({'success': False, 'error': 'Vous ne pouvez plus soumettre'})
 
-    form = CompositionUploadForm(request.POST, request.FILES)
-    if form.is_valid():
+    if request.method == 'POST' and request.FILES.get('fichier'):
         try:
-            fichiers_uploades = []
+            fichier = request.FILES['fichier']
 
-            with transaction.atomic():
-                for fichier in request.FILES.getlist('fichiers'):
-                    # Créer l'objet FichierComposition
-                    fichier_composition = FichierComposition(
-                        nom_original=fichier.name,
-                        fichier=fichier,
-                        uploade_par=request.user,
-                        type_mime=fichier.content_type or 'application/octet-stream'
-                    )
-                    fichier_composition.save()
+            # Créer le fichier de composition
+            fichier_comp = FichierComposition.objects.create(
+                nom_original=fichier.name,
+                fichier=fichier,
+                taille=fichier.size,
+                type_mime=fichier.content_type,
+                uploade_par=request.user
+            )
 
-                    # Associer à la composition
-                    composition.fichiers_composition.add(fichier_composition)
-
-                    fichiers_uploades.append({
-                        'id': fichier_composition.id,
-                        'nom': fichier_composition.nom_original,
-                        'taille': fichier_composition.taille
-                    })
+            # Lier à la composition
+            composition.fichiers_composition.add(fichier_comp)
 
             return JsonResponse({
                 'success': True,
-                'message': f'{len(fichiers_uploades)} fichier(s) uploadé(s) avec succès.',
-                'fichiers': fichiers_uploades
+                'fichier': {
+                    'id': fichier_comp.id,
+                    'nom': fichier_comp.nom_original,
+                    'taille': fichier_comp.taille,
+                }
             })
 
         except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'error': f'Erreur lors de l\'upload: {str(e)}'
-            })
-    else:
-        errors = []
-        for field, field_errors in form.errors.items():
-            errors.extend(field_errors)
-        return JsonResponse({
-            'success': False,
-            'error': ' '.join(errors)
-        })
+            return JsonResponse({'success': False, 'error': str(e)})
 
+    return JsonResponse({'success': False, 'error': 'Aucun fichier'})
 
 @login_required
-@role_required(['APPRENANT'])
-@apprenant_in_evaluation_classes
-@composition_can_be_modified
-@require_POST
 def soumettre_composition(request, pk):
-    """Soumettre la composition via AJAX"""
+    """Soumettre la composition"""
+    if request.user.role != 'APPRENANT':
+        return JsonResponse({'success': False, 'error': 'Non autorisé'})
+
     evaluation = get_object_or_404(Evaluation, pk=pk)
 
     try:
@@ -726,43 +585,75 @@ def soumettre_composition(request, pk):
             evaluation=evaluation,
             apprenant=request.user
         )
+
+        if not composition.peut_soumettre:
+            return JsonResponse({'success': False, 'error': 'Vous ne pouvez plus soumettre'})
+
+        if not composition.fichiers_composition.exists():
+            return JsonResponse({'success': False, 'error': 'Vous devez uploader au moins un fichier'})
+
+        composition.soumettre()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Composition soumise avec succès',
+            'statut': composition.get_statut_display()
+        })
+
     except Composition.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': 'Aucune composition trouvée'
-        })
-
-    # Vérifier si la composition peut être soumise
-    if not composition.peut_soumettre:
-        return JsonResponse({
-            'success': False,
-            'error': 'Vous ne pouvez plus soumettre cette composition.'
-        })
-
-    # Vérifier qu'il y a au moins un fichier
-    if not composition.fichiers_composition.exists():
-        return JsonResponse({
-            'success': False,
-            'error': 'Vous devez uploader au moins un fichier avant de soumettre.'
-        })
-
-    try:
-        with transaction.atomic():
-            # Soumettre la composition
-            composition.soumettre()
-
-            return JsonResponse({
-                'success': True,
-                'message': 'Composition soumise avec succès.',
-                'statut': composition.get_statut_display(),
-                'date_soumission': composition.date_soumission.isoformat() if composition.date_soumission else None
-            })
-
+        return JsonResponse({'success': False, 'error': 'Composition introuvable'})
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': f'Erreur lors de la soumission: {str(e)}'
-        })
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+def mes_notes(request):
+    """Voir toutes mes notes"""
+    if request.user.role != 'APPRENANT':
+        messages.error(request, "Accès non autorisé")
+        return redirect('dashboard:redirect')
+
+    notes = Note.objects.filter(
+        apprenant=request.user
+    ).select_related('evaluation__matiere', 'evaluation').order_by('-date_attribution')
+
+    # Calculer les moyennes par matière
+    moyennes_matieres = {}
+    for note in notes:
+        matiere_id = note.matiere.id
+        if matiere_id not in moyennes_matieres:
+            moyennes_matieres[matiere_id] = {
+                'matiere': note.matiere,
+                'notes': [],
+                'total_coefficient': Decimal('0'),
+                'somme_ponderee': Decimal('0'),
+            }
+
+        moyennes_matieres[matiere_id]['notes'].append(note)
+        moyennes_matieres[matiere_id]['total_coefficient'] += note.coefficient_pondere
+        moyennes_matieres[matiere_id]['somme_ponderee'] += note.note_sur_20 * note.coefficient_pondere
+
+    # Calculer les moyennes
+    for data in moyennes_matieres.values():
+        if data['total_coefficient'] > 0:
+            data['moyenne'] = data['somme_ponderee'] / data['total_coefficient']
+        else:
+            data['moyenne'] = 0
+
+    # Moyenne générale
+    moyenne_generale = 0
+    if moyennes_matieres:
+        total_coef = sum(d['total_coefficient'] for d in moyennes_matieres.values())
+        if total_coef > 0:
+            somme_ponderee_generale = sum(d['somme_ponderee'] for d in moyennes_matieres.values())
+            moyenne_generale = somme_ponderee_generale / total_coef
+
+    context = {
+        'notes': notes,
+        'moyennes_matieres': moyennes_matieres.values(),
+        'moyenne_generale': round(float(moyenne_generale), 2),
+    }
+
+    return render(request, 'evaluations/apprenant/mes_notes.html', context)
 
 
 @login_required
@@ -802,145 +693,524 @@ def supprimer_fichier_composition(request, pk):
         })
 
 
+# ============ GESTION DES NOTES ============
 @login_required
-@role_required(['APPRENANT'])
-def mes_notes(request):
-    """Notes de l'apprenant connecté"""
-    notes = Note.objects.filter(
-        apprenant=request.user
-    ).select_related(
-        'evaluation', 'evaluation__matiere_module__matiere',
-        'evaluation__matiere_module__module'
-    ).order_by('-evaluation__date_fin')
-
-    # Calcul des moyennes par module
-    modules_notes = {}
-    for note in notes:
-        module = note.evaluation.matiere_module.module
-        if module not in modules_notes:
-            modules_notes[module] = []
-        modules_notes[module].append(note)
-
-    # Statistiques personnelles
-    stats = {
-        'total_notes': notes.count(),
-        'moyenne_generale': notes.aggregate(Avg('valeur'))['valeur__avg'],
-        'meilleure_note': notes.aggregate(Max('valeur'))['valeur__max'],
-        'pire_note': notes.aggregate(Min('valeur'))['valeur__min'],
-    }
-
-    return render(request, 'evaluations/apprenant/mes_notes.html', {
-        'notes': notes,
-        'modules_notes': modules_notes,
-        'stats': stats
-    })
-
-
-@login_required
-@role_required(['ENSEIGNANT', 'ADMINISTRATEUR'])
-def moyennes_module(request, module_id):
-    """Moyennes des apprenants dans un module"""
-    module = get_object_or_404(Module, pk=module_id)
-
-    # Vérifier les permissions
-    if request.user.role == 'ENSEIGNANT':
-        if not module.enseignants.filter(id=request.user.id).exists():
-            raise PermissionDenied
-
-    # Récupérer les moyennes
-    moyennes = MoyenneModule.objects.filter(
-        module=module
-    ).select_related('apprenant').order_by('-valeur')
-
-    # Statistiques du module
-    stats_module = moyennes.aggregate(
-        moyenne_generale=Avg('valeur'),
-        meilleure_note=Max('valeur'),
-        pire_note=Min('valeur'),
-        nb_apprenants=Count('apprenant')
+def creer_note(request, composition_id):
+    """Créer une note pour une composition"""
+    composition = get_object_or_404(
+        Composition,
+        pk=composition_id,
+        evaluation__enseignant=request.user
     )
 
-    return render(request, 'evaluations/moyennes_module.html', {
-        'module': module,
-        'moyennes': moyennes,
-        'stats_module': stats_module
+    if request.method == 'POST':
+        try:
+            valeur = Decimal(request.POST.get('valeur'))
+
+            note, created = Note.objects.update_or_create(
+                apprenant=composition.apprenant,
+                evaluation=composition.evaluation,
+                defaults={
+                    'matiere': composition.evaluation.matiere,
+                    'composition': composition,
+                    'valeur': valeur,
+                    'note_sur': composition.evaluation.note_maximale,
+                    'attribuee_par': request.user,
+                    'commentaire': request.POST.get('commentaire', ''),
+                }
+            )
+
+            # Mettre à jour la composition
+            composition.note_obtenue = valeur
+            composition.statut = 'CORRIGEE'
+            composition.corrigee_par = request.user
+            composition.date_correction = timezone.now()
+            composition.save()
+
+            messages.success(request, 'Note enregistrée avec succès')
+            return redirect('evaluations:detail_enseignant', pk=composition.evaluation.pk)
+
+        except Exception as e:
+            messages.error(request, f'Erreur: {str(e)}')
+
+    return render(request, 'evaluations/note/form.html', {
+        'composition': composition
     })
 
-# ============ VUES COMMUNES ============
+@login_required
+def modifier_note(request, pk):
+    """Modifier une note existante"""
+    note = get_object_or_404(Note, pk=pk, attribuee_par=request.user)
+
+    if request.method == 'POST':
+        try:
+            note.valeur = Decimal(request.POST.get('valeur'))
+            note.commentaire = request.POST.get('commentaire', '')
+            note.save()
+
+            # Mettre à jour la composition
+            if note.composition:
+                note.composition.note_obtenue = note.valeur
+                note.composition.save()
+
+            messages.success(request, 'Note modifiée avec succès')
+            return redirect('evaluations:detail_enseignant', pk=note.evaluation.pk)
+
+        except Exception as e:
+            messages.error(request, f'Erreur: {str(e)}')
+
+    return render(request, 'evaluations/note/edit.html', {'note': note})
 
 @login_required
-@require_evaluation_file_access('evaluation')
-def telecharger_fichier_evaluation(request, pk):
-    """Télécharger le fichier d'une évaluation"""
+@require_POST
+def supprimer_note(request, pk):
+    """Supprimer une note"""
+    note = get_object_or_404(Note, pk=pk, attribuee_par=request.user)
+    evaluation_id = note.evaluation.pk
+
+    try:
+        note.delete()
+        messages.success(request, 'Note supprimée')
+    except Exception as e:
+        messages.error(request, f'Erreur: {str(e)}')
+
+    return redirect('evaluations:detail_enseignant', pk=evaluation_id)
+
+
+# ============ IMPORT/EXPORT NOTES ============
+@login_required
+def importer_notes(request, pk):
+    """Importer des notes depuis un fichier CSV"""
+    evaluation = get_object_or_404(Evaluation, pk=pk, enseignant=request.user)
+
+    if request.method == 'POST' and request.FILES.get('fichier_csv'):
+        try:
+            fichier = request.FILES['fichier_csv']
+            decoded_file = fichier.read().decode('utf-8').splitlines()
+            reader = csv.DictReader(decoded_file)
+
+            notes_creees = 0
+            erreurs = []
+
+            with transaction.atomic():
+                for row in reader:
+                    try:
+                        matricule = row.get('matricule')
+                        valeur = Decimal(row.get('note'))
+                        commentaire = row.get('commentaire', '')
+
+                        apprenant = get_object_or_404(
+                            Utilisateur,
+                            matricule=matricule,
+                            role='APPRENANT'
+                        )
+
+                        composition = Composition.objects.get(
+                            evaluation=evaluation,
+                            apprenant=apprenant
+                        )
+
+                        note, created = Note.objects.update_or_create(
+                            apprenant=apprenant,
+                            evaluation=evaluation,
+                            defaults={
+                                'matiere': evaluation.matiere,
+                                'composition': composition,
+                                'valeur': valeur,
+                                'note_sur': evaluation.note_maximale,
+                                'attribuee_par': request.user,
+                                'commentaire': commentaire,
+                            }
+                        )
+
+                        composition.note_obtenue = valeur
+                        composition.statut = 'CORRIGEE'
+                        composition.corrigee_par = request.user
+                        composition.date_correction = timezone.now()
+                        composition.save()
+
+                        notes_creees += 1
+
+                    except Exception as e:
+                        erreurs.append(f"Ligne {reader.line_num}: {str(e)}")
+
+            if erreurs:
+                for err in erreurs[:5]:
+                    messages.warning(request, err)
+
+            messages.success(request, f'{notes_creees} notes importées')
+            return redirect('evaluations:detail_enseignant', pk=pk)
+
+        except Exception as e:
+            messages.error(request, f'Erreur lors de l\'importation: {str(e)}')
+
+    return render(request, 'evaluations/note/import.html', {
+        'evaluation': evaluation
+    })
+
+@login_required
+def exporter_notes(request, pk):
+    """Exporter les notes en CSV"""
+    evaluation = get_object_or_404(Evaluation, pk=pk, enseignant=request.user)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="notes_{evaluation.titre}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Matricule', 'Nom', 'Prénom', 'Note', 'Commentaire', 'Date'])
+
+    notes = Note.objects.filter(evaluation=evaluation).select_related('apprenant')
+    for note in notes:
+        writer.writerow([
+            note.apprenant.matricule,
+            note.apprenant.nom,
+            note.apprenant.prenom,
+            note.valeur,
+            note.commentaire,
+            note.date_attribution.strftime('%d/%m/%Y')
+        ])
+
+    return response
+
+
+# ============ RAPPORTS ET STATISTIQUES ============
+@login_required
+def rapport_evaluation(request, pk):
+    """Rapport détaillé d'une évaluation"""
+    evaluation = get_object_or_404(Evaluation, pk=pk, enseignant=request.user)
+
+    compositions = evaluation.compositions.select_related('apprenant')
+    notes = Note.objects.filter(evaluation=evaluation)
+
+    stats = {
+        'total_apprenants': sum(c.etudiants.count() for c in evaluation.classes.all()),
+        'compositions_soumises': compositions.filter(statut__in=['SOUMISE', 'EN_RETARD']).count(),
+        'compositions_corrigees': compositions.filter(statut='CORRIGEE').count(),
+        'moyenne': notes.aggregate(Avg('valeur'))['valeur__avg'] or 0,
+        'note_max': notes.aggregate(Max('valeur'))['valeur__max'] or 0,
+        'note_min': notes.aggregate(Min('valeur'))['valeur__min'] or 0,
+    }
+
+    # Distribution des notes
+    distribution = {
+        'excellent': notes.filter(valeur__gte=16).count(),
+        'bien': notes.filter(valeur__gte=14, valeur__lt=16).count(),
+        'assez_bien': notes.filter(valeur__gte=12, valeur__lt=14).count(),
+        'passable': notes.filter(valeur__gte=10, valeur__lt=12).count(),
+        'insuffisant': notes.filter(valeur__lt=10).count(),
+    }
+
+    return render(request, 'evaluations/rapport.html', {
+        'evaluation': evaluation,
+        'stats': stats,
+        'distribution': distribution,
+        'compositions': compositions,
+    })
+
+@login_required
+def statistiques_enseignant(request):
+    """Statistiques globales pour un enseignant"""
+    enseignant = request.user
+
+    evaluations = Evaluation.objects.filter(enseignant=enseignant)
+
+    stats = {
+        'total_evaluations': evaluations.count(),
+        'en_cours': evaluations.filter(statut='EN_COURS').count(),
+        'terminees': evaluations.filter(statut='TERMINEE').count(),
+        'total_corrections': Composition.objects.filter(
+            evaluation__enseignant=enseignant,
+            statut='CORRIGEE'
+        ).count(),
+    }
+
+    # Statistiques par matière
+    stats_matieres = []
+    matieres = Matiere.objects.filter(enseignant_responsable=enseignant)
+    for matiere in matieres:
+        evals = evaluations.filter(matiere=matiere)
+        notes = Note.objects.filter(evaluation__in=evals)
+
+        stats_matieres.append({
+            'matiere': matiere,
+            'nb_evaluations': evals.count(),
+            'moyenne': notes.aggregate(Avg('valeur'))['valeur__avg'] or 0,
+        })
+
+    return render(request, 'evaluations/enseignant/statistiques_globales.html', {
+        'stats': stats,
+        'stats_matieres': stats_matieres,
+    })
+
+@login_required
+def bulletin_apprenant(request, apprenant_id):
+    """Bulletin de notes d'un apprenant"""
+    apprenant = get_object_or_404(Utilisateur, pk=apprenant_id, role='APPRENANT')
+
+    # Vérifier les permissions
+    if request.user.role == 'APPRENANT' and request.user.pk != apprenant_id:
+        messages.error(request, "Accès non autorisé")
+        return redirect('dashboard:redirect')
+
+    notes = Note.objects.filter(apprenant=apprenant).select_related(
+        'matiere', 'evaluation'
+    ).order_by('matiere', '-date_attribution')
+
+    # Calculer les moyennes par matière
+    moyennes_matieres = {}
+    for note in notes:
+        matiere_id = note.matiere.id
+        if matiere_id not in moyennes_matieres:
+            moyennes_matieres[matiere_id] = {
+                'matiere': note.matiere,
+                'notes': [],
+                'total_coef': Decimal('0'),
+                'somme_ponderee': Decimal('0'),
+            }
+
+        moyennes_matieres[matiere_id]['notes'].append(note)
+        moyennes_matieres[matiere_id]['total_coef'] += note.coefficient_pondere
+        moyennes_matieres[matiere_id]['somme_ponderee'] += note.note_sur_20 * note.coefficient_pondere
+
+    # Calculer les moyennes
+    for data in moyennes_matieres.values():
+        if data['total_coef'] > 0:
+            data['moyenne'] = data['somme_ponderee'] / data['total_coef']
+        else:
+            data['moyenne'] = 0
+
+    # Moyenne générale
+    total_coef = sum(d['total_coef'] for d in moyennes_matieres.values())
+    somme_ponderee = sum(d['somme_ponderee'] for d in moyennes_matieres.values())
+    moyenne_generale = somme_ponderee / total_coef if total_coef > 0 else 0
+
+    return render(request, 'evaluations/bulletin.html', {
+        'apprenant': apprenant,
+        'moyennes_matieres': moyennes_matieres.values(),
+        'moyenne_generale': round(float(moyenne_generale), 2),
+    })
+
+
+# ============ ACTIONS EN MASSE ============
+@login_required
+@require_POST
+def actions_masse_evaluations(request):
+    """Actions en masse sur plusieurs évaluations"""
+    action = request.POST.get('action')
+    eval_ids = request.POST.getlist('evaluations')
+
+    evaluations = Evaluation.objects.filter(
+        id__in=eval_ids,
+        enseignant=request.user
+    )
+
+    if action == 'changer_statut':
+        nouveau_statut = request.POST.get('nouveau_statut')
+        evaluations.update(statut=nouveau_statut)
+        messages.success(request, f'{evaluations.count()} évaluations mises à jour')
+
+    elif action == 'supprimer':
+        count = evaluations.filter(
+            statut='BROUILLON',
+            compositions__isnull=True
+        ).count()
+        evaluations.filter(
+            statut='BROUILLON',
+            compositions__isnull=True
+        ).delete()
+        messages.success(request, f'{count} évaluations supprimées')
+
+    return redirect('evaluations:list_enseignant')
+
+
+# ============ UTILITAIRES ============
+def format_time(seconds):
+    """Formate un temps en secondes"""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+# ============ VUES API AJAX ============
+@login_required
+def api_temps_restant(request, pk):
+    """Retourne le temps restant pour une évaluation"""
     evaluation = get_object_or_404(Evaluation, pk=pk)
+
+    now = timezone.now()
+    if now < evaluation.date_debut:
+        status = 'not_started'
+        time_left = (evaluation.date_debut - now).total_seconds()
+    elif now > evaluation.date_fin:
+        status = 'finished'
+        time_left = 0
+    else:
+        status = 'in_progress'
+        time_left = (evaluation.date_fin - now).total_seconds()
+
+    return JsonResponse({
+        'status': status,
+        'time_left': int(time_left),
+        'formatted_time': format_time(time_left)
+    })
+
+@login_required
+def api_statistiques_evaluation(request, pk):
+    """Retourne les statistiques détaillées d'une évaluation"""
+    evaluation = get_object_or_404(Evaluation, pk=pk, enseignant=request.user)
+
+    compositions = evaluation.compositions.all()
+    notes = Note.objects.filter(evaluation=evaluation)
+
+    stats = {
+        'total_compositions': compositions.count(),
+        'soumises': compositions.filter(statut__in=['SOUMISE', 'EN_RETARD']).count(),
+        'corrigees': compositions.filter(statut='CORRIGEE').count(),
+        'moyenne': float(notes.aggregate(Avg('valeur'))['valeur__avg'] or 0),
+        'note_max': float(notes.aggregate(Max('valeur'))['valeur__max'] or 0),
+        'note_min': float(notes.aggregate(Min('valeur'))['valeur__min'] or 0),
+    }
+
+    return JsonResponse(stats)
+
+
+@login_required
+@require_POST
+def api_mettre_a_jour_statut(request, pk):
+    """Met à jour le statut d'une évaluation"""
+    evaluation = get_object_or_404(Evaluation, pk=pk, enseignant=request.user)
+
+    data = json.loads(request.body)
+    nouveau_statut = data.get('statut')
+
+    if nouveau_statut in dict(Evaluation.STATUT).keys():
+        evaluation.statut = nouveau_statut
+        evaluation.save()
+        return JsonResponse({'success': True, 'message': 'Statut mis à jour'})
+
+    return JsonResponse({'success': False, 'error': 'Statut invalide'}, status=400)
+
+
+
+@login_required
+def telecharger_fichier_evaluation(request, pk):
+    """Télécharger le fichier d'évaluation"""
+    evaluation = get_object_or_404(Evaluation, pk=pk)
+
+    # Vérifier les droits d'accès
+    if request.user.role == 'ENSEIGNANT' and evaluation.enseignant != request.user:
+        messages.error(request, "Accès non autorisé")
+        return redirect('evaluations:list_enseignant')
+
+    if request.user.role == 'APPRENANT':
+        classe = request.user.profil_apprenant.classe_actuelle if hasattr(request.user, 'profil_apprenant') else None
+        if classe not in evaluation.classes.all():
+            messages.error(request, "Accès non autorisé")
+            return redirect('evaluations:list_apprenant')
 
     if not evaluation.fichier_evaluation:
-        raise Http404("Fichier non trouvé")
+        messages.error(request, "Aucun fichier disponible")
+        return redirect(
+            'evaluations:detail_enseignant' if request.user.role == 'ENSEIGNANT' else 'evaluations:detail_apprenant',
+            pk=pk)
 
-    try:
-        response = HttpResponse(
-            evaluation.fichier_evaluation.read(),
-            content_type='application/octet-stream'
-        )
-        filename = os.path.basename(evaluation.fichier_evaluation.name)
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
-    except Exception:
-        raise Http404("Erreur lors du téléchargement")
-
-
-@login_required
-@require_evaluation_file_access('correction')
-def telecharger_fichier_correction(request, pk):
-    """Télécharger le fichier de correction"""
-    evaluation = get_object_or_404(Evaluation, pk=pk)
-
-    if not evaluation.fichier_correction:
-        raise Http404("Fichier de correction non trouvé")
-
-    try:
-        response = HttpResponse(
-            evaluation.fichier_correction.read(),
-            content_type='application/octet-stream'
-        )
-        filename = os.path.basename(evaluation.fichier_correction.name)
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
-    except Exception:
-        raise Http404("Erreur lors du téléchargement")
-
-
-@login_required
-@require_evaluation_file_access('composition')
-def telecharger_fichier_composition(request, pk):
-    """Télécharger un fichier de composition"""
-    fichier_composition = get_object_or_404(FichierComposition, pk=pk)
-
-    if not fichier_composition.fichier:
-        raise Http404("Fichier non trouvé")
-
-    try:
-        response = HttpResponse(
-            fichier_composition.fichier.read(),
-            content_type='application/octet-stream'
-        )
-        filename = fichier_composition.nom_original
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
-    except Exception:
-        raise Http404("Erreur lors du téléchargement")
-
+    return FileResponse(evaluation.fichier_evaluation.open('rb'), as_attachment=True)
 
 @login_required
 def voir_fichier(request, type_fichier, pk):
     """Visualiser un fichier dans le navigateur"""
-    fichier = None
-
     if type_fichier == 'evaluation':
-        evaluation = get_object_or_404(Evaluation, pk=pk)
-        fichier = evaluation.fichier_evaluation
+        obj = get_object_or_404(Evaluation, pk=pk)
+        fichier = obj.fichier_evaluation
     elif type_fichier == 'correction':
-        evaluation = get_object_or_404(Evaluation, pk=pk)
-        fichier = evaluation.fichier_correction
+        obj = get_object_or_404(Evaluation, pk=pk)
+        fichier = obj.fichier_correction
     elif type_fichier == 'composition':
-        fichier_composition = get_object_or_404(FichierComposition, pk=pk)
+        obj = get_object_or_404(FichierComposition, pk=pk)
+        fichier = obj.fichier
+    else:
+        return HttpResponse("Type de fichier invalide", status=400)
+
+    if not fichier:
+        return HttpResponse("Fichier non trouvé", status=404)
+
+    # Déterminer le type MIME
+    content_type, _ = mimetypes.guess_type(fichier.name)
+
+    response = FileResponse(fichier.open('rb'), content_type=content_type)
+    response['Content-Disposition'] = 'inline'
+
+    return response
+
+@login_required
+def supprimer_fichier_composition(request, pk):
+    """Supprimer un fichier de composition"""
+    if request.user.role != 'APPRENANT':
+        return JsonResponse({'success': False, 'error': 'Non autorisé'})
+
+    fichier = get_object_or_404(FichierComposition, pk=pk, uploade_par=request.user)
+
+    try:
+        # Vérifier que la composition n'est pas encore soumise
+        composition = fichier.compositions.first()
+        if composition and composition.statut in ['SOUMISE', 'EN_RETARD', 'CORRIGEE']:
+            return JsonResponse({'success': False, 'error': 'Impossible de supprimer après soumission'})
+
+        fichier.delete()
+        return JsonResponse({'success': True, 'message': 'Fichier supprimé'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+def telecharger_fichier_correction(request, pk):
+    """Télécharger le fichier de correction"""
+    evaluation = get_object_or_404(Evaluation, pk=pk)
+
+    # Vérifier les droits d'accès
+    if request.user.role == 'ENSEIGNANT' and evaluation.enseignant != request.user:
+        messages.error(request, "Accès non autorisé")
+        return redirect('evaluations:list_enseignant')
+
+    if request.user.role == 'APPRENANT':
+        classe = request.user.profil_apprenant.classe_actuelle if hasattr(request.user, 'profil_apprenant') else None
+        if classe not in evaluation.classes.all():
+            messages.error(request, "Accès non autorisé")
+            return redirect('evaluations:list_apprenant')
+
+        # Vérifier que la correction est visible
+        if not evaluation.correction_visible:
+            messages.error(request, "La correction n'est pas encore disponible")
+            return redirect('evaluations:detail_apprenant', pk=pk)
+
+    if not evaluation.fichier_correction:
+        messages.error(request, "Aucun fichier de correction disponible")
+        return redirect(
+            'evaluations:detail_enseignant' if request.user.role == 'ENSEIGNANT' else 'evaluations:detail_apprenant',
+            pk=pk)
+
+    return FileResponse(evaluation.fichier_correction.open('rb'), as_attachment=True)
+
+@login_required
+def telecharger_fichier_composition(request, pk):
+    """Télécharger un fichier de composition"""
+    fichier = get_object_or_404(FichierComposition, pk=pk)
+
+    # Vérifier les droits
+    composition = fichier.compositions.first()
+    if not composition:
+        messages.error(request, "Composition introuvable")
+        return redirect('evaluations:list_apprenant')
+
+    if request.user.role == 'APPRENANT':
+        if composition.apprenant != request.user:
+            messages.error(request, "Accès non autorisé")
+            return redirect('evaluations:list_apprenant')
+    elif request.user.role == 'ENSEIGNANT':
+        if composition.evaluation.enseignant != request.user:
+            messages.error(request, "Accès non autorisé")
+            return redirect('evaluations:list_enseignant')
+
+    return FileResponse(fichier.fichier.open('rb'), as_attachment=True)
+
+

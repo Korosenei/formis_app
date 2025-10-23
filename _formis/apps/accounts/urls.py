@@ -8,13 +8,15 @@ urlpatterns = [
     # Authentification
     path('login/', views.LoginView.as_view(), name='login'),
     path('logout/', views.LogoutView.as_view(), name='logout'),
-    path('change-password/', views.ChangePasswordView.as_view(), name='change_password'),
+    # path('change-password/', views.ChangePasswordView.as_view(), name='change_password'),
     path('forgot-password/', views.ForgotPasswordView.as_view(), name='forgot_password'),
     path('reset-password/<str:token>/', views.ResetPasswordView.as_view(), name='reset_password'),
 
     # Profil personnel
     path('profile/', views.ProfileView.as_view(), name='profile'),
     path('profile/edit/', views.EditProfileView.as_view(), name='edit_profile'),
+    path('profile/change-password/', views.ChangePasswordView.as_view(), name='change_password'),
+    path('upload-profile-photo/', views.upload_profile_photo, name='upload_profile_photo'),
 
     # === GESTION DES UTILISATEURS (Admin/Chef de département) ===
     path('users/', views.UserListView.as_view(), name='user_list'),
@@ -25,6 +27,11 @@ urlpatterns = [
     path('users/<uuid:pk>/toggle-status/', views.toggle_user_status, name='user_toggle_status'),
     path('users/<uuid:pk>/reset-password/', views.admin_reset_password, name='user_reset_password'),
     path('users/export/', views.users_export, name='users_export'),
+
+    # === GESTION DES CHEFS DE DÉPARTEMENT ===
+    path('department-heads/', views.DepartmentHeadListView.as_view(), name='department_heads_list'),
+    path('department-heads/nominate/', views.NommerChefDepartementView.as_view(), name='nominate_department_head'),
+    path('department-heads/<uuid:pk>/revoke/', views.revoquer_chef_departement, name='revoke_department_head'),
 
     # === GESTION DES ENSEIGNANTS ===
     path('teachers/', views.TeacherListView.as_view(), name='teacher_list'),

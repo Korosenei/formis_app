@@ -1,0 +1,1894 @@
+INFO 2025-10-22 10:54:31,468 autoreload E:\formis_app\_formis\apps\accounts\admin.py changed, reloading.
+INFO 2025-10-22 10:54:34,016 autoreload Watching for file changes with StatReloader
+INFO 2025-10-22 10:55:18,950 autoreload E:\formis_app\_formis\apps\accounts\managers.py changed, reloading.
+INFO 2025-10-22 10:55:23,457 autoreload Watching for file changes with StatReloader
+ERROR 2025-10-22 10:59:07,132 log Internal Server Error: /dashboard/admin/departments/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 510, in parse
+    compile_func = self.tags[command]
+                   ~~~~~~~~~^^^^^^^^^
+KeyError: 'elif'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 199, in render
+    template = context.template.engine.select_template(template_name)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\engine.py", line 208, in select_template
+    return self.get_template(template_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+           ^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    nodelist = parser.parse()
+               ^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 512, in parse
+    self.invalid_block_tag(token, command, parse_until)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 577, in invalid_block_tag
+    raise self.error(
+django.template.exceptions.TemplateSyntaxError: Invalid block tag on line 15: 'elif'. Did you forget to register or load this tag?
+ERROR 2025-10-22 10:59:07,207 basehttp "GET /dashboard/admin/departments/ HTTP/1.1" 500 238979
+ERROR 2025-10-22 10:59:14,879 log Internal Server Error: /dashboard/admin/departments/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 510, in parse
+    compile_func = self.tags[command]
+                   ~~~~~~~~~^^^^^^^^^
+KeyError: 'elif'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 199, in render
+    template = context.template.engine.select_template(template_name)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\engine.py", line 208, in select_template
+    return self.get_template(template_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+           ^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    nodelist = parser.parse()
+               ^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 512, in parse
+    self.invalid_block_tag(token, command, parse_until)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 577, in invalid_block_tag
+    raise self.error(
+django.template.exceptions.TemplateSyntaxError: Invalid block tag on line 15: 'elif'. Did you forget to register or load this tag?
+ERROR 2025-10-22 10:59:14,899 basehttp "GET /dashboard/admin/departments/ HTTP/1.1" 500 239116
+INFO 2025-10-22 10:59:45,447 basehttp "GET /dashboard/admin/departments/ HTTP/1.1" 200 80152
+INFO 2025-10-22 11:00:01,442 basehttp "GET /academic/departements/nouveau/ HTTP/1.1" 200 51969
+INFO 2025-10-22 11:00:11,485 basehttp "GET /dashboard/admin/departments/ HTTP/1.1" 200 80152
+INFO 2025-10-22 11:03:36,547 autoreload E:\formis_app\_formis\apps\core\dashboard_urls.py changed, reloading.
+INFO 2025-10-22 11:03:42,656 autoreload Watching for file changes with StatReloader
+INFO 2025-10-22 11:04:03,968 basehttp "GET /dashboard/admin/users/ HTTP/1.1" 200 97874
+INFO 2025-10-22 11:04:04,817 basehttp "GET /media/profils/IMG-20220520-WA0007_FjejcY1.jpg HTTP/1.1" 304 0
+INFO 2025-10-22 11:04:08,101 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80071
+INFO 2025-10-22 12:20:44,597 autoreload E:\formis_app\_formis\apps\accounts\models.py changed, reloading.
+INFO 2025-10-22 12:20:53,909 autoreload Watching for file changes with StatReloader
+INFO 2025-10-22 12:24:41,730 autoreload E:\formis_app\_formis\apps\accounts\models.py changed, reloading.
+INFO 2025-10-22 12:24:48,617 autoreload Watching for file changes with StatReloader
+INFO 2025-10-22 12:25:57,772 autoreload E:\formis_app\_formis\apps\accounts\models.py changed, reloading.
+INFO 2025-10-22 12:26:01,786 autoreload Watching for file changes with StatReloader
+INFO 2025-10-22 12:29:58,495 autoreload E:\formis_app\_formis\apps\accounts\forms.py changed, reloading.
+INFO 2025-10-22 12:30:06,863 autoreload Watching for file changes with StatReloader
+INFO 2025-10-22 12:40:30,332 autoreload E:\formis_app\_formis\apps\accounts\forms.py changed, reloading.
+INFO 2025-10-22 12:40:39,127 autoreload Watching for file changes with StatReloader
+INFO 2025-10-22 12:43:28,550 basehttp "GET /admin/accounts/profilenseignant/ HTTP/1.1" 200 36544
+INFO 2025-10-22 12:43:29,301 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 8634
+INFO 2025-10-22 12:43:33,201 basehttp "GET /admin/accounts/profilenseignant/5/change/ HTTP/1.1" 200 40912
+INFO 2025-10-22 12:43:33,431 basehttp "GET /static/admin/js/calendar.js HTTP/1.1" 304 0
+INFO 2025-10-22 12:43:33,432 basehttp "GET /static/admin/js/admin/DateTimeShortcuts.js HTTP/1.1" 304 0
+INFO 2025-10-22 12:43:33,453 basehttp "GET /static/admin/js/SelectBox.js HTTP/1.1" 304 0
+INFO 2025-10-22 12:43:33,476 basehttp "GET /static/admin/js/SelectFilter2.js HTTP/1.1" 304 0
+INFO 2025-10-22 12:43:33,673 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 8634
+INFO 2025-10-22 12:43:34,023 basehttp "GET /static/admin/img/icon-calendar.svg HTTP/1.1" 304 0
+INFO 2025-10-22 12:43:34,027 basehttp "GET /static/admin/img/selector-icons.svg HTTP/1.1" 304 0
+INFO 2025-10-22 12:43:47,879 basehttp "POST /admin/accounts/profilenseignant/5/change/ HTTP/1.1" 302 0
+INFO 2025-10-22 12:43:48,157 basehttp "GET /admin/accounts/profilenseignant/ HTTP/1.1" 200 36811
+INFO 2025-10-22 12:43:48,550 basehttp "GET /admin/jsi18n/ HTTP/1.1" 200 8634
+INFO 2025-10-22 12:43:56,270 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80069
+INFO 2025-10-22 12:43:56,617 basehttp "GET /media/profils/IMG-20220520-WA0007_FjejcY1.jpg HTTP/1.1" 304 0
+INFO 2025-10-22 12:44:02,875 basehttp "GET /accounts/teachers/e9d52f2e-b312-452c-9feb-d6e6e46501df/ HTTP/1.1" 200 61064
+INFO 2025-10-22 14:07:03,409 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80069
+INFO 2025-10-22 14:07:03,590 basehttp "GET /media/profils/IMG-20220520-WA0007_FjejcY1.jpg HTTP/1.1" 304 0
+INFO 2025-10-22 14:07:07,387 basehttp "GET /accounts/teachers/add/ HTTP/1.1" 200 62539
+INFO 2025-10-22 14:07:42,759 basehttp "GET /accounts/teachers/add/ HTTP/1.1" 200 57658
+INFO 2025-10-22 14:08:17,564 basehttp "GET /accounts/teachers/ HTTP/1.1" 200 0
+INFO 2025-10-22 17:01:43,342 basehttp "GET /accounts/teachers/ HTTP/1.1" 200 0
+INFO 2025-10-22 17:01:50,949 basehttp "GET /accounts/teachers/ HTTP/1.1" 200 0
+INFO 2025-10-22 17:01:57,680 basehttp "GET /dashboard/admin/ HTTP/1.1" 200 62765
+WARNING 2025-10-22 17:01:57,917 basehttp "GET /static/css/dashboard/admin.css HTTP/1.1" 404 1996
+INFO 2025-10-22 17:02:01,817 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80069
+INFO 2025-10-22 17:02:02,964 basehttp "GET /media/profils/IMG-20220520-WA0007_FjejcY1.jpg HTTP/1.1" 304 0
+INFO 2025-10-22 17:02:06,541 basehttp "GET /accounts/teachers/add/ HTTP/1.1" 200 63946
+INFO 2025-10-22 17:03:09,713 basehttp "GET /dashboard/admin/ HTTP/1.1" 200 62765
+WARNING 2025-10-22 17:03:10,732 basehttp "GET /static/css/dashboard/admin.css HTTP/1.1" 404 1996
+INFO 2025-10-22 17:05:56,498 autoreload E:\formis_app\_formis\apps\core\dashboard_views.py changed, reloading.
+INFO 2025-10-22 17:06:31,326 autoreload Watching for file changes with StatReloader
+INFO 2025-10-22 17:07:24,858 autoreload E:\formis_app\_formis\apps\core\dashboard_urls.py changed, reloading.
+INFO 2025-10-22 17:07:28,147 autoreload Watching for file changes with StatReloader
+INFO 2025-10-22 17:08:29,924 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-22 17:08:44,084 autoreload Watching for file changes with StatReloader
+INFO 2025-10-22 17:09:08,882 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-22 17:09:18,497 autoreload Watching for file changes with StatReloader
+INFO 2025-10-22 17:09:37,485 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-22 17:09:46,572 autoreload Watching for file changes with StatReloader
+INFO 2025-10-22 17:12:43,438 basehttp "GET /dashboard/admin/ HTTP/1.1" 200 63061
+WARNING 2025-10-22 17:12:43,779 basehttp "GET /static/css/dashboard/admin.css HTTP/1.1" 404 1996
+ERROR 2025-10-22 17:12:51,131 log Internal Server Error: /dashboard/admin/department_heads/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\core\dashboard_views.py", line 263, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\base.py", line 144, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\list.py", line 178, in get
+    context = self.get_context_data()
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\core\dashboard_views.py", line 277, in get_context_data
+    context['departements_sans_chef'] = Departement.objects.filter(
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1493, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1511, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1518, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1646, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1526, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1333, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1806, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'chef_departement' into field. Choices are: bureau, chef, chef_id, code, created_at, description, email, enseignants_intervenants, est_actif, etablissement, etablissement_id, filieres, id, nom, telephone, updated_at, utilisateurs
+ERROR 2025-10-22 17:12:51,293 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 500 147442
+INFO 2025-10-22 17:15:33,167 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-22 17:15:49,791 autoreload Watching for file changes with StatReloader
+INFO 2025-10-22 17:16:08,087 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-22 17:16:15,680 autoreload Watching for file changes with StatReloader
+INFO 2025-10-22 17:16:37,042 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-22 17:16:45,640 autoreload Watching for file changes with StatReloader
+ERROR 2025-10-22 17:18:42,980 log Internal Server Error: /dashboard/admin/department_heads/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\core\dashboard_views.py", line 263, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\base.py", line 144, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\list.py", line 178, in get
+    context = self.get_context_data()
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\core\dashboard_views.py", line 277, in get_context_data
+    context['departements_sans_chef'] = Departement.objects.filter(
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1493, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1511, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1518, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1646, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1526, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1333, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1806, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'chef_departement' into field. Choices are: bureau, chef, chef_id, code, created_at, description, email, enseignants_intervenants, est_actif, etablissement, etablissement_id, filieres, id, nom, telephone, updated_at, utilisateurs
+ERROR 2025-10-22 17:18:43,012 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 500 147442
+INFO 2025-10-22 17:19:03,359 basehttp "GET /dashboard/admin/users/ HTTP/1.1" 200 98170
+INFO 2025-10-22 17:19:11,477 basehttp "GET /dashboard/admin/departments/ HTTP/1.1" 200 80448
+INFO 2025-10-22 17:19:33,943 basehttp "GET /dashboard/admin/users/ HTTP/1.1" 200 98170
+INFO 2025-10-22 17:19:37,626 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80365
+INFO 2025-10-22 17:19:52,863 basehttp "GET /accounts/teachers/e9d52f2e-b312-452c-9feb-d6e6e46501df/ HTTP/1.1" 200 61360
+ERROR 2025-10-22 17:19:58,575 log Internal Server Error: /accounts/teachers/e9d52f2e-b312-452c-9feb-d6e6e46501df/edit/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\views.py", line 865, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\base.py", line 144, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 202, in get
+    return super().get(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 142, in get
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\views.py", line 892, in get_context_data
+    context = super().get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 72, in get_context_data
+    kwargs["form"] = self.get_form()
+                     ^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 37, in get_form
+    return form_class(**self.get_form_kwargs())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\forms.py", line 353, in __init__
+    self.fields['departement_dirige'].queryset = Departement.objects.filter(
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1493, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1511, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1518, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1646, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1526, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1333, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1806, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'chef_departement' into field. Choices are: bureau, chef, chef_id, code, created_at, description, email, enseignants_intervenants, est_actif, etablissement, etablissement_id, filieres, id, nom, telephone, updated_at, utilisateurs
+ERROR 2025-10-22 17:19:58,591 basehttp "GET /accounts/teachers/e9d52f2e-b312-452c-9feb-d6e6e46501df/edit/ HTTP/1.1" 500 165122
+ERROR 2025-10-22 17:20:13,997 log Internal Server Error: /accounts/teachers/e9d52f2e-b312-452c-9feb-d6e6e46501df/edit/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\views.py", line 865, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\base.py", line 144, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 202, in get
+    return super().get(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 142, in get
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\views.py", line 892, in get_context_data
+    context = super().get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 72, in get_context_data
+    kwargs["form"] = self.get_form()
+                     ^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 37, in get_form
+    return form_class(**self.get_form_kwargs())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\forms.py", line 353, in __init__
+    self.fields['departement_dirige'].queryset = Departement.objects.filter(
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1493, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1511, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1518, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1646, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1526, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1333, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1806, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'chef_departement' into field. Choices are: bureau, chef, chef_id, code, created_at, description, email, enseignants_intervenants, est_actif, etablissement, etablissement_id, filieres, id, nom, telephone, updated_at, utilisateurs
+ERROR 2025-10-22 17:20:14,025 basehttp "GET /accounts/teachers/e9d52f2e-b312-452c-9feb-d6e6e46501df/edit/ HTTP/1.1" 500 165092
+INFO 2025-10-22 18:47:24,655 autoreload E:\formis_app\_formis\apps\core\dashboard_views.py changed, reloading.
+INFO 2025-10-22 18:48:02,219 autoreload Watching for file changes with StatReloader
+ERROR 2025-10-22 18:48:13,239 log Internal Server Error: /accounts/teachers/e9d52f2e-b312-452c-9feb-d6e6e46501df/edit/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\views.py", line 865, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\base.py", line 144, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 202, in get
+    return super().get(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 142, in get
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\views.py", line 892, in get_context_data
+    context = super().get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 72, in get_context_data
+    kwargs["form"] = self.get_form()
+                     ^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 37, in get_form
+    return form_class(**self.get_form_kwargs())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\forms.py", line 353, in __init__
+    self.fields['departement_dirige'].queryset = Departement.objects.filter(
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1493, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1511, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1518, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1646, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1526, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1333, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1806, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'chef_departement' into field. Choices are: bureau, chef, chef_id, code, created_at, description, email, enseignants_intervenants, est_actif, etablissement, etablissement_id, filieres, id, nom, telephone, updated_at, utilisateurs
+ERROR 2025-10-22 18:48:13,420 basehttp "GET /accounts/teachers/e9d52f2e-b312-452c-9feb-d6e6e46501df/edit/ HTTP/1.1" 500 165229
+ERROR 2025-10-22 18:48:22,943 log Internal Server Error: /dashboard/admin/department_heads/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 90, in rendered_content
+    template = self.resolve_template(self.template_name)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 72, in resolve_template
+    return select_template(template, using=self.using)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader.py", line 47, in select_template
+    raise TemplateDoesNotExist(", ".join(template_name_list), chain=chain)
+django.template.exceptions.TemplateDoesNotExist: dashboard/admin/department_heads.html, accounts/profilenseignant_list.html
+ERROR 2025-10-22 18:48:23,011 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 500 101411
+INFO 2025-10-22 18:49:37,134 autoreload E:\formis_app\_formis\apps\core\dashboard_views.py changed, reloading.
+INFO 2025-10-22 18:49:46,717 autoreload Watching for file changes with StatReloader
+ERROR 2025-10-22 18:49:53,364 log Internal Server Error: /dashboard/admin/department_heads/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 90, in rendered_content
+    template = self.resolve_template(self.template_name)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 72, in resolve_template
+    return select_template(template, using=self.using)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader.py", line 47, in select_template
+    raise TemplateDoesNotExist(", ".join(template_name_list), chain=chain)
+django.template.exceptions.TemplateDoesNotExist: dashboard/admin/department_heads.html, accounts/profilenseignant_list.html
+ERROR 2025-10-22 18:49:53,375 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 500 101548
+ERROR 2025-10-22 18:50:06,312 log Internal Server Error: /dashboard/admin/department_heads/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 90, in rendered_content
+    template = self.resolve_template(self.template_name)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 72, in resolve_template
+    return select_template(template, using=self.using)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader.py", line 47, in select_template
+    raise TemplateDoesNotExist(", ".join(template_name_list), chain=chain)
+django.template.exceptions.TemplateDoesNotExist: dashboard/admin/department_heads.html, accounts/profilenseignant_list.html
+ERROR 2025-10-22 18:50:06,331 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 500 101548
+ERROR 2025-10-22 18:54:41,801 log Internal Server Error: /dashboard/admin/department_heads/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 90, in rendered_content
+    template = self.resolve_template(self.template_name)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 72, in resolve_template
+    return select_template(template, using=self.using)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader.py", line 47, in select_template
+    raise TemplateDoesNotExist(", ".join(template_name_list), chain=chain)
+django.template.exceptions.TemplateDoesNotExist: dashboard/admin/department_heads.html, accounts/profilenseignant_list.html
+ERROR 2025-10-22 18:54:41,806 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 500 101548
+ERROR 2025-10-22 18:54:53,017 log Internal Server Error: /dashboard/admin/department_heads/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 90, in rendered_content
+    template = self.resolve_template(self.template_name)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 72, in resolve_template
+    return select_template(template, using=self.using)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader.py", line 47, in select_template
+    raise TemplateDoesNotExist(", ".join(template_name_list), chain=chain)
+django.template.exceptions.TemplateDoesNotExist: dashboard/admin/department_heads.html, accounts/profilenseignant_list.html
+ERROR 2025-10-22 18:54:53,029 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 500 101548
+INFO 2025-10-22 19:02:08,097 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 0
+INFO 2025-10-22 21:31:07,329 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 51261
+INFO 2025-10-22 21:31:49,533 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80365
+INFO 2025-10-22 21:31:49,831 basehttp "GET /media/profils/IMG-20220520-WA0007_FjejcY1.jpg HTTP/1.1" 304 0
+INFO 2025-10-22 21:31:52,398 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 51261
+INFO 2025-10-22 21:31:53,666 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 51261
+INFO 2025-10-22 21:31:57,284 basehttp "GET /dashboard/admin/users/ HTTP/1.1" 200 98170
+INFO 2025-10-23 05:03:05,601 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80365
+INFO 2025-10-23 05:03:05,998 basehttp "GET /media/profils/IMG-20220507-WA0018.jpg HTTP/1.1" 304 0
+INFO 2025-10-23 05:03:06,087 basehttp "GET /media/profils/IMG-20220520-WA0007_FjejcY1.jpg HTTP/1.1" 304 0
+INFO 2025-10-23 05:03:10,330 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 51261
+INFO 2025-10-23 05:03:13,007 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80365
+ERROR 2025-10-23 05:03:20,068 log Internal Server Error: /accounts/teachers/add/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\views.py", line 792, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\base.py", line 144, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 178, in get
+    return super().get(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 142, in get
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\views.py", line 849, in get_context_data
+    context = super().get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 72, in get_context_data
+    kwargs["form"] = self.get_form()
+                     ^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 37, in get_form
+    return form_class(**self.get_form_kwargs())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\forms.py", line 353, in __init__
+    self.fields['departement_dirige'].queryset = Departement.objects.filter(
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1493, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1511, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1518, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1646, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1526, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1333, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1806, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'chef_departement' into field. Choices are: bureau, chef, chef_id, code, created_at, description, email, enseignants_intervenants, est_actif, etablissement, etablissement_id, filieres, id, nom, telephone, updated_at, utilisateurs
+ERROR 2025-10-23 05:03:20,118 basehttp "GET /accounts/teachers/add/ HTTP/1.1" 500 163937
+ERROR 2025-10-23 05:03:37,422 log Internal Server Error: /accounts/teachers/add/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\views.py", line 792, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\contrib\auth\mixins.py", line 73, in dispatch
+    return super().dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\base.py", line 144, in dispatch
+    return handler(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 178, in get
+    return super().get(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 142, in get
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\views.py", line 849, in get_context_data
+    context = super().get_context_data(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 72, in get_context_data
+    kwargs["form"] = self.get_form()
+                     ^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\views\generic\edit.py", line 37, in get_form
+    return form_class(**self.get_form_kwargs())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\forms.py", line 353, in __init__
+    self.fields['departement_dirige'].queryset = Departement.objects.filter(
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1493, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1511, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\query.py", line 1518, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1646, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1526, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1333, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\db\models\sql\query.py", line 1806, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'chef_departement' into field. Choices are: bureau, chef, chef_id, code, created_at, description, email, enseignants_intervenants, est_actif, etablissement, etablissement_id, filieres, id, nom, telephone, updated_at, utilisateurs
+ERROR 2025-10-23 05:03:37,438 basehttp "GET /accounts/teachers/add/ HTTP/1.1" 500 164074
+INFO 2025-10-23 05:07:35,868 autoreload E:\formis_app\_formis\apps\accounts\forms.py changed, reloading.
+INFO 2025-10-23 05:07:54,887 autoreload Watching for file changes with StatReloader
+ERROR 2025-10-23 05:08:11,067 log Internal Server Error: /accounts/teachers/add/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 90, in rendered_content
+    template = self.resolve_template(self.template_name)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 72, in resolve_template
+    return select_template(template, using=self.using)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader.py", line 42, in select_template
+    return engine.get_template(template_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 79, in get_template
+    return Template(self.engine.get_template(template_name), self)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+           ^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    nodelist = parser.parse()
+               ^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 299, in do_extends
+    nodelist = parser.parse()
+               ^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 234, in do_block
+    nodelist = parser.parse(("endblock",))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\defaulttags.py", line 862, in do_for
+    nodelist_loop = parser.parse(
+                    ^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 489, in parse
+    raise self.error(token, e)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 487, in parse
+    filter_expression = self.compile_filter(token.contents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 609, in compile_filter
+    return FilterExpression(token, self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 710, in __init__
+    raise TemplateSyntaxError(
+django.template.exceptions.TemplateSyntaxError: Could not parse the remainder: ' == 'permanent' and 'user-tie' or 'user-clock'' from 'value|lower == 'permanent' and 'user-tie' or 'user-clock''
+ERROR 2025-10-23 05:08:11,081 basehttp "GET /accounts/teachers/add/ HTTP/1.1" 500 309595
+INFO 2025-10-23 05:09:03,131 autoreload E:\formis_app\_formis\apps\accounts\forms.py changed, reloading.
+INFO 2025-10-23 05:09:06,323 autoreload Watching for file changes with StatReloader
+ERROR 2025-10-23 05:09:29,644 log Internal Server Error: /accounts/teachers/add/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 90, in rendered_content
+    template = self.resolve_template(self.template_name)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 72, in resolve_template
+    return select_template(template, using=self.using)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader.py", line 42, in select_template
+    return engine.get_template(template_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 79, in get_template
+    return Template(self.engine.get_template(template_name), self)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+           ^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    nodelist = parser.parse()
+               ^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 299, in do_extends
+    nodelist = parser.parse()
+               ^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 234, in do_block
+    nodelist = parser.parse(("endblock",))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\defaulttags.py", line 862, in do_for
+    nodelist_loop = parser.parse(
+                    ^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 489, in parse
+    raise self.error(token, e)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 487, in parse
+    filter_expression = self.compile_filter(token.contents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 609, in compile_filter
+    return FilterExpression(token, self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 710, in __init__
+    raise TemplateSyntaxError(
+django.template.exceptions.TemplateSyntaxError: Could not parse the remainder: ' == 'permanent' and 'user-tie' or 'user-clock'' from 'value|lower == 'permanent' and 'user-tie' or 'user-clock''
+ERROR 2025-10-23 05:09:29,691 basehttp "GET /accounts/teachers/add/ HTTP/1.1" 500 309595
+INFO 2025-10-23 05:11:38,866 basehttp "GET /accounts/teachers/add/ HTTP/1.1" 200 63241
+INFO 2025-10-23 05:14:24,295 basehttp "GET /accounts/teachers/ HTTP/1.1" 200 0
+INFO 2025-10-23 05:14:30,417 basehttp "GET /accounts/teachers/ HTTP/1.1" 200 0
+INFO 2025-10-23 05:14:42,456 basehttp "GET /accounts/teachers/e9d52f2e-b312-452c-9feb-d6e6e46501df/ HTTP/1.1" 200 61360
+INFO 2025-10-23 05:22:51,060 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 05:23:00,632 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 05:23:50,858 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 05:23:55,385 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 05:29:17,601 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 05:29:23,326 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 05:41:07,833 autoreload E:\formis_app\_formis\apps\accounts\forms.py changed, reloading.
+INFO 2025-10-23 05:41:14,896 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 05:41:47,057 autoreload E:\formis_app\_formis\apps\accounts\forms.py changed, reloading.
+INFO 2025-10-23 05:41:50,721 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 05:41:57,086 autoreload E:\formis_app\_formis\apps\accounts\forms.py changed, reloading.
+INFO 2025-10-23 05:42:03,383 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 05:42:15,320 autoreload E:\formis_app\_formis\apps\accounts\forms.py changed, reloading.
+INFO 2025-10-23 05:42:22,704 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 05:42:33,521 autoreload E:\formis_app\_formis\apps\accounts\forms.py changed, reloading.
+INFO 2025-10-23 05:42:37,878 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 05:43:02,613 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 05:43:09,523 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 05:43:20,883 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 51060
+INFO 2025-10-23 05:43:31,712 basehttp "GET /accounts/department-heads/nominate/ HTTP/1.1" 200 53735
+INFO 2025-10-23 05:43:56,630 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 51060
+INFO 2025-10-23 05:45:13,180 basehttp "GET /dashboard/profile/ HTTP/1.1" 200 83727
+INFO 2025-10-23 05:45:17,579 basehttp "GET /dashboard/profile/edit/ HTTP/1.1" 200 13136
+INFO 2025-10-23 05:45:27,231 basehttp "GET /dashboard/profile/edit/ HTTP/1.1" 200 13136
+INFO 2025-10-23 05:48:59,600 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 53362
+INFO 2025-10-23 05:49:23,531 basehttp "GET /accounts/department-heads/nominate/ HTTP/1.1" 200 53735
+INFO 2025-10-23 05:49:54,797 basehttp "GET /dashboard/admin/ HTTP/1.1" 200 63052
+WARNING 2025-10-23 05:49:55,031 basehttp "GET /static/css/dashboard/admin.css HTTP/1.1" 404 1996
+INFO 2025-10-23 05:50:54,997 basehttp "GET /dashboard/profile/ HTTP/1.1" 200 83727
+INFO 2025-10-23 05:51:05,269 basehttp "GET /dashboard/profile/edit/ HTTP/1.1" 200 13136
+INFO 2025-10-23 05:51:39,084 basehttp "GET /dashboard/profile/edit/ HTTP/1.1" 200 13136
+INFO 2025-10-23 05:51:43,444 basehttp "GET /dashboard/profile/edit/ HTTP/1.1" 200 13136
+INFO 2025-10-23 05:52:10,833 basehttp "GET /dashboard/profile/edit/ HTTP/1.1" 200 0
+INFO 2025-10-23 05:59:30,998 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 05:59:40,922 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 05:59:48,934 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 05:59:55,128 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:00:01,593 basehttp "GET /dashboard/profile/edit/ HTTP/1.1" 200 0
+INFO 2025-10-23 06:00:34,337 basehttp "GET /dashboard/profile/ HTTP/1.1" 200 70590
+INFO 2025-10-23 06:01:13,738 basehttp "GET /dashboard/profile/ HTTP/1.1" 200 70590
+INFO 2025-10-23 06:01:57,441 basehttp "GET /accounts/profile/ HTTP/1.1" 200 9340
+INFO 2025-10-23 06:02:06,829 basehttp "GET /accounts/profile/ HTTP/1.1" 200 9340
+INFO 2025-10-23 06:02:13,729 basehttp "GET /dashboard/admin/ HTTP/1.1" 200 63051
+WARNING 2025-10-23 06:02:13,941 basehttp "GET /static/css/dashboard/admin.css HTTP/1.1" 404 1996
+INFO 2025-10-23 06:02:17,740 basehttp "GET /accounts/profile/ HTTP/1.1" 200 9340
+INFO 2025-10-23 06:02:38,942 basehttp "GET /accounts/profile/ HTTP/1.1" 200 9556
+ERROR 2025-10-23 06:03:09,725 log Internal Server Error: /accounts/profile/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 891, in _resolve_lookup
+    current = current[bit]
+              ~~~~~~~^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\context.py", line 88, in __getitem__
+    raise KeyError(key)
+KeyError: 'total_enseignants'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 897, in _resolve_lookup
+    if isinstance(current, BaseContext) and getattr(
+                                            ^^^^^^^^
+AttributeError: type object 'RequestContext' has no attribute 'total_enseignants'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 907, in _resolve_lookup
+    current = current[int(bit)]
+                      ^^^^^^^^
+ValueError: invalid literal for int() with base 10: 'total_enseignants'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\defaulttags.py", line 327, in render
+    return nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1075, in render
+    output = self.filter_expression.resolve(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 743, in resolve
+    arg_vals.append(arg.resolve(context))
+                    ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 854, in resolve
+    value = self._resolve_lookup(context)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 914, in _resolve_lookup
+    raise VariableDoesNotExist(
+django.template.base.VariableDoesNotExist: Failed lookup for key [total_enseignants] in [{'True': True, 'False': False, 'None': None}, {}, {}, {'view': <apps.accounts.views.ProfileView object at 0x0000025C1C739A00>, 'user': <SimpleLazyObject: <Utilisateur: Admin_uo UJKZ (AD20250001)>>}]
+ERROR 2025-10-23 06:03:09,760 basehttp "GET /accounts/profile/ HTTP/1.1" 500 202990
+ERROR 2025-10-23 06:03:14,416 log Internal Server Error: /accounts/profile/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 891, in _resolve_lookup
+    current = current[bit]
+              ~~~~~~~^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\context.py", line 88, in __getitem__
+    raise KeyError(key)
+KeyError: 'total_enseignants'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 897, in _resolve_lookup
+    if isinstance(current, BaseContext) and getattr(
+                                            ^^^^^^^^
+AttributeError: type object 'RequestContext' has no attribute 'total_enseignants'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 907, in _resolve_lookup
+    current = current[int(bit)]
+                      ^^^^^^^^
+ValueError: invalid literal for int() with base 10: 'total_enseignants'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\defaulttags.py", line 327, in render
+    return nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1075, in render
+    output = self.filter_expression.resolve(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 743, in resolve
+    arg_vals.append(arg.resolve(context))
+                    ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 854, in resolve
+    value = self._resolve_lookup(context)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 914, in _resolve_lookup
+    raise VariableDoesNotExist(
+django.template.base.VariableDoesNotExist: Failed lookup for key [total_enseignants] in [{'True': True, 'False': False, 'None': None}, {}, {}, {'view': <apps.accounts.views.ProfileView object at 0x0000025C1EA27E30>, 'user': <SimpleLazyObject: <Utilisateur: Admin_uo UJKZ (AD20250001)>>}]
+ERROR 2025-10-23 06:03:14,467 basehttp "GET /accounts/profile/ HTTP/1.1" 500 202990
+ERROR 2025-10-23 06:03:46,273 log Internal Server Error: /accounts/profile/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 891, in _resolve_lookup
+    current = current[bit]
+              ~~~~~~~^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\context.py", line 88, in __getitem__
+    raise KeyError(key)
+KeyError: 'total_enseignants'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 897, in _resolve_lookup
+    if isinstance(current, BaseContext) and getattr(
+                                            ^^^^^^^^
+AttributeError: type object 'RequestContext' has no attribute 'total_enseignants'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 907, in _resolve_lookup
+    current = current[int(bit)]
+                      ^^^^^^^^
+ValueError: invalid literal for int() with base 10: 'total_enseignants'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\defaulttags.py", line 327, in render
+    return nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1075, in render
+    output = self.filter_expression.resolve(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 743, in resolve
+    arg_vals.append(arg.resolve(context))
+                    ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 854, in resolve
+    value = self._resolve_lookup(context)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 914, in _resolve_lookup
+    raise VariableDoesNotExist(
+django.template.base.VariableDoesNotExist: Failed lookup for key [total_enseignants] in [{'True': True, 'False': False, 'None': None}, {}, {}, {'view': <apps.accounts.views.ProfileView object at 0x0000025C1E74BA40>, 'user': <SimpleLazyObject: <Utilisateur: Admin_uo UJKZ (AD20250001)>>}]
+ERROR 2025-10-23 06:03:46,291 basehttp "GET /accounts/profile/ HTTP/1.1" 500 202990
+INFO 2025-10-23 06:05:21,711 autoreload E:\formis_app\_formis\apps\core\dashboard_views.py changed, reloading.
+INFO 2025-10-23 06:05:33,940 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:05:42,126 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 06:05:49,567 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:06:23,224 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 06:06:38,192 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:07:14,355 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 06:07:31,325 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:08:16,884 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 06:08:34,603 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:09:11,824 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 06:09:25,424 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:10:30,786 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 06:10:53,484 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:11:13,993 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 06:11:29,498 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:11:44,020 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 06:11:56,845 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:12:15,939 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 06:12:32,193 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:12:42,612 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 06:12:56,200 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:13:01,927 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 06:13:18,142 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:13:26,618 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 06:13:46,123 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:14:30,472 autoreload E:\formis_app\_formis\apps\accounts\views.py changed, reloading.
+INFO 2025-10-23 06:14:38,071 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:16:15,491 autoreload E:\formis_app\_formis\apps\accounts\urls.py changed, reloading.
+INFO 2025-10-23 06:16:26,182 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:16:48,122 autoreload E:\formis_app\_formis\apps\accounts\urls.py changed, reloading.
+INFO 2025-10-23 06:17:04,266 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:17:34,278 autoreload E:\formis_app\_formis\apps\core\dashboard_urls.py changed, reloading.
+INFO 2025-10-23 06:17:45,844 autoreload Watching for file changes with StatReloader
+ERROR 2025-10-23 06:17:54,361 log Internal Server Error: /accounts/profile/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\defaulttags.py", line 480, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\urls\base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\urls\resolvers.py", line 831, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'edit_profile' not found. 'edit_profile' is not a valid view function or pattern name.
+ERROR 2025-10-23 06:17:54,428 basehttp "GET /accounts/profile/ HTTP/1.1" 500 169295
+ERROR 2025-10-23 06:18:43,705 log Internal Server Error: /accounts/profile/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 210, in render
+    return template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 173, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\defaulttags.py", line 480, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\urls\base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\urls\resolvers.py", line 831, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'change_password' not found. 'change_password' is not a valid view function or pattern name.
+ERROR 2025-10-23 06:18:43,724 basehttp "GET /accounts/profile/ HTTP/1.1" 500 192885
+ERROR 2025-10-23 06:20:26,682 log Internal Server Error: /accounts/profile/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 210, in render
+    return template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 173, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\defaulttags.py", line 480, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\urls\base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\urls\resolvers.py", line 831, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'change_password' not found. 'change_password' is not a valid view function or pattern name.
+ERROR 2025-10-23 06:20:26,705 basehttp "GET /accounts/profile/ HTTP/1.1" 500 192885
+ERROR 2025-10-23 06:20:52,541 log Internal Server Error: /accounts/profile/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 199, in render
+    template = context.template.engine.select_template(template_name)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\engine.py", line 214, in select_template
+    raise TemplateDoesNotExist(", ".join(not_found))
+django.template.exceptions.TemplateDoesNotExist: dashboard/change_password.html
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 109, in render
+    reraise(exc, self.backend)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 130, in reraise
+    raise new from exc
+django.template.exceptions.TemplateDoesNotExist: dashboard/change_password.html
+ERROR 2025-10-23 06:20:52,554 basehttp "GET /accounts/profile/ HTTP/1.1" 500 170020
+ERROR 2025-10-23 06:25:28,292 log Internal Server Error: /accounts/profile/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 199, in render
+    template = context.template.engine.select_template(template_name)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\engine.py", line 208, in select_template
+    return self.get_template(template_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loaders\cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loaders\base.py", line 28, in get_template
+    return Template(
+           ^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 154, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 196, in compile_nodelist
+    nodelist = parser.parse()
+               ^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 299, in do_extends
+    nodelist = parser.parse()
+               ^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 234, in do_block
+    nodelist = parser.parse(("endblock",))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\defaulttags.py", line 962, in do_if
+    nodelist = parser.parse(("elif", "else", "endif"))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 518, in parse
+    raise self.error(token, e)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 516, in parse
+    compiled_result = compile_func(self, token)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\defaulttags.py", line 862, in do_for
+    nodelist_loop = parser.parse(
+                    ^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 489, in parse
+    raise self.error(token, e)
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 487, in parse
+    filter_expression = self.compile_filter(token.contents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 609, in compile_filter
+    return FilterExpression(token, self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 710, in __init__
+    raise TemplateSyntaxError(
+django.template.exceptions.TemplateSyntaxError: Could not parse the remainder: ' == 'success' and 'check-circle' or 'exclamation-circle'' from 'message.tags == 'success' and 'check-circle' or 'exclamation-circle''
+ERROR 2025-10-23 06:25:28,336 basehttp "GET /accounts/profile/ HTTP/1.1" 500 374754
+ERROR 2025-10-23 06:32:25,122 log Internal Server Error: /accounts/profile/
+Traceback (most recent call last):
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\core\handlers\base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\backends\django.py", line 107, in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 171, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\loader_tags.py", line 210, in render
+    return template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 173, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 1016, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\base.py", line 977, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\template\defaulttags.py", line 480, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\urls\base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\.env\Lib\site-packages\django\urls\resolvers.py", line 831, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'change_password' not found. 'change_password' is not a valid view function or pattern name.
+ERROR 2025-10-23 06:32:25,154 basehttp "GET /accounts/profile/ HTTP/1.1" 500 192901
+INFO 2025-10-23 06:35:40,961 autoreload E:\formis_app\_formis\apps\accounts\urls.py changed, reloading.
+INFO 2025-10-23 06:35:44,741 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:35:58,967 basehttp "GET /accounts/profile/ HTTP/1.1" 200 125963
+INFO 2025-10-23 06:36:39,489 basehttp "GET /accounts/profile/ HTTP/1.1" 200 125977
+INFO 2025-10-23 06:36:58,227 basehttp "GET /dashboard/admin/ HTTP/1.1" 200 63051
+WARNING 2025-10-23 06:36:58,379 basehttp "GET /static/css/dashboard/admin.css HTTP/1.1" 404 1996
+INFO 2025-10-23 06:37:04,203 basehttp "GET /accounts/profile/ HTTP/1.1" 200 54037
+INFO 2025-10-23 06:37:22,936 basehttp "GET /accounts/profile/edit/ HTTP/1.1" 200 55656
+INFO 2025-10-23 06:37:44,964 basehttp "GET /accounts/profile/ HTTP/1.1" 200 54037
+INFO 2025-10-23 06:37:48,074 basehttp "GET /accounts/profile/change-password/ HTTP/1.1" 200 16251
+INFO 2025-10-23 06:38:05,139 basehttp "GET /accounts/profile/ HTTP/1.1" 200 54037
+INFO 2025-10-23 06:38:22,895 basehttp "GET /dashboard/admin/ HTTP/1.1" 200 63051
+WARNING 2025-10-23 06:38:23,058 basehttp "GET /static/css/dashboard/admin.css HTTP/1.1" 404 1996
+INFO 2025-10-23 06:39:02,216 autoreload E:\formis_app\_formis\apps\accounts\models.py changed, reloading.
+INFO 2025-10-23 06:39:07,024 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 06:40:51,309 basehttp "GET /dashboard/admin/users/ HTTP/1.1" 200 98169
+INFO 2025-10-23 06:40:56,136 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80364
+INFO 2025-10-23 06:40:59,899 basehttp "GET /accounts/teachers/e9d52f2e-b312-452c-9feb-d6e6e46501df/ HTTP/1.1" 200 61359
+INFO 2025-10-23 06:41:08,865 basehttp "GET /dashboard/admin/ HTTP/1.1" 200 63051
+WARNING 2025-10-23 06:41:09,039 basehttp "GET /static/css/dashboard/admin.css HTTP/1.1" 404 1996
+INFO 2025-10-23 06:41:11,809 basehttp "GET /dashboard/admin/users/ HTTP/1.1" 200 98169
+INFO 2025-10-23 06:41:16,175 basehttp "GET /accounts/users/add/ HTTP/1.1" 200 53747
+INFO 2025-10-23 06:41:35,355 basehttp "GET /dashboard/admin/users/ HTTP/1.1" 200 98169
+INFO 2025-10-23 06:41:49,517 basehttp "GET /accounts/users/export/? HTTP/1.1" 200 758
+INFO 2025-10-23 06:42:08,674 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 53361
+INFO 2025-10-23 06:42:12,332 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80364
+INFO 2025-10-23 06:42:15,602 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 53361
+INFO 2025-10-23 06:42:18,281 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80364
+INFO 2025-10-23 06:42:26,854 basehttp "GET /dashboard/admin/users/ HTTP/1.1" 200 98169
+INFO 2025-10-23 06:42:31,415 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 53361
+INFO 2025-10-23 06:42:41,134 basehttp "GET /dashboard/admin/users/ HTTP/1.1" 200 98169
+INFO 2025-10-23 06:43:09,365 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80364
+INFO 2025-10-23 06:43:13,794 basehttp "GET /dashboard/admin/students/ HTTP/1.1" 200 86373
+INFO 2025-10-23 06:43:19,321 basehttp "GET /accounts/students/add/ HTTP/1.1" 200 60066
+INFO 2025-10-23 06:43:35,044 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80364
+INFO 2025-10-23 06:43:37,911 basehttp "GET /dashboard/admin/students/ HTTP/1.1" 200 86373
+INFO 2025-10-23 06:43:54,112 basehttp "GET /dashboard/admin/users/ HTTP/1.1" 200 98169
+INFO 2025-10-23 06:45:31,672 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 53361
+INFO 2025-10-23 06:46:30,203 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80364
+INFO 2025-10-23 06:46:39,508 basehttp "GET /dashboard/admin/students/ HTTP/1.1" 200 86373
+INFO 2025-10-23 07:01:20,974 autoreload E:\formis_app\_formis\apps\core\dashboard_views.py changed, reloading.
+INFO 2025-10-23 07:01:42,711 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 07:03:02,362 basehttp "GET /dashboard/admin/students/ HTTP/1.1" 200 86373
+INFO 2025-10-23 07:03:07,295 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 78037
+INFO 2025-10-23 07:03:31,728 basehttp "GET /accounts/department-heads/nominate/?dept=075af644-72bd-4d54-b30f-e96a3b5defbe HTTP/1.1" 200 53734
+INFO 2025-10-23 07:03:43,110 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 78037
+INFO 2025-10-23 07:04:03,833 basehttp "GET /accounts/teachers/4d7c3e36-c754-45f0-ba8c-1ed7430939d8/ HTTP/1.1" 200 61368
+INFO 2025-10-23 07:04:19,058 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 78037
+INFO 2025-10-23 07:05:07,858 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80364
+INFO 2025-10-23 07:05:08,179 basehttp "GET /media/profils/IMG-20220520-WA0007_FjejcY1.jpg HTTP/1.1" 304 0
+INFO 2025-10-23 07:05:13,351 basehttp "GET /dashboard/admin/users/ HTTP/1.1" 200 98169
+INFO 2025-10-23 07:05:16,996 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 78037
+INFO 2025-10-23 07:05:25,303 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80364
+INFO 2025-10-23 07:05:28,911 basehttp "GET /dashboard/admin/students/ HTTP/1.1" 200 86373
+INFO 2025-10-23 07:05:31,768 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 78037
+INFO 2025-10-23 07:05:36,214 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80364
+INFO 2025-10-23 07:05:38,693 basehttp "GET /dashboard/admin/students/ HTTP/1.1" 200 86373
+INFO 2025-10-23 07:05:41,568 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80364
+INFO 2025-10-23 07:05:45,289 basehttp "GET /dashboard/admin/students/ HTTP/1.1" 200 86373
+INFO 2025-10-23 07:06:35,699 basehttp "GET /dashboard/admin/students/ HTTP/1.1" 200 86439
+INFO 2025-10-23 07:06:57,154 basehttp "GET /dashboard/admin/departments/ HTTP/1.1" 200 80447
+INFO 2025-10-23 07:07:07,727 basehttp "GET /dashboard/admin/filieres/ HTTP/1.1" 200 93511
+INFO 2025-10-23 07:24:20,490 basehttp "GET /dashboard/admin/filieres/ HTTP/1.1" 200 93511
+INFO 2025-10-23 07:24:25,549 basehttp "GET /dashboard/admin/niveaux/ HTTP/1.1" 200 136672
+INFO 2025-10-23 07:24:48,866 basehttp "GET /dashboard/admin/niveaux/?per_page=20&page=1 HTTP/1.1" 200 136672
+INFO 2025-10-23 07:24:57,713 basehttp "GET /dashboard/admin/niveaux/?per_page=10&page=1 HTTP/1.1" 200 114725
+INFO 2025-10-23 07:25:08,658 basehttp "GET /dashboard/admin/niveaux/?page=2&per_page=10&page=1 HTTP/1.1" 200 114758
+INFO 2025-10-23 07:25:17,093 basehttp "GET /dashboard/admin/niveaux/ HTTP/1.1" 200 136672
+INFO 2025-10-23 07:25:28,134 basehttp "GET /dashboard/admin/filieres/ HTTP/1.1" 200 93511
+INFO 2025-10-23 07:26:19,298 basehttp "GET /dashboard/admin/filieres/ HTTP/1.1" 200 93519
+INFO 2025-10-23 07:27:21,622 basehttp "GET /dashboard/admin/filieres/ HTTP/1.1" 200 93637
+INFO 2025-10-23 07:27:43,793 basehttp "GET /dashboard/admin/classes/ HTTP/1.1" 200 79732
+INFO 2025-10-23 07:28:43,370 basehttp "GET /dashboard/admin/classes/ HTTP/1.1" 200 79739
+INFO 2025-10-23 07:29:42,154 basehttp "GET /dashboard/admin/classes/ HTTP/1.1" 200 79857
+INFO 2025-10-23 07:29:48,846 basehttp "GET /dashboard/admin/modules/ HTTP/1.1" 200 68720
+INFO 2025-10-23 07:30:44,207 basehttp "GET /dashboard/admin/modules/ HTTP/1.1" 200 68838
+INFO 2025-10-23 07:31:34,191 basehttp "GET /dashboard/admin/modules/ HTTP/1.1" 200 68844
+INFO 2025-10-23 07:31:42,740 basehttp "GET /dashboard/admin/matieres/ HTTP/1.1" 200 72504
+INFO 2025-10-23 07:32:20,174 basehttp "GET /dashboard/admin/matieres/ HTTP/1.1" 200 72509
+INFO 2025-10-23 07:33:00,675 basehttp "GET /dashboard/admin/matieres/ HTTP/1.1" 200 72627
+INFO 2025-10-23 07:33:06,498 basehttp "GET /dashboard/admin/courses/ HTTP/1.1" 200 56300
+INFO 2025-10-23 07:33:48,503 basehttp "GET /dashboard/admin/courses/ HTTP/1.1" 200 56300
+INFO 2025-10-23 07:35:20,616 basehttp "GET /dashboard/admin/courses/ HTTP/1.1" 200 56300
+INFO 2025-10-23 07:35:43,692 basehttp "GET /dashboard/admin/ressources/ HTTP/1.1" 200 64685
+INFO 2025-10-23 07:37:18,001 basehttp "GET /dashboard/admin/ressources/ HTTP/1.1" 200 64835
+INFO 2025-10-23 07:37:27,965 basehttp "GET /dashboard/admin/emplois_du_temps/ HTTP/1.1" 200 77034
+INFO 2025-10-23 07:37:35,486 basehttp "GET /dashboard/admin/evaluations/ HTTP/1.1" 200 82548
+INFO 2025-10-23 07:38:09,830 basehttp "GET /dashboard/admin/evaluations/ HTTP/1.1" 200 82666
+INFO 2025-10-23 07:38:20,939 basehttp "GET /dashboard/admin/salles/ HTTP/1.1" 200 64867
+INFO 2025-10-23 07:38:31,873 basehttp "GET /dashboard/admin/ HTTP/1.1" 200 63051
+WARNING 2025-10-23 07:38:32,094 basehttp "GET /static/css/dashboard/admin.css HTTP/1.1" 404 1996
+INFO 2025-10-23 07:38:51,462 basehttp "GET /dashboard/admin/filieres/ HTTP/1.1" 200 93637
+INFO 2025-10-23 07:39:36,403 basehttp "GET /dashboard/admin/niveaux/ HTTP/1.1" 200 136672
+INFO 2025-10-23 07:41:17,828 autoreload E:\formis_app\_formis\apps\core\dashboard_views.py changed, reloading.
+INFO 2025-10-23 07:41:29,367 autoreload Watching for file changes with StatReloader
+INFO 2025-10-23 07:42:17,968 basehttp "GET /dashboard/admin/niveaux/ HTTP/1.1" 200 136672
+INFO 2025-10-23 07:44:29,527 basehttp "GET /dashboard/admin/niveaux/ HTTP/1.1" 200 136672
+INFO 2025-10-23 07:50:02,867 basehttp "GET /dashboard/admin/niveaux/ HTTP/1.1" 200 136458
+INFO 2025-10-23 07:50:13,024 basehttp "GET /dashboard/admin/niveaux/?per_page=10&page=1 HTTP/1.1" 200 114478
+INFO 2025-10-23 07:50:35,227 basehttp "GET /dashboard/admin/niveaux/?page=2&per_page=10 HTTP/1.1" 200 92384
+INFO 2025-10-23 07:50:42,967 basehttp "GET /dashboard/admin/niveaux/?page=1&per_page=10 HTTP/1.1" 200 114478
+INFO 2025-10-23 07:51:56,572 basehttp "GET /dashboard/admin/users/ HTTP/1.1" 200 97955
+INFO 2025-10-23 07:52:03,828 basehttp "GET /dashboard/admin/department_heads/ HTTP/1.1" 200 77823
+INFO 2025-10-23 07:52:08,361 basehttp "GET /dashboard/admin/teachers/ HTTP/1.1" 200 80150
+INFO 2025-10-23 07:52:10,640 basehttp "GET /dashboard/admin/students/ HTTP/1.1" 200 86225
+INFO 2025-10-23 07:52:12,873 basehttp "GET /dashboard/admin/candidatures/ HTTP/1.1" 200 70656
+INFO 2025-10-23 07:52:50,993 basehttp "GET /dashboard/admin/courses/ HTTP/1.1" 200 56086
+INFO 2025-10-23 07:53:27,134 basehttp "GET /dashboard/admin/filieres/ HTTP/1.1" 200 93423
+INFO 2025-10-23 07:53:31,755 basehttp "GET /dashboard/admin/niveaux/ HTTP/1.1" 200 136458
+INFO 2025-10-23 07:53:35,519 basehttp "GET /dashboard/admin/modules/ HTTP/1.1" 200 68630
+INFO 2025-10-23 08:06:38,997 autoreload E:\formis_app\_formis\_formis\settings.py changed, reloading.

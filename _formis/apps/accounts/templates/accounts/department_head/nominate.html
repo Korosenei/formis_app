@@ -1,0 +1,557 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{{ title }} - Admin{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <!-- Header -->
+    <div class="form-header">
+        <div class="breadcrumb-nav">
+            <a href="{% url 'dashboard:admin' %}">Dashboard</a>
+            <i class="fas fa-chevron-right"></i>
+            <a href="{% url 'dashboard:admin_department_heads' %}">Chefs de département</a>
+            <i class="fas fa-chevron-right"></i>
+            <span class="current">{{ title }}</span>
+        </div>
+        <h1><i class="fas fa-crown"></i> {{ title }}</h1>
+    </div>
+
+    <!-- Carte d'information -->
+    <div class="info-card">
+        <div class="info-icon">
+            <i class="fas fa-info-circle"></i>
+        </div>
+        <div class="info-content">
+            <h4>Nomination d'un chef de département</h4>
+            <p>Sélectionnez un département sans chef actuel et l'enseignant que vous souhaitez nommer à ce poste.</p>
+            <ul>
+                <li>L'enseignant sélectionné deviendra automatiquement chef du département choisi</li>
+                <li>Son rôle sera changé en "Chef de département"</li>
+                <li>Il conservera ses attributions d'enseignant</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="form-card">
+        <form method="POST" class="modern-form" id="nominateForm">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <!-- Département -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-building"></i>
+                    Département
+                </h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.departement.id_for_label }}" class="required">
+                            Sélectionnez le département
+                        </label>
+                        {{ form.departement }}
+                        {% if form.departement.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ form.departement.errors.0 }}
+                            </div>
+                        {% endif %}
+                        <small class="form-text">
+                            <i class="fas fa-info-circle"></i>
+                            {{ form.departement.help_text }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enseignant -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-user-tie"></i>
+                    Enseignant à nommer
+                </h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.enseignant.id_for_label }}" class="required">
+                            Sélectionnez l'enseignant
+                        </label>
+                        {{ form.enseignant }}
+                        {% if form.enseignant.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ form.enseignant.errors.0 }}
+                            </div>
+                        {% endif %}
+                        <small class="form-text">
+                            <i class="fas fa-info-circle"></i>
+                            {{ form.enseignant.help_text }}
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Aperçu de l'enseignant sélectionné -->
+                <div id="enseignantPreview" class="preview-card" style="display: none;">
+                    <div class="preview-header">
+                        <i class="fas fa-eye"></i>
+                        <span>Aperçu de l'enseignant</span>
+                    </div>
+                    <div class="preview-content" id="previewContent">
+                        <!-- Contenu dynamique -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Confirmation -->
+            <div class="form-section">
+                <div class="confirmation-box">
+                    <div class="confirmation-icon">
+                        <i class="fas fa-shield-check"></i>
+                    </div>
+                    <div class="confirmation-content">
+                        <h4>Confirmation de nomination</h4>
+                        <p>En validant ce formulaire, vous confirmez vouloir nommer l'enseignant sélectionné comme chef du département choisi.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="form-actions">
+                <a href="{{ cancel_url }}" class="btn btn-outline">
+                    <i class="fas fa-times"></i> Annuler
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-crown"></i> Nommer chef de département
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.form-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.form-header {
+    margin-bottom: 20px;
+}
+
+.breadcrumb-nav {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.breadcrumb-nav a {
+    color: #6b7280;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.breadcrumb-nav a:hover {
+    color: #2563eb;
+}
+
+.breadcrumb-nav .current {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.form-header h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.form-header h1 i {
+    color: #f59e0b;
+}
+
+/* Info Card */
+.info-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.info-icon {
+    font-size: 32px;
+    opacity: 0.9;
+}
+
+.info-content h4 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.info-content p {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    opacity: 0.95;
+}
+
+.info-content ul {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.info-content ul li {
+    margin-bottom: 5px;
+}
+
+/* Form Card */
+.form-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 30px;
+}
+
+.modern-form {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.form-section {
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 25px;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-title i {
+    color: #2563eb;
+    font-size: 18px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1f2937;
+    margin-bottom: 8px;
+}
+
+.form-group label.required::after {
+    content: " *";
+    color: #ef4444;
+}
+
+.form-group select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+    background: white;
+}
+
+.form-group select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.form-text {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.error-message {
+    color: #ef4444;
+    font-size: 13px;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.alert {
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.alert-danger {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+/* Preview Card */
+.preview-card {
+    margin-top: 20px;
+    background: #f9fafb;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.preview-header {
+    background: #2563eb;
+    color: white;
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.preview-content {
+    padding: 16px;
+}
+
+.preview-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.preview-item:last-child {
+    border-bottom: none;
+}
+
+.preview-label {
+    font-weight: 500;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.preview-value {
+    color: #1f2937;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Confirmation Box */
+.confirmation-box {
+    background: #fef3c7;
+    border: 2px solid #fbbf24;
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    gap: 15px;
+}
+
+.confirmation-icon {
+    font-size: 28px;
+    color: #f59e0b;
+}
+
+.confirmation-content h4 {
+    margin: 0 0 8px 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #92400e;
+}
+
+.confirmation-content p {
+    margin: 0;
+    font-size: 13px;
+    color: #78350f;
+    line-height: 1.6;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    border: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: white;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.btn-outline {
+    background: white;
+    color: #1f2937;
+    border: 2px solid #e5e7eb;
+}
+
+.btn-outline:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+@media (max-width: 768px) {
+    .form-container {
+        padding: 15px;
+    }
+
+    .form-card {
+        padding: 20px;
+    }
+
+    .info-card {
+        flex-direction: column;
+    }
+
+    .confirmation-box {
+        flex-direction: column;
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const enseignantSelect = document.getElementById('id_enseignant');
+    const previewCard = document.getElementById('enseignantPreview');
+    const previewContent = document.getElementById('previewContent');
+
+    // Données des enseignants pour l'aperçu
+    const enseignantsData = {};
+
+    // Charger les données via AJAX (optionnel)
+    if (enseignantSelect) {
+        enseignantSelect.addEventListener('change', function() {
+            const selectedId = this.value;
+
+            if (selectedId) {
+                // Afficher l'aperçu
+                previewCard.style.display = 'block';
+
+                // Simuler les données (à remplacer par un appel AJAX)
+                const selectedOption = this.options[this.selectedIndex];
+                const nom = selectedOption.text;
+
+                previewContent.innerHTML = `
+                    <div class="preview-item">
+                        <span class="preview-label">Nom complet</span>
+                        <span class="preview-value">${nom}</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">Rôle actuel</span>
+                        <span class="preview-value">Enseignant</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">Nouveau rôle</span>
+                        <span class="preview-value" style="color: #f59e0b; font-weight: 600;">
+                            <i class="fas fa-crown"></i> Chef de département
+                        </span>
+                    </div>
+                `;
+            } else {
+                previewCard.style.display = 'none';
+            }
+        });
+    }
+
+    // Validation du formulaire
+    const form = document.getElementById('nominateForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const departement = document.getElementById('id_departement').value;
+            const enseignant = document.getElementById('id_enseignant').value;
+
+            if (!departement || !enseignant) {
+                e.preventDefault();
+                alert('Veuillez sélectionner un département et un enseignant');
+                return false;
+            }
+
+            // Confirmation
+            const deptName = document.getElementById('id_departement').options[document.getElementById('id_departement').selectedIndex].text;
+            const teacherName = document.getElementById('id_enseignant').options[document.getElementById('id_enseignant').selectedIndex].text;
+
+            const confirmMsg = `Confirmer la nomination de ${teacherName} comme chef du département ${deptName} ?`;
+
+            if (!confirm(confirmMsg)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

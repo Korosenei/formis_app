@@ -1,33 +1,26 @@
 # apps/courses/models.py
+import os
 
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db.models import F, Sum, ExpressionWrapper, IntegerField
 from django.urls import reverse
 from django.utils import timezone
 from apps.core.models import BaseModel
 
+
 class Module(BaseModel):
-    """Modules de formation (UE - Unités d'Enseignement)"""
+    """Module de formation (regroupement optionnel de matières)"""
     niveau = models.ForeignKey(
         'academic.Niveau',
         on_delete=models.CASCADE,
         related_name='modules',
         verbose_name="Niveau"
     )
-
     nom = models.CharField(max_length=200, verbose_name="Nom")
     code = models.CharField(max_length=20, verbose_name="Code")
     description = models.TextField(null=True, blank=True, verbose_name="Description")
 
-    # Prérequis
-    prerequis = models.ManyToManyField(
-        'self',
-        blank=True,
-        symmetrical=False,
-        verbose_name="Prérequis"
-    )
-
-    # Responsable du module
     coordinateur = models.ForeignKey(
         'accounts.Utilisateur',
         on_delete=models.SET_NULL,
@@ -36,15 +29,6 @@ class Module(BaseModel):
         limit_choices_to={'role': 'ENSEIGNANT'},
         related_name='modules_coordonnes',
         verbose_name="Coordinateur"
-    )
-
-    # Volume horaire total et crédits
-    volume_horaire_total = models.IntegerField(default=0, verbose_name="Volume horaire total")
-    credits_ects = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        default=0,
-        verbose_name="Crédits ECTS"
     )
 
     actif = models.BooleanField(default=True, verbose_name="Actif")
@@ -59,113 +43,119 @@ class Module(BaseModel):
     def __str__(self):
         return f"{self.nom} ({self.code})"
 
-    def get_absolute_url(self):
-        return reverse('courses:module_detail', kwargs={'pk': self.pk})
+    @property
+    def volume_horaire_total(self):
+        """Calcule le volume horaire total des matières du module via SQL"""
+        total = self.matieres.aggregate(
+            total=Sum(
+                ExpressionWrapper(
+                    F('heures_cours_magistral') + F('heures_travaux_diriges') + F('heures_travaux_pratiques'),
+                    output_field=IntegerField()
+                )
+            )
+        )['total']
+        return total or 0
 
     @property
-    def departement(self):
-        """Récupère le département via le niveau"""
-        return self.niveau.filiere.departement if self.niveau and self.niveau.filiere else None
-
-    @property
-    def filiere(self):
-        """Récupère la filière via le niveau"""
-        return self.niveau.filiere if self.niveau else None
-
-    @property
-    def structure_academique(self):
-        """Récupère la structure académique (semestre/trimestre)"""
-        return self.niveau.structure_academique if self.niveau else None
+    def credits_ects(self):
+        """Calcule les crédits ECTS du module"""
+        return self.matieres.aggregate(
+            total=models.Sum('credits_ects')
+        )['total'] or 0
 
 class Matiere(BaseModel):
-    """Matières/Disciplines"""
+    """Matière/Discipline - élément central du système"""
     nom = models.CharField(max_length=200, verbose_name="Nom")
     code = models.CharField(max_length=20, verbose_name="Code", unique=True)
     description = models.TextField(null=True, blank=True, verbose_name="Description")
 
-    # Modules auxquels cette matière appartient
-    modules = models.ManyToManyField(
+    # Relations académiques
+    niveau = models.ForeignKey(
+        'academic.Niveau',
+        on_delete=models.CASCADE,
+        related_name='matieres',
+        verbose_name="Niveau"
+    )
+
+    module = models.ForeignKey(
         Module,
-        through='MatiereModule',
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
-        verbose_name="Modules"
+        related_name='matieres',
+        verbose_name="Module (optionnel)"
     )
 
-    # Couleur pour l'affichage dans les emplois du temps
-    couleur = models.CharField(max_length=7, default="#3498db", verbose_name="Couleur")
-
-    actif = models.BooleanField(default=True, verbose_name="Active")
-
-    # Volume horaire par défaut
-    heures_theorie = models.IntegerField(default=0, verbose_name="Heures de théorie")
-    heures_pratique = models.IntegerField(default=0, verbose_name="Heures de pratique")
-    heures_td = models.IntegerField(default=0, verbose_name="Heures de TD")
-
-    # Coefficient de la matière
-    coefficient = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        default=1.0,
-        verbose_name="Coefficient"
-    )
-
-    class Meta:
-        db_table = 'courses_matiere'
-        verbose_name = "Matière"
-        verbose_name_plural = "Matières"
-        ordering = ['nom']
-
-    def __str__(self):
-        return self.nom
-
-    def get_absolute_url(self):
-        return reverse('courses:matiere_detail', kwargs={'pk': self.pk})
-
-    @property
-    def volume_horaire_total(self):
-        return self.heures_theorie + self.heures_pratique + self.heures_td
-
-class MatiereModule(BaseModel):
-    """Table de liaison entre Matière et Module avec informations spécifiques"""
-    matiere = models.ForeignKey(Matiere, on_delete=models.CASCADE)
-    module = models.ForeignKey(Module, on_delete=models.CASCADE)
-
-    # Volume horaire spécifique pour ce module
-    heures_theorie = models.IntegerField(default=0, verbose_name="Heures de théorie")
-    heures_pratique = models.IntegerField(default=0, verbose_name="Heures de pratique")
-    heures_td = models.IntegerField(default=0, verbose_name="Heures de TD")
-
-    # Coefficient spécifique dans ce module
-    coefficient = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        default=1.0,
-        verbose_name="Coefficient dans le module"
-    )
-
-    # Enseignant responsable pour cette matière dans ce module
-    enseignant = models.ForeignKey(
+    # Enseignant responsable
+    enseignant_responsable = models.ForeignKey(
         'accounts.Utilisateur',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         limit_choices_to={'role': 'ENSEIGNANT'},
-        related_name='matieres_modules_enseignees',
-        verbose_name="Enseignant"
+        related_name='matieres_responsable',
+        verbose_name="Enseignant responsable"
     )
 
+    # Volume horaire
+    heures_cours_magistral = models.IntegerField(default=0, verbose_name="Heures CM")
+    heures_travaux_diriges = models.IntegerField(default=0, verbose_name="Heures TD")
+    heures_travaux_pratiques = models.IntegerField(default=0, verbose_name="Heures TP")
+
+    # Coefficient et crédits
+    coefficient = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=1.0,
+        validators=[MinValueValidator(0.5), MaxValueValidator(10)],
+        verbose_name="Coefficient"
+    )
+
+    credits_ects = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(30)],
+        verbose_name="Crédits ECTS"
+    )
+
+    # Couleur pour l'affichage
+    couleur = models.CharField(max_length=7, default="#3498db", verbose_name="Couleur")
+
+    actif = models.BooleanField(default=True, verbose_name="Active")
+
     class Meta:
-        db_table = 'courses_matiere_module'
-        unique_together = ['matiere', 'module']
-        verbose_name = "Matière du module"
-        verbose_name_plural = "Matières des modules"
+        db_table = 'courses_matiere'
+        verbose_name = "Matière"
+        verbose_name_plural = "Matières"
+        ordering = ['niveau', 'nom']
+        unique_together = ['niveau', 'code']
 
     def __str__(self):
-        return f"{self.matiere.nom} dans {self.module.nom}"
+        if self.niveau:
+            return f"{self.nom} - {self.niveau.nom}"
+        return self.nom
 
     @property
     def volume_horaire_total(self):
-        return self.heures_theorie + self.heures_pratique + self.heures_td
+        return (self.heures_cours_magistral +
+                self.heures_travaux_diriges +
+                self.heures_travaux_pratiques)
+
+    @property
+    def etablissement(self):
+        return self.niveau.filiere.etablissement if self.niveau else None
+
+    @property
+    def departement(self):
+        return self.niveau.filiere.departement if self.niveau else None
+
+class TypeCours(models.TextChoices):
+    CM = 'CM', 'Cours magistral'
+    TD = 'TD', 'Travaux dirigés'
+    TP = 'TP', 'Travaux pratiques'
+    EVALUATION = 'EVALUATION', 'Évaluation'
+    RATTRAPAGE = 'RATTRAPAGE', 'Rattrapage'
 
 class StatutCours(models.TextChoices):
     PROGRAMME = 'PROGRAMME', 'Programmé'
@@ -174,34 +164,34 @@ class StatutCours(models.TextChoices):
     ANNULE = 'ANNULE', 'Annulé'
     REPORTE = 'REPORTE', 'Reporté'
 
-class TypeCours(models.TextChoices):
-    COURS = 'COURS', 'Cours magistral'
-    TD = 'TD', 'Travaux dirigés'
-    TP = 'TP', 'Travaux pratiques'
-    EVALUATION = 'EVALUATION', 'Évaluation'
-    RATTRAPAGE = 'RATTRAPAGE', 'Rattrapage'
-
 class Cours(BaseModel):
-    """Cours/Séances - Unifié"""
+    """Séance de cours"""
+    matiere = models.ForeignKey(
+        Matiere,
+        on_delete=models.CASCADE,
+        related_name='cours',
+        verbose_name="Matière"
+    )
+
     classe = models.ForeignKey(
         'academic.Classe',
         on_delete=models.CASCADE,
+        related_name='cours',
         verbose_name="Classe"
     )
-    matiere_module = models.ForeignKey(
-        MatiereModule,
-        on_delete=models.CASCADE,
-        verbose_name="Matière/Module"
-    )
+
     enseignant = models.ForeignKey(
         'accounts.Utilisateur',
         on_delete=models.CASCADE,
         limit_choices_to={'role': 'ENSEIGNANT'},
+        related_name='cours_enseignes',
         verbose_name="Enseignant"
     )
+
     periode_academique = models.ForeignKey(
         'academic.PeriodeAcademique',
         on_delete=models.CASCADE,
+        related_name='cours',
         verbose_name="Période académique"
     )
 
@@ -212,7 +202,7 @@ class Cours(BaseModel):
     type_cours = models.CharField(
         max_length=20,
         choices=TypeCours.choices,
-        default=TypeCours.COURS,
+        default=TypeCours.CM,
         verbose_name="Type de cours"
     )
 
@@ -228,10 +218,10 @@ class Cours(BaseModel):
     heure_debut_prevue = models.TimeField(verbose_name="Heure de début prévue")
     heure_fin_prevue = models.TimeField(verbose_name="Heure de fin prévue")
 
-    # Réalisation effective
+    # Réalisation
     date_effective = models.DateField(null=True, blank=True, verbose_name="Date effective")
-    heure_debut_effective = models.TimeField(null=True, blank=True, verbose_name="Heure de début effective")
-    heure_fin_effective = models.TimeField(null=True, blank=True, verbose_name="Heure de fin effective")
+    heure_debut_effective = models.TimeField(null=True, blank=True)
+    heure_fin_effective = models.TimeField(null=True, blank=True)
 
     # Lieu
     salle = models.ForeignKey(
@@ -239,29 +229,20 @@ class Cours(BaseModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        related_name='cours',
         verbose_name="Salle"
     )
 
-    # Objectifs et contenu
+    # Contenu pédagogique
     objectifs = models.TextField(null=True, blank=True, verbose_name="Objectifs")
     contenu = models.TextField(null=True, blank=True, verbose_name="Contenu abordé")
-    prerequis = models.TextField(null=True, blank=True, verbose_name="Prérequis")
 
-    # Support cours en ligne
+    # Cours en ligne
     cours_en_ligne = models.BooleanField(default=False, verbose_name="Cours en ligne")
-    url_streaming = models.URLField(null=True, blank=True, verbose_name="URL de streaming")
-    streaming_actif = models.BooleanField(default=False, verbose_name="Streaming actif")
-
-    # Ressources utilisées
-    ressources_utilisees = models.TextField(null=True, blank=True, verbose_name="Ressources utilisées")
-
-    # Observations
-    notes_enseignant = models.TextField(null=True, blank=True, verbose_name="Notes de l'enseignant")
-    retours_etudiants = models.TextField(null=True, blank=True, verbose_name="Retours des étudiants")
+    url_streaming = models.URLField(null=True, blank=True, verbose_name="URL streaming")
 
     # Présence
     presence_prise = models.BooleanField(default=False, verbose_name="Présence prise")
-    date_prise_presence = models.DateTimeField(null=True, blank=True, verbose_name="Date de prise de présence")
 
     actif = models.BooleanField(default=True, verbose_name="Actif")
 
@@ -270,20 +251,22 @@ class Cours(BaseModel):
         verbose_name = "Cours"
         verbose_name_plural = "Cours"
         ordering = ['-date_prevue', '-heure_debut_prevue']
+        indexes = [
+            models.Index(fields=['date_prevue', 'classe']),
+            models.Index(fields=['enseignant', 'date_prevue']),
+        ]
 
     def __str__(self):
         return f"{self.titre} - {self.classe.nom} ({self.date_prevue})"
 
-    def get_absolute_url(self):
-        return reverse('courses:cours_detail', kwargs={'pk': self.pk})
-
     @property
-    def matiere(self):
-        return self.matiere_module.matiere
-
-    @property
-    def module(self):
-        return self.matiere_module.module
+    def duree_prevue(self):
+        """Calcule la durée prévue en minutes"""
+        if self.heure_debut_prevue and self.heure_fin_prevue:
+            debut = timezone.datetime.combine(timezone.now().date(), self.heure_debut_prevue)
+            fin = timezone.datetime.combine(timezone.now().date(), self.heure_fin_prevue)
+            return int((fin - debut).total_seconds() / 60)
+        return 0
 
 class CahierTexte(BaseModel):
     """Cahier de texte pour chaque cours"""
@@ -411,6 +394,11 @@ class Ressource(BaseModel):
         else:
             return f"{self.taille_fichier / (1024 * 1024 * 1024):.1f} GB"
 
+    @property
+    def nom_fichier(self):
+        """Retourne uniquement le nom du fichier sans le chemin complet"""
+        return os.path.basename(self.fichier.name) if self.fichier else None
+
     def __str__(self):
         return f"{self.cours.titre} - {self.titre}"
 
@@ -481,28 +469,43 @@ class Presence(BaseModel):
         return f"{self.etudiant.get_full_name()} - {self.cours.titre} ({self.get_statut_display()})"
 
 class EmploiDuTemps(BaseModel):
-    """Emplois du temps"""
+    """Emploi du temps généré"""
+    # Cible de l'emploi du temps
     classe = models.ForeignKey(
         'academic.Classe',
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='emplois_du_temps',
         verbose_name="Classe"
     )
+
+    enseignant = models.ForeignKey(
+        'accounts.Utilisateur',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        limit_choices_to={'role': 'ENSEIGNANT'},
+        related_name='emplois_du_temps',
+        verbose_name="Enseignant"
+    )
+
     periode_academique = models.ForeignKey(
         'academic.PeriodeAcademique',
         on_delete=models.CASCADE,
+        related_name='emplois_du_temps',
         verbose_name="Période académique"
     )
 
     nom = models.CharField(max_length=200, verbose_name="Nom")
-    description = models.TextField(null=True, blank=True, verbose_name="Description")
 
-    # Dates de validité
-    valide_a_partir_du = models.DateField(verbose_name="Valide à partir du")
-    valide_jusqua = models.DateField(verbose_name="Valide jusqu'au")
+    # Période de validité
+    semaine_debut = models.DateField(verbose_name="Début de semaine")
+    semaine_fin = models.DateField(verbose_name="Fin de semaine")
 
     # Statut
     publie = models.BooleanField(default=False, verbose_name="Publié")
-    actuel = models.BooleanField(default=False, verbose_name="Emploi du temps actuel")
+    actuel = models.BooleanField(default=False, verbose_name="Actuel")
 
     # Créé par
     cree_par = models.ForeignKey(
@@ -510,6 +513,7 @@ class EmploiDuTemps(BaseModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        related_name='emplois_du_temps_crees',
         verbose_name="Créé par"
     )
 
@@ -517,22 +521,28 @@ class EmploiDuTemps(BaseModel):
         db_table = 'courses_emploi_du_temps'
         verbose_name = "Emploi du temps"
         verbose_name_plural = "Emplois du temps"
-        ordering = ['-created_at']
+        ordering = ['-semaine_debut']
+
+    def __str__(self):
+        if self.classe:
+            return f"EDT {self.classe.nom} - Semaine du {self.semaine_debut}"
+        return f"EDT {self.enseignant.get_full_name()} - Semaine du {self.semaine_debut}"
 
     def save(self, *args, **kwargs):
         if self.actuel:
-            # S'assurer qu'il n'y a qu'un seul emploi du temps actuel par classe
-            EmploiDuTemps.objects.filter(
-                classe=self.classe,
-                actuel=True
-            ).exclude(id=self.id).update(actuel=False)
+            # Un seul emploi du temps actuel par cible
+            if self.classe:
+                EmploiDuTemps.objects.filter(
+                    classe=self.classe, actuel=True
+                ).exclude(id=self.id).update(actuel=False)
+            elif self.enseignant:
+                EmploiDuTemps.objects.filter(
+                    enseignant=self.enseignant, actuel=True
+                ).exclude(id=self.id).update(actuel=False)
         super().save(*args, **kwargs)
 
-    def __str__(self):
-        return f"Emploi du temps {self.classe.nom} - {self.nom}"
-
-class CreneauHoraire(BaseModel):
-    """Créneaux horaires de l'emploi du temps"""
+class CreneauEmploiDuTemps(BaseModel):
+    """Créneau dans un emploi du temps"""
     emploi_du_temps = models.ForeignKey(
         EmploiDuTemps,
         on_delete=models.CASCADE,
@@ -540,74 +550,31 @@ class CreneauHoraire(BaseModel):
         verbose_name="Emploi du temps"
     )
 
-    JOURS_SEMAINE = [
-        ('LUNDI', 'Lundi'),
-        ('MARDI', 'Mardi'),
-        ('MERCREDI', 'Mercredi'),
-        ('JEUDI', 'Jeudi'),
-        ('VENDREDI', 'Vendredi'),
-        ('SAMEDI', 'Samedi'),
+    cours = models.ForeignKey(
+        Cours,
+        on_delete=models.CASCADE,
+        related_name='creneaux_edt',
+        verbose_name="Cours"
+    )
+
+    JOURS = [
+        (0, 'Lundi'),
+        (1, 'Mardi'),
+        (2, 'Mercredi'),
+        (3, 'Jeudi'),
+        (4, 'Vendredi'),
+        (5, 'Samedi'),
     ]
 
-    jour = models.CharField(max_length=10, choices=JOURS_SEMAINE, verbose_name="Jour")
+    jour_semaine = models.IntegerField(choices=JOURS, verbose_name="Jour")
     heure_debut = models.TimeField(verbose_name="Heure de début")
     heure_fin = models.TimeField(verbose_name="Heure de fin")
 
-    # Matière et enseignant
-    matiere_module = models.ForeignKey(
-        MatiereModule,
-        on_delete=models.CASCADE,
-        verbose_name="Matière/Module"
-    )
-    enseignant = models.ForeignKey(
-        'accounts.Utilisateur',
-        on_delete=models.CASCADE,
-        limit_choices_to={'role': 'ENSEIGNANT'},
-        verbose_name="Enseignant"
-    )
-
-    # Salle
-    salle = models.ForeignKey(
-        'establishments.Salle',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        verbose_name="Salle"
-    )
-
-    # Type de cours
-    type_cours = models.CharField(
-        max_length=20,
-        choices=TypeCours.choices,
-        default=TypeCours.COURS,
-        verbose_name="Type de cours"
-    )
-
-    # Récurrence
-    recurrent = models.BooleanField(default=True, verbose_name="Récurrent")
-
-    # Dates d'exception
-    dates_exception = models.TextField(
-        null=True,
-        blank=True,
-        verbose_name="Dates d'exception",
-        help_text="Dates où ce créneau n'a pas lieu (format: YYYY-MM-DD, séparées par des virgules)"
-    )
-
     class Meta:
-        db_table = 'courses_creneau_horaire'
-        verbose_name = "Créneau horaire"
-        verbose_name_plural = "Créneaux horaires"
-        ordering = ['jour', 'heure_debut']
-        unique_together = ['emploi_du_temps', 'jour', 'heure_debut', 'heure_fin']
+        db_table = 'courses_creneau_emploi_du_temps'
+        verbose_name = "Créneau emploi du temps"
+        verbose_name_plural = "Créneaux emploi du temps"
+        ordering = ['jour_semaine', 'heure_debut']
 
     def __str__(self):
-        return f"{self.jour} {self.heure_debut}-{self.heure_fin} : {self.matiere_module.matiere.nom}"
-
-    @property
-    def matiere(self):
-        return self.matiere_module.matiere
-
-    @property
-    def module(self):
-        return self.matiere_module.module
+        return f"{self.get_jour_semaine_display()} {self.heure_debut}-{self.heure_fin}"

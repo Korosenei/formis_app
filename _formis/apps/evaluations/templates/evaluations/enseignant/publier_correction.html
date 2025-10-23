@@ -1,0 +1,856 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Publier la correction - {{ evaluation.titre }}{% endblock %}
+
+{% block content %}
+<div class="publier-correction-page">
+    <!-- Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <div class="breadcrumb">
+                <a href="{% url 'evaluations:list_enseignant' %}">Évaluations</a>
+                <i class="fas fa-chevron-right"></i>
+                <a href="{% url 'evaluations:detail_enseignant' evaluation.id %}">{{ evaluation.titre }}</a>
+                <i class="fas fa-chevron-right"></i>
+                <span>Publier correction</span>
+            </div>
+            <h1><i class="fas fa-upload"></i> Publier la correction</h1>
+            <p class="subtitle">{{ evaluation.titre }} - {{ evaluation.matiere.nom }}</p>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" id="publicationForm">
+        {% csrf_token %}
+
+        <div class="content-grid">
+            <!-- Colonne gauche: Informations -->
+            <div class="left-panel">
+                <!-- Statut actuel -->
+                <div class="info-card status-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-info-circle"></i> Statut actuel</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="status-indicator">
+                            {% if evaluation.correction_visible %}
+                                <div class="indicator-icon success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="indicator-text">
+                                    <strong>Correction déjà publiée</strong>
+                                    <p>Les étudiants peuvent voir la correction</p>
+                                </div>
+                            {% else %}
+                                <div class="indicator-icon warning">
+                                    <i class="fas fa-eye-slash"></i>
+                                </div>
+                                <div class="indicator-text">
+                                    <strong>Correction non publiée</strong>
+                                    <p>Les étudiants ne peuvent pas encore voir la correction</p>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        {% if evaluation.fichier_correction %}
+                        <div class="file-exist">
+                            <i class="fas fa-file-pdf"></i>
+                            <span>Un fichier de correction existe</span>
+                            <a href="{% url 'evaluations:voir_fichier' 'correction' evaluation.id %}"
+                               class="btn-link" target="_blank">
+                                Voir
+                            </a>
+                        </div>
+                        {% else %}
+                        <div class="warning-box">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>Aucun fichier de correction n'a été uploadé</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Statistiques -->
+                <div class="info-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-chart-bar"></i> Statistiques</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stat-row">
+                            <span class="stat-label">Total compositions:</span>
+                            <strong class="stat-value">{{ stats.total }}</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Corrigées:</span>
+                            <strong class="stat-value success">{{ stats.corrigees }}</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Non corrigées:</span>
+                            <strong class="stat-value danger">{{ stats.non_corrigees }}</strong>
+                        </div>
+
+                        {% if stats.non_corrigees > 0 %}
+                        <div class="alert-box warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <div>
+                                <strong>Attention!</strong>
+                                <p>{{ stats.non_corrigees }} composition(s) n'ont pas encore été corrigée(s)</p>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="alert-box success">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Toutes les compositions sont corrigées</strong>
+                                <p>Vous pouvez publier la correction en toute sécurité</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colonne droite: Formulaire -->
+            <div class="right-panel">
+                <!-- Upload fichier -->
+                <div class="form-section">
+                    <h3><i class="fas fa-file-upload"></i> Fichier de correction</h3>
+
+                    <div class="upload-zone" id="uploadZone">
+                        <input type="file"
+                               name="fichier_correction"
+                               id="fileInput"
+                               accept=".pdf,.doc,.docx"
+                               style="display: none;">
+                        <div class="upload-content">
+                            <i class="fas fa-cloud-upload-alt fa-3x"></i>
+                            <p class="upload-title">Cliquez pour sélectionner un fichier</p>
+                            <p class="upload-hint">ou glissez-déposez le fichier ici</p>
+                            <small>PDF, DOC, DOCX - Maximum 10 MB</small>
+                        </div>
+                    </div>
+
+                    <div id="filePreview" class="file-preview" style="display: none;">
+                        <div class="file-preview-item">
+                            <div class="file-icon-preview">
+                                <i class="fas fa-file-pdf"></i>
+                            </div>
+                            <div class="file-info-preview">
+                                <div class="file-name" id="fileName"></div>
+                                <div class="file-size" id="fileSize"></div>
+                            </div>
+                            <button type="button" class="btn-remove" onclick="removeFile()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    {% if evaluation.fichier_correction %}
+                    <div class="current-file">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>Fichier actuel:</strong>
+                            <p>Un fichier existe déjà. Le télécharger un nouveau le remplacera.</p>
+                            <a href="{% url 'evaluations:voir_fichier' 'correction' evaluation.id %}"
+                               class="btn-link" target="_blank">
+                                <i class="fas fa-eye"></i> Voir le fichier actuel
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Options de publication -->
+                <div class="form-section">
+                    <h3><i class="fas fa-cog"></i> Options de publication</h3>
+
+                    <div class="form-group">
+                        <div class="radio-group">
+                            <input type="radio"
+                                   name="publication_mode"
+                                   id="immediate"
+                                   value="immediate"
+                                   {% if evaluation.correction_visible_immediatement %}checked{% endif %}>
+                            <label for="immediate">
+                                <div class="radio-content">
+                                    <strong>Publication immédiate</strong>
+                                    <p>La correction sera visible immédiatement après validation</p>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="radio-group">
+                            <input type="radio"
+                                   name="publication_mode"
+                                   id="scheduled"
+                                   value="scheduled"
+                                   {% if not evaluation.correction_visible_immediatement and evaluation.date_publication_correction %}checked{% endif %}>
+                            <label for="scheduled">
+                                <div class="radio-content">
+                                    <strong>Publication programmée</strong>
+                                    <p>Choisissez une date et heure de publication</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="datePublicationGroup" style="display: none;">
+                        <label class="required">Date et heure de publication</label>
+                        <input type="datetime-local"
+                               name="date_publication_correction"
+                               id="datePublication"
+                               class="form-control"
+                               value="{% if evaluation.date_publication_correction %}{{ evaluation.date_publication_correction|date:'Y-m-d\TH:i' }}{% endif %}">
+                        <small class="form-hint">
+                            La correction sera visible à partir de cette date
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Notification -->
+                <div class="form-section">
+                    <h3><i class="fas fa-bell"></i> Notifications</h3>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox"
+                               name="notifier_etudiants"
+                               id="notifier"
+                               checked>
+                        <label for="notifier">
+                            <strong>Notifier les étudiants</strong>
+                            <p>Envoyer une notification lorsque la correction est publiée</p>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="form-actions">
+                    <a href="{% url 'evaluations:detail_enseignant' evaluation.id %}"
+                       class="btn btn-outline btn-lg">
+                        <i class="fas fa-times"></i> Annuler
+                    </a>
+                    <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
+                        <i class="fas fa-check"></i> Publier la correction
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.publier-correction-page { padding: 20px; max-width: 1400px; margin: 0 auto; }
+
+.page-header {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 24px;
+}
+
+.breadcrumb {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 10px;
+}
+
+.breadcrumb a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.breadcrumb i { font-size: 10px; margin: 0 6px; }
+
+.header-left h1 {
+    margin: 0 0 6px 0;
+    font-size: 26px;
+    font-weight: 700;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.subtitle {
+    margin: 0;
+    font-size: 15px;
+    color: #6b7280;
+}
+
+.content-grid {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    gap: 24px;
+}
+
+.left-panel, .right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.info-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #f9fafb, #f3f4f6);
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.card-content { padding: 20px; }
+
+.status-indicator {
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    background: #f9fafb;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.indicator-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.indicator-icon.success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.indicator-icon.warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.indicator-text strong {
+    display: block;
+    font-size: 15px;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.indicator-text p {
+    margin: 0;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.file-exist {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: #f0fdf4;
+    border: 1px solid #10b981;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.file-exist i {
+    font-size: 20px;
+    color: #10b981;
+}
+
+.warning-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #92400e;
+}
+
+.warning-box i {
+    font-size: 20px;
+    color: #f59e0b;
+}
+
+.btn-link {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.btn-link:hover { text-decoration: underline; }
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.stat-row:last-child { border-bottom: none; }
+
+.stat-label {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.stat-value {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.stat-value.success { color: #10b981; }
+.stat-value.danger { color: #ef4444; }
+
+.alert-box {
+    display: flex;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 8px;
+    margin-top: 16px;
+}
+
+.alert-box.warning {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+}
+
+.alert-box.success {
+    background: #f0fdf4;
+    border: 1px solid #10b981;
+}
+
+.alert-box i {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.alert-box.warning i { color: #f59e0b; }
+.alert-box.success i { color: #10b981; }
+
+.alert-box strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+
+.alert-box.warning { color: #92400e; }
+.alert-box.success { color: #065f46; }
+
+.alert-box p {
+    margin: 0;
+    font-size: 13px;
+}
+
+.form-section {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.form-section h3 {
+    margin: 0 0 20px 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.upload-zone {
+    border: 3px dashed #d1d5db;
+    border-radius: 12px;
+    padding: 50px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.upload-zone:hover {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.upload-zone.dragover {
+    border-color: #2563eb;
+    background: #dbeafe;
+}
+
+.upload-content i {
+    color: #9ca3af;
+    margin-bottom: 16px;
+}
+
+.upload-title {
+    margin: 0 0 6px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.upload-hint {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.upload-content small {
+    font-size: 13px;
+    color: #9ca3af;
+}
+
+.file-preview {
+    margin-top: 16px;
+}
+
+.file-preview-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: #f0fdf4;
+    border: 2px solid #10b981;
+    border-radius: 12px;
+}
+
+.file-icon-preview {
+    width: 50px;
+    height: 50px;
+    background: #10b981;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+}
+
+.file-info-preview { flex: 1; }
+
+.file-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.file-size {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.btn-remove {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: #fee2e2;
+    color: #ef4444;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.btn-remove:hover {
+    background: #fecaca;
+}
+
+.current-file {
+    display: flex;
+    gap: 12px;
+    padding: 14px;
+    background: #eff6ff;
+    border-radius: 8px;
+    margin-top: 16px;
+    font-size: 13px;
+    color: #1e40af;
+}
+
+.current-file i {
+    font-size: 20px;
+    color: #2563eb;
+    flex-shrink: 0;
+}
+
+.current-file strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.current-file p {
+    margin: 0 0 8px 0;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.radio-group {
+    padding: 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.radio-group:hover {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.radio-group input[type="radio"] {
+    margin-right: 12px;
+}
+
+.radio-group input[type="radio"]:checked + label .radio-content {
+    color: #2563eb;
+}
+
+.radio-group label {
+    display: flex;
+    align-items: flex-start;
+    cursor: pointer;
+    margin: 0;
+}
+
+.radio-content strong {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.radio-content p {
+    margin: 0;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+label.required::after {
+    content: "*";
+    color: #ef4444;
+    margin-left: 4px;
+}
+
+.checkbox-group {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    background: #f9fafb;
+    border-radius: 8px;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.checkbox-group label {
+    flex: 1;
+    cursor: pointer;
+    margin: 0;
+}
+
+.checkbox-group strong {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.checkbox-group p {
+    margin: 0;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+
+.btn-lg { padding: 14px 28px; font-size: 16px; }
+.btn-success { background: #10b981; color: white; }
+.btn-success:hover { background: #059669; }
+.btn-outline { background: white; border: 2px solid #e5e7eb; color: #374151; }
+.btn-outline:hover { background: #f9fafb; }
+
+@media (max-width: 1200px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const filePreview = document.getElementById('filePreview');
+    const immediateRadio = document.getElementById('immediate');
+    const scheduledRadio = document.getElementById('scheduled');
+    const dateGroup = document.getElementById('datePublicationGroup');
+
+    // Upload zone
+    uploadZone.addEventListener('click', () => fileInput.click());
+
+    uploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+        uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            handleFile(files[0]);
+        }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleFile(e.target.files[0]);
+        }
+    });
+
+    // Gestion du mode de publication
+    immediateRadio.addEventListener('change', () => {
+        dateGroup.style.display = 'none';
+        document.getElementById('datePublication').removeAttribute('required');
+    });
+
+    scheduledRadio.addEventListener('change', () => {
+        dateGroup.style.display = 'block';
+        document.getElementById('datePublication').setAttribute('required', 'required');
+    });
+
+    // Check initial state
+    if (scheduledRadio.checked) {
+        dateGroup.style.display = 'block';
+    }
+});
+
+function handleFile(file) {
+    if (file.size > 10 * 1024 * 1024) {
+        alert('Le fichier est trop volumineux (max 10 MB)');
+        return;
+    }
+
+    const allowedTypes = ['application/pdf', 'application/msword',
+                          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+
+    if (!allowedTypes.includes(file.type)) {
+        alert('Format de fichier non supporté. Utilisez PDF, DOC ou DOCX');
+        return;
+    }
+
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = formatBytes(file.size);
+    document.getElementById('filePreview').style.display = 'block';
+    document.getElementById('uploadZone').style.display = 'none';
+}
+
+function removeFile() {
+    document.getElementById('fileInput').value = '';
+    document.getElementById('filePreview').style.display = 'none';
+    document.getElementById('uploadZone').style.display = 'block';
+}
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+// Validation avant soumission
+document.getElementById('publicationForm').addEventListener('submit', function(e) {
+    const scheduledRadio = document.getElementById('scheduled');
+    const datePublication = document.getElementById('datePublication');
+
+    if (scheduledRadio.checked && !datePublication.value) {
+        e.preventDefault();
+        alert('Veuillez sélectionner une date de publication');
+        datePublication.focus();
+        return false;
+    }
+
+    if (!confirm('Êtes-vous sûr de vouloir publier la correction ?')) {
+        e.preventDefault();
+        return false;
+    }
+
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publication en cours...';
+});
+</script>
+{% endblock %}

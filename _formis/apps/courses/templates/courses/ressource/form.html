@@ -1,0 +1,577 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{{ title }} - Ressource{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <!-- Header -->
+    <div class="form-header">
+        <div class="breadcrumb-nav">
+            <a href="{% url 'dashboard:admin' %}">Dashboard</a>
+            <i class="fas fa-chevron-right"></i>
+            <a href="{% url 'courses:cours_detail' cours.id %}">{{ cours.titre|truncatechars:30 }}</a>
+            <i class="fas fa-chevron-right"></i>
+            <span class="current">{{ title }}</span>
+        </div>
+        <h1>{{ title }}</h1>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="form-card">
+        <form method="POST" enctype="multipart/form-data" class="modern-form" id="ressourceForm">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <!-- Section Informations de base -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-info-circle"></i>
+                    Informations de base
+                </h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="id_titre" class="required">
+                            Titre de la ressource
+                        </label>
+                        <input type="text" name="titre" id="id_titre"
+                               class="form-control" required
+                               value="{{ ressource.titre|default:'' }}">
+                        <small class="form-text">Nom descriptif de la ressource</small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="id_description">
+                            Description
+                        </label>
+                        <textarea name="description" id="id_description"
+                                  class="form-control" rows="3">{{ ressource.description|default:'' }}</textarea>
+                        <small class="form-text">Description détaillée du contenu</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Type et fichier -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-file"></i>
+                    Type et contenu
+                </h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="id_type_ressource" class="required">
+                            Type de ressource
+                        </label>
+                        <select name="type_ressource" id="id_type_ressource"
+                                class="form-control" required>
+                            <option value="">Sélectionner un type...</option>
+                            <option value="PDF" {% if ressource and ressource.type_ressource == 'PDF' %}selected{% endif %}>Document PDF</option>
+                            <option value="DOC" {% if ressource and ressource.type_ressource == 'DOC' %}selected{% endif %}>Document Word</option>
+                            <option value="PPT" {% if ressource and ressource.type_ressource == 'PPT' %}selected{% endif %}>Présentation PowerPoint</option>
+                            <option value="VIDEO" {% if ressource and ressource.type_ressource == 'VIDEO' %}selected{% endif %}>Vidéo</option>
+                            <option value="AUDIO" {% if ressource and ressource.type_ressource == 'AUDIO' %}selected{% endif %}>Audio</option>
+                            <option value="IMAGE" {% if ressource and ressource.type_ressource == 'IMAGE' %}selected{% endif %}>Image</option>
+                            <option value="LINK" {% if ressource and ressource.type_ressource == 'LINK' %}selected{% endif %}>Lien web</option>
+                            <option value="OTHER" {% if ressource and ressource.type_ressource == 'OTHER' %}selected{% endif %}>Autre</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row" id="fichierRow">
+                    <div class="form-group">
+                        <label for="id_fichier">
+                            Fichier
+                        </label>
+                        <input type="file" name="fichier" id="id_fichier"
+                               class="form-control">
+                        {% if ressource and ressource.fichier %}
+                            <small class="form-text">
+                                Fichier actuel: {{ ressource.nom_fichier }}
+                                ({{ ressource.get_taille_fichier_display }})
+                            </small>
+                        {% endif %}
+                        <small class="form-text">Taille maximale recommandée: 50 MB</small>
+                    </div>
+                </div>
+
+                <div class="form-row" id="urlRow" style="display: none;">
+                    <div class="form-group">
+                        <label for="id_url">
+                            URL
+                        </label>
+                        <div class="input-group">
+                            <span class="input-prefix">
+                                <i class="fas fa-link"></i>
+                            </span>
+                            <input type="url" name="url" id="id_url"
+                                   class="form-control"
+                                   value="{{ ressource.url|default:'' }}">
+                        </div>
+                        <small class="form-text">Lien vers la ressource en ligne</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Options -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-cog"></i>
+                    Options
+                </h3>
+
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <div class="custom-checkbox">
+                            <input type="checkbox" name="obligatoire" id="id_obligatoire"
+                                   {% if ressource and ressource.obligatoire %}checked{% endif %}>
+                            <label for="id_obligatoire">
+                                Ressource obligatoire
+                            </label>
+                        </div>
+                        <small class="form-text">Les étudiants doivent consulter cette ressource</small>
+                    </div>
+
+                    <div class="form-group col-md-4">
+                        <div class="custom-checkbox">
+                            <input type="checkbox" name="telechargeable" id="id_telechargeable"
+                                   {% if not ressource or ressource.telechargeable %}checked{% endif %}>
+                            <label for="id_telechargeable">
+                                Téléchargeable
+                            </label>
+                        </div>
+                        <small class="form-text">Autoriser le téléchargement du fichier</small>
+                    </div>
+
+                    <div class="form-group col-md-4">
+                        <div class="custom-checkbox">
+                            <input type="checkbox" name="public" id="id_public"
+                                   {% if ressource and ressource.public %}checked{% endif %}>
+                            <label for="id_public">
+                                Public
+                            </label>
+                        </div>
+                        <small class="form-text">Accessible sans authentification</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Disponibilité -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-calendar-alt"></i>
+                    Période de disponibilité
+                </h3>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="id_disponible_a_partir_de">
+                            Disponible à partir du
+                        </label>
+                        <input type="datetime-local" name="disponible_a_partir_de"
+                               id="id_disponible_a_partir_de"
+                               class="form-control"
+                               value="{% if ressource and ressource.disponible_a_partir_de %}{{ ressource.disponible_a_partir_de|date:'Y-m-d\TH:i' }}{% endif %}">
+                        <small class="form-text">Laisser vide pour disponibilité immédiate</small>
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="id_disponible_jusqua">
+                            Disponible jusqu'au
+                        </label>
+                        <input type="datetime-local" name="disponible_jusqua"
+                               id="id_disponible_jusqua"
+                               class="form-control"
+                               value="{% if ressource and ressource.disponible_jusqua %}{{ ressource.disponible_jusqua|date:'Y-m-d\TH:i' }}{% endif %}">
+                        <small class="form-text">Laisser vide pour disponibilité illimitée</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="form-actions">
+                <a href="{% url 'courses:cours_detail' cours.id %}" class="btn btn-outline">
+                    <i class="fas fa-times"></i> Annuler
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> {{ submit_text|default:"Enregistrer" }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.form-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.form-header {
+    margin-bottom: 20px;
+}
+
+.breadcrumb-nav {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.breadcrumb-nav a {
+    color: #6b7280;
+    text-decoration: none;
+}
+
+.breadcrumb-nav a:hover {
+    color: #2563eb;
+}
+
+.breadcrumb-nav .current {
+    color: #2563eb;
+    font-weight: 500;
+}
+
+.form-header h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.form-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 30px;
+}
+
+.modern-form {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.form-section {
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 25px;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-title i {
+    color: #2563eb;
+    font-size: 18px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-row:last-child {
+    margin-bottom: 0;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.col-md-4 {
+    grid-column: span 1;
+}
+
+.form-group.col-md-6 {
+    grid-column: span 1;
+}
+
+.form-row:has(.col-md-6) {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.form-row:has(.col-md-4) {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1f2937;
+    margin-bottom: 8px;
+}
+
+.form-group label.required::after {
+    content: " *";
+    color: #ef4444;
+}
+
+.form-control,
+.form-group input[type="text"],
+.form-group input[type="url"],
+.form-group input[type="file"],
+.form-group input[type="datetime-local"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.form-group textarea {
+    resize: vertical;
+}
+
+.form-control:focus,
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.input-group {
+    display: flex;
+    align-items: stretch;
+}
+
+.input-prefix {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-right: none;
+    border-radius: 6px 0 0 6px;
+    color: #6b7280;
+}
+
+.input-group input {
+    border-radius: 0 6px 6px 0 !important;
+}
+
+.form-text {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 5px;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+
+.alert-danger {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.custom-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.custom-checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.custom-checkbox label {
+    margin: 0;
+    cursor: pointer;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.btn {
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    border: none;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.btn-outline {
+    background: white;
+    color: #1f2937;
+    border: 1px solid #d1d5db;
+}
+
+.btn-outline:hover {
+    background: #f3f4f6;
+}
+
+@media (max-width: 768px) {
+    .form-container {
+        padding: 15px;
+    }
+
+    .form-card {
+        padding: 20px;
+    }
+
+    .form-row,
+    .form-row:has(.col-md-6),
+    .form-row:has(.col-md-4) {
+        grid-template-columns: 1fr;
+    }
+
+    .form-group.col-md-4,
+    .form-group.col-md-6 {
+        grid-column: span 1;
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('ressourceForm');
+    const typeSelect = document.getElementById('id_type_ressource');
+    const fichierRow = document.getElementById('fichierRow');
+    const urlRow = document.getElementById('urlRow');
+
+    // Toggle entre fichier et URL selon le type
+    function toggleFields() {
+        const type = typeSelect.value;
+        if (type === 'LINK') {
+            fichierRow.style.display = 'none';
+            urlRow.style.display = 'grid';
+        } else {
+            fichierRow.style.display = 'grid';
+            urlRow.style.display = 'none';
+        }
+    }
+
+    if (typeSelect) {
+        toggleFields();
+        typeSelect.addEventListener('change', toggleFields);
+    }
+
+    // Validation
+    form.addEventListener('submit', function(e) {
+        const titre = form.querySelector('[name="titre"]').value.trim();
+        const type = typeSelect.value;
+        const fichier = document.getElementById('id_fichier').files[0];
+        const url = document.getElementById('id_url').value.trim();
+
+        if (!titre || !type) {
+            e.preventDefault();
+            alert('Veuillez remplir tous les champs obligatoires');
+            return false;
+        }
+
+        // Vérifier qu'il y a soit un fichier soit une URL
+        const hasExistingFile = {% if ressource and ressource.fichier %}true{% else %}false{% endif %};
+
+    if (type === 'LINK') {
+        if (!url) {
+            e.preventDefault();
+            alert('Veuillez entrer une URL pour une ressource de type "Lien web"');
+            return false;
+        }
+    } else {
+        if (!fichier && !hasExistingFile) {
+            e.preventDefault();
+            alert('Veuillez sélectionner un fichier');
+            return false;
+        }
+    }
+
+        // Vérification de la taille du fichier (50 MB)
+        if (fichier && fichier.size > 52428800) {
+            e.preventDefault();
+            alert('Le fichier est trop volumineux. Taille maximale: 50 MB');
+            return false;
+        }
+
+        // Validation des dates
+        const dateDebut = form.querySelector('[name="disponible_a_partir_de"]').value;
+        const dateFin = form.querySelector('[name="disponible_jusqua"]').value;
+
+        if (dateDebut && dateFin && dateDebut >= dateFin) {
+            e.preventDefault();
+            alert('La date de fin doit être postérieure à la date de début');
+            return false;
+        }
+    });
+
+    // Afficher le nom du fichier sélectionné
+    const fileInput = document.getElementById('id_fichier');
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const fileName = this.files[0].name;
+                const fileSize = (this.files[0].size / (1024 * 1024)).toFixed(2);
+                console.log(`Fichier sélectionné: ${fileName} (${fileSize} MB)`);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

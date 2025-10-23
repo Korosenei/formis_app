@@ -1,0 +1,682 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Mes Rapports - Enseignant{% endblock %}
+
+{% block content %}
+<div class="teacher-reports">
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Enseignant</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Rapports</span>
+            </div>
+            <h1>Mes Rapports</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-primary btn-sm" onclick="exportAllReports()">
+                <i class="fas fa-download"></i> Tout exporter
+            </button>
+        </div>
+    </div>
+
+    <!-- Sélection période -->
+    <div class="period-selector">
+        <form method="GET" class="period-form">
+            <div class="form-group">
+                <label>Période</label>
+                <select name="periode" class="form-select" onchange="this.form.submit()">
+                    <option value="">Toute l'année</option>
+                    {% for periode in periodes %}
+                        <option value="{{ periode.id }}" {% if current_periode == periode.id|stringformat:"s" %}selected{% endif %}>
+                            {{ periode.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+
+    <!-- Vue d'ensemble -->
+    <div class="overview-section">
+        <h2><i class="fas fa-chart-pie"></i> Vue d'ensemble</h2>
+        <div class="overview-grid">
+            <div class="overview-card">
+                <div class="overview-icon courses">
+                    <i class="fas fa-chalkboard"></i>
+                </div>
+                <div class="overview-content">
+                    <div class="overview-label">Cours dispensés</div>
+                    <div class="overview-value">{{ total_cours }}</div>
+                </div>
+            </div>
+            <div class="overview-card">
+                <div class="overview-icon hours">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="overview-content">
+                    <div class="overview-label">Heures d'enseignement</div>
+                    <div class="overview-value">{{ total_heures }}h</div>
+                </div>
+            </div>
+            <div class="overview-card">
+                <div class="overview-icon students">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="overview-content">
+                    <div class="overview-label">Étudiants formés</div>
+                    <div class="overview-value">{{ total_etudiants }}</div>
+                </div>
+            </div>
+            <div class="overview-card">
+                <div class="overview-icon evals">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <div class="overview-content">
+                    <div class="overview-label">Évaluations</div>
+                    <div class="overview-value">{{ total_evaluations }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rapports par classe -->
+    <div class="reports-section">
+        <h2><i class="fas fa-users"></i> Rapports par classe</h2>
+        <div class="reports-table-container">
+            <table class="reports-table">
+                <thead>
+                    <tr>
+                        <th>Classe</th>
+                        <th>Matière</th>
+                        <th>Nb Étudiants</th>
+                        <th>Moyenne</th>
+                        <th>Taux présence</th>
+                        <th>Cours réalisés</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rapport in rapports_classes %}
+                    <tr>
+                        <td>
+                            <div class="classe-info">
+                                <span class="classe-nom">{{ rapport.classe.nom }}</span>
+                                <small>{{ rapport.classe.niveau.filiere.nom }}</small>
+                            </div>
+                        </td>
+                        <td>{{ rapport.matiere.nom }}</td>
+                        <td>{{ rapport.nb_etudiants }}</td>
+                        <td>
+                            <div class="moyenne-cell">
+                                <span class="moyenne-value {% if rapport.moyenne_generale >= 10 %}success{% else %}danger{% endif %}">
+                                    {{ rapport.moyenne_generale|floatformat:2 }}/20
+                                </span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="presence-bar">
+                                <div class="presence-fill" style="width: {{ rapport.taux_presence }}%"></div>
+                            </div>
+                            <span class="presence-value">{{ rapport.taux_presence|floatformat:1 }}%</span>
+                        </td>
+                        <td>{{ rapport.cours_realises }}/{{ rapport.cours_prevus }}</td>
+                        <td>
+                            <div class="action-buttons-sm">
+                                <button class="btn-icon-sm btn-info"
+                                        onclick="viewDetailedReport('{{ rapport.classe.id }}', '{{ rapport.matiere.id }}')"
+                                        title="Voir détails">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn-icon-sm btn-secondary"
+                                        onclick="exportClassReport('{{ rapport.classe.id }}', '{{ rapport.matiere.id }}')"
+                                        title="Exporter">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="empty-cell">
+                            <div class="empty-content">
+                                <i class="fas fa-inbox"></i>
+                                <p>Aucun rapport disponible</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Évolution des notes -->
+    <div class="reports-section">
+        <h2><i class="fas fa-chart-line"></i> Évolution des moyennes</h2>
+        <div class="chart-container">
+            <canvas id="evolutionChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Distribution des notes -->
+    <div class="reports-section">
+        <h2><i class="fas fa-chart-bar"></i> Distribution des notes</h2>
+        <div class="distribution-grid">
+            <div class="distribution-item">
+                <div class="distribution-label">Excellentes (≥16)</div>
+                <div class="distribution-bar">
+                    <div class="distribution-fill excellent" style="width: {{ repartition.excellent }}%"></div>
+                </div>
+                <div class="distribution-value">{{ repartition.excellent|floatformat:1 }}%</div>
+            </div>
+            <div class="distribution-item">
+                <div class="distribution-label">Bonnes (14-16)</div>
+                <div class="distribution-bar">
+                    <div class="distribution-fill bon" style="width: {{ repartition.bon }}%"></div>
+                </div>
+                <div class="distribution-value">{{ repartition.bon|floatformat:1 }}%</div>
+            </div>
+            <div class="distribution-item">
+                <div class="distribution-label">Assez bonnes (12-14)</div>
+                <div class="distribution-bar">
+                    <div class="distribution-fill assez_bon" style="width: {{ repartition.assez_bon }}%"></div>
+                </div>
+                <div class="distribution-value">{{ repartition.assez_bon|floatformat:1 }}%</div>
+            </div>
+            <div class="distribution-item">
+                <div class="distribution-label">Passables (10-12)</div>
+                <div class="distribution-bar">
+                    <div class="distribution-fill passable" style="width: {{ repartition.passable }}%"></div>
+                </div>
+                <div class="distribution-value">{{ repartition.passable|floatformat:1 }}%</div>
+            </div>
+            <div class="distribution-item">
+                <div class="distribution-label">Insuffisantes (<10)</div>
+                <div class="distribution-bar">
+                    <div class="distribution-fill insuffisant" style="width: {{ repartition.insuffisant }}%"></div>
+                </div>
+                <div class="distribution-value">{{ repartition.insuffisant|floatformat:1 }}%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques d'assiduité -->
+    <div class="reports-section">
+        <h2><i class="fas fa-user-check"></i> Assiduité des étudiants</h2>
+        <div class="assiduite-stats">
+            <div class="assiduite-card excellent">
+                <div class="assiduite-icon">
+                    <i class="fas fa-star"></i>
+                </div>
+                <div class="assiduite-content">
+                    <div class="assiduite-label">Excellente assiduité (>90%)</div>
+                    <div class="assiduite-value">{{ assiduite.excellent }} étudiants</div>
+                </div>
+            </div>
+            <div class="assiduite-card good">
+                <div class="assiduite-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="assiduite-content">
+                    <div class="assiduite-label">Bonne assiduité (75-90%)</div>
+                    <div class="assiduite-value">{{ assiduite.bon }} étudiants</div>
+                </div>
+            </div>
+            <div class="assiduite-card warning">
+                <div class="assiduite-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="assiduite-content">
+                    <div class="assiduite-label">Assiduité faible (<75%)</div>
+                    <div class="assiduite-value">{{ assiduite.faible }} étudiants</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.teacher-reports { padding: 15px; }
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav .current { color: #2563eb; font-weight: 500; }
+
+.header-content h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.header-actions { display: flex; gap: 8px; }
+
+.btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+
+.period-selector {
+    background: white;
+    padding: 15px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+
+.period-form { max-width: 300px; }
+
+.form-group label {
+    display: block;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+
+.form-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.overview-section {
+    background: white;
+    padding: 20px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+
+.overview-section h2 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.overview-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+}
+
+.overview-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    background: #f9fafb;
+    border-radius: 6px;
+}
+
+.overview-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: white;
+}
+
+.overview-icon.courses { background: #3b82f6; }
+.overview-icon.hours { background: #10b981; }
+.overview-icon.students { background: #8b5cf6; }
+.overview-icon.evals { background: #f59e0b; }
+
+.overview-content {
+    flex: 1;
+}
+
+.overview-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.overview-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.reports-section {
+    background: white;
+    padding: 20px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+
+.reports-section h2 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.reports-table-container {
+    overflow-x: auto;
+}
+
+.reports-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.reports-table th {
+    background: #f9fafb;
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #1f2937;
+    border-bottom: 2px solid #e5e7eb;
+    font-size: 13px;
+}
+
+.reports-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 13px;
+    color: #4b5563;
+}
+
+.classe-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.classe-nom {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.classe-info small {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.moyenne-cell {
+    display: flex;
+    align-items: center;
+}
+
+.moyenne-value {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.moyenne-value.success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.moyenne-value.danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.presence-bar {
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.presence-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.presence-value {
+    font-size: 12px;
+    color: #10b981;
+    font-weight: 600;
+}
+
+.action-buttons-sm {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-icon-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.3s;
+}
+
+.btn-icon-sm.btn-info { background: #3b82f6; color: white; }
+.btn-icon-sm.btn-info:hover { background: #2563eb; }
+.btn-icon-sm.btn-secondary { background: #6b7280; color: white; }
+.btn-icon-sm.btn-secondary:hover { background: #4b5563; }
+
+.empty-cell {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-content i {
+    font-size: 32px;
+    color: #d1d5db;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.empty-content p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.chart-container {
+    height: 300px;
+    position: relative;
+}
+
+.distribution-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.distribution-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.distribution-label {
+    width: 180px;
+    font-size: 13px;
+    color: #4b5563;
+    font-weight: 500;
+}
+
+.distribution-bar {
+    flex: 1;
+    height: 24px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.distribution-fill {
+    height: 100%;
+    transition: width 0.5s;
+}
+
+.distribution-fill.excellent { background: #10b981; }
+.distribution-fill.bon { background: #3b82f6; }
+.distribution-fill.assez_bon { background: #8b5cf6; }
+.distribution-fill.passable { background: #f59e0b; }
+.distribution-fill.insuffisant { background: #ef4444; }
+
+.distribution-value {
+    width: 60px;
+    text-align: right;
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 13px;
+}
+
+.assiduite-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.assiduite-card {
+    padding: 15px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.assiduite-card.excellent { background: #d1fae5; }
+.assiduite-card.good { background: #dbeafe; }
+.assiduite-card.warning { background: #fef3c7; }
+
+.assiduite-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.assiduite-card.excellent .assiduite-icon { background: #10b981; color: white; }
+.assiduite-card.good .assiduite-icon { background: #3b82f6; color: white; }
+.assiduite-card.warning .assiduite-icon { background: #f59e0b; color: white; }
+
+.assiduite-content {
+    flex: 1;
+}
+
+.assiduite-label {
+    font-size: 12px;
+    color: #4b5563;
+    margin-bottom: 4px;
+}
+
+.assiduite-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+@media (max-width: 768px) {
+    .overview-grid { grid-template-columns: repeat(2, 1fr); }
+    .assiduite-stats { grid-template-columns: 1fr; }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// Graphique d'évolution
+const ctx = document.getElementById('evolutionChart');
+if (ctx) {
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ evolution_labels|safe }},
+            datasets: [{
+                label: 'Moyenne générale',
+                data: {{ evolution_data|safe }},
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    min: 0,
+                    max: 20
+                }
+            }
+        }
+    });
+}
+
+function viewDetailedReport(classeId, matiereId) {
+    window.location.href = `/dashboard/teacher/reports/detail/?classe=${classeId}&matiere=${matiereId}`;
+}
+
+function exportClassReport(classeId, matiereId) {
+    window.location.href = `/dashboard/teacher/reports/export/?classe=${classeId}&matiere=${matiereId}`;
+}
+
+function exportAllReports() {
+    window.location.href = `/dashboard/teacher/reports/export-all/`;
+}
+</script>
+{% endblock %}

@@ -238,7 +238,9 @@
         </div>
 
         <!-- Pagination -->
-        {% include 'components/pagination.html' with page_obj=teachers %}
+        {% if teachers %}
+            {% include 'components/pagination.html' with page_obj=page_obj %}
+        {% endif %}
     </div>
 </div>
 

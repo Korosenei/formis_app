@@ -1,0 +1,328 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{{ ressource.titre }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.viewer-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #0f172a;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+}
+
+.viewer-header {
+    background: #1e293b;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #334155;
+}
+
+.viewer-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.resource-type-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.resource-type-icon.pdf { background: #ef4444; color: white; }
+.resource-type-icon.doc { background: #3b82f6; color: white; }
+.resource-type-icon.video { background: #8b5cf6; color: white; }
+.resource-type-icon.image { background: #10b981; color: white; }
+.resource-type-icon.link { background: #f59e0b; color: white; }
+
+.resource-details h1 {
+    color: white;
+    font-size: 16px;
+    margin: 0 0 4px 0;
+    font-weight: 600;
+}
+
+.resource-meta {
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.viewer-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.viewer-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background: #fff;
+}
+
+.viewer-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.viewer-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.viewer-video {
+    width: 100%;
+    height: 100%;
+}
+
+.viewer-audio {
+    width: 100%;
+    background: #1e293b;
+    padding: 40px;
+}
+
+.audio-player {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.viewer-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #64748b;
+    text-align: center;
+    padding: 40px;
+}
+
+.viewer-placeholder i {
+    font-size: 80px;
+    margin-bottom: 20px;
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s;
+}
+
+.btn-primary { background: #3b82f6; color: white; }
+.btn-success { background: #10b981; color: white; }
+.btn-danger { background: #ef4444; color: white; }
+.btn-outline {
+    background: transparent;
+    border: 1px solid #475569;
+    color: #94a3b8;
+}
+
+.btn:hover { opacity: 0.9; }
+
+.download-section {
+    background: #1e293b;
+    padding: 20px;
+    text-align: center;
+    border-top: 1px solid #334155;
+}
+
+.stats-info {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.stat-item {
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.stat-item i {
+    margin-right: 5px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="viewer-container">
+    <div class="viewer-header">
+        <div class="viewer-info">
+            <div class="resource-type-icon {{ ressource.type_ressource|lower }}">
+                {% if ressource.type_ressource == 'PDF' %}
+                    <i class="fas fa-file-pdf"></i>
+                {% elif ressource.type_ressource == 'DOC' %}
+                    <i class="fas fa-file-word"></i>
+                {% elif ressource.type_ressource == 'PPT' %}
+                    <i class="fas fa-file-powerpoint"></i>
+                {% elif ressource.type_ressource == 'VIDEO' %}
+                    <i class="fas fa-video"></i>
+                {% elif ressource.type_ressource == 'AUDIO' %}
+                    <i class="fas fa-music"></i>
+                {% elif ressource.type_ressource == 'IMAGE' %}
+                    <i class="fas fa-image"></i>
+                {% elif ressource.type_ressource == 'LINK' %}
+                    <i class="fas fa-link"></i>
+                {% else %}
+                    <i class="fas fa-file"></i>
+                {% endif %}
+            </div>
+            <div class="resource-details">
+                <h1>{{ ressource.titre }}</h1>
+                <div class="resource-meta">
+                    {{ ressource.get_type_ressource_display }}
+                    {% if ressource.taille_fichier %} • {{ ressource.get_taille_fichier_display }}{% endif %}
+                    • {{ ressource.cours.matiere.nom }}
+                </div>
+            </div>
+        </div>
+        <div class="viewer-actions">
+            {% if ressource.telechargeable %}
+            <a href="{% url 'courses:ressource_download' ressource.id %}" class="btn btn-success">
+                <i class="fas fa-download"></i> Télécharger
+            </a>
+            {% endif %}
+            <button class="btn btn-outline" onclick="window.close()">
+                <i class="fas fa-times"></i> Fermer
+            </button>
+        </div>
+    </div>
+
+    <div class="viewer-content">
+        {% if ressource.type_ressource == 'PDF' %}
+            {% if ressource.fichier %}
+                <iframe class="viewer-iframe"
+                        src="{{ ressource.fichier.url }}#toolbar=1&navpanes=1&scrollbar=1"></iframe>
+            {% elif ressource.url %}
+                <iframe class="viewer-iframe" src="{{ ressource.url }}"></iframe>
+            {% endif %}
+
+        {% elif ressource.type_ressource == 'DOC' or ressource.type_ressource == 'PPT' %}
+            {% if ressource.fichier %}
+                <!-- Utiliser Google Docs Viewer -->
+                <iframe class="viewer-iframe"
+                        src="https://docs.google.com/viewer?url={{ request.scheme }}://{{ request.get_host }}{{ ressource.fichier.url }}&embedded=true"></iframe>
+            {% elif ressource.url %}
+                <iframe class="viewer-iframe" src="{{ ressource.url }}"></iframe>
+            {% endif %}
+
+        {% elif ressource.type_ressource == 'VIDEO' %}
+            {% if ressource.fichier %}
+                <video class="viewer-video" controls>
+                    <source src="{{ ressource.fichier.url }}" type="video/mp4">
+                    Votre navigateur ne supporte pas la vidéo.
+                </video>
+            {% elif ressource.url %}
+                {% if 'youtube.com' in ressource.url or 'youtu.be' in ressource.url %}
+                    <iframe class="viewer-iframe"
+                            src="{{ ressource.url }}"
+                            allowfullscreen></iframe>
+                {% elif 'vimeo.com' in ressource.url %}
+                    <iframe class="viewer-iframe"
+                            src="{{ ressource.url }}"
+                            allowfullscreen></iframe>
+                {% else %}
+                    <video class="viewer-video" controls>
+                        <source src="{{ ressource.url }}">
+                    </video>
+                {% endif %}
+            {% endif %}
+
+        {% elif ressource.type_ressource == 'AUDIO' %}
+            <div class="viewer-audio">
+                <div class="audio-player">
+                    {% if ressource.fichier %}
+                        <audio controls style="width: 100%;">
+                            <source src="{{ ressource.fichier.url }}">
+                            Votre navigateur ne supporte pas l'audio.
+                        </audio>
+                    {% elif ressource.url %}
+                        <audio controls style="width: 100%;">
+                            <source src="{{ ressource.url }}">
+                        </audio>
+                    {% endif %}
+                </div>
+            </div>
+
+        {% elif ressource.type_ressource == 'IMAGE' %}
+            {% if ressource.fichier %}
+                <img class="viewer-image" src="{{ ressource.fichier.url }}" alt="{{ ressource.titre }}">
+            {% elif ressource.url %}
+                <img class="viewer-image" src="{{ ressource.url }}" alt="{{ ressource.titre }}">
+            {% endif %}
+
+        {% elif ressource.type_ressource == 'LINK' %}
+            {% if ressource.url %}
+                <iframe class="viewer-iframe" src="{{ ressource.url }}"></iframe>
+            {% endif %}
+
+        {% else %}
+            <div class="viewer-placeholder">
+                <i class="fas fa-file"></i>
+                <h3>Aperçu non disponible</h3>
+                <p>Ce type de fichier ne peut pas être affiché directement.</p>
+                {% if ressource.telechargeable %}
+                <a href="{% url 'courses:ressource_download' ressource.id %}" class="btn btn-primary">
+                    <i class="fas fa-download"></i> Télécharger le fichier
+                </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    {% if ressource.description %}
+            <p style="color: #cbd5e1; font-size: 14px; margin-bottom: 15px;">
+                {{ ressource.description }}
+            </p>
+        {% endif %}
+
+        <div class="stats-info">
+            <div class="stat-item">
+                <i class="fas fa-eye"></i> {{ ressource.nombre_vues }} vue{{ ressource.nombre_vues|pluralize }}
+            </div>
+            {% if ressource.telechargeable %}
+            <div class="stat-item">
+                <i class="fas fa-download"></i> {{ ressource.nombre_telechargements }} téléchargement{{ ressource.nombre_telechargements|pluralize }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Incrémenter le compteur de vues
+fetch(`/courses/ressources/{{ ressource.id }}/increment-views/`, {
+    method: 'POST',
+    headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+    }
+});
+</script>
+{% endblock %}

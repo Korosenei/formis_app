@@ -1,10 +1,196 @@
+<!-- templates/emails/account_created.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Création de votre compte</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .welcome-box {
+            background-color: #f0f9ff;
+            border-left: 4px solid #2563eb;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .credentials-box {
+            background-color: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .credentials-box h3 {
+            margin-top: 0;
+            color: #1f2937;
+            font-size: 16px;
+        }
+        .credential-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .credential-item:last-child {
+            border-bottom: none;
+        }
+        .credential-label {
+            font-weight: 600;
+            color: #6b7280;
+        }
+        .credential-value {
+            font-family: 'Courier New', monospace;
+            background-color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #d1d5db;
+        }
+        .password-value {
+            color: #dc2626;
+            font-weight: bold;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+        .security-notice {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .security-notice strong {
+            color: #92400e;
+        }
+        .footer {
+            background-color: #f9fafb;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin: 8px 0;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">FORMIS</div>
+            <h1>Bienvenue sur la plateforme</h1>
+            <p>{{ establishment.nom }}</p>
+        </div>
 
+        <div class="content">
+            <div class="welcome-box">
+                <h2 style="margin-top: 0; color: #1e40af;">Bonjour {{ user.prenom }} {{ user.nom }},</h2>
+                <p>Votre compte a été créé avec succès sur la plateforme FORMIS de <strong>{{ establishment.nom }}</strong>.</p>
+            </div>
+
+            <div class="credentials-box">
+                <h3>🔐 Vos identifiants de connexion</h3>
+                <div class="credential-item">
+                    <span class="credential-label">Matricule :</span>
+                    <span class="credential-value">{{ user.matricule }}</span>
+                </div>
+                <div class="credential-item">
+                    <span class="credential-label">Email :</span>
+                    <span class="credential-value">{{ user.email }}</span>
+                </div>
+                <div class="credential-item">
+                    <span class="credential-label">Mot de passe temporaire :</span>
+                    <span class="credential-value password-value">{{ password }}</span>
+                </div>
+                <div class="credential-item">
+                    <span class="credential-label">Rôle :</span>
+                    <span class="credential-value">{{ user.get_role_display }}</span>
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <a href="{{ login_url }}" class="btn">Se connecter maintenant</a>
+            </div>
+
+            <div class="security-notice">
+                <strong>⚠️ Important - Sécurité</strong>
+                <ul>
+                    <li>Changez votre mot de passe temporaire dès votre première connexion</li>
+                    <li>Ne partagez jamais vos identifiants avec qui que ce soit</li>
+                    <li>Conservez ce message de manière sécurisée</li>
+                </ul>
+            </div>
+
+            <h3>📚 Prochaines étapes</h3>
+            <ol>
+                <li>Cliquez sur le bouton ci-dessus pour accéder à la plateforme</li>
+                <li>Connectez-vous avec vos identifiants</li>
+                <li>Changez votre mot de passe dans les paramètres</li>
+                <li>Complétez votre profil</li>
+            </ol>
+
+            <p style="margin-top: 30px;">
+                Si vous avez des questions ou rencontrez des difficultés, n'hésitez pas à contacter l'administration de votre établissement.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p><strong>{{ establishment.nom }}</strong></p>
+            <p>{{ establishment.adresse }}</p>
+            <p>Email : {{ establishment.email }} | Tél : {{ establishment.telephone }}</p>
+            <p style="margin-top: 15px; color: #9ca3af;">
+                Ce message a été généré automatiquement, merci de ne pas y répondre directement.
+            </p>
+        </div>
+    </div>
 </body>
 </html>

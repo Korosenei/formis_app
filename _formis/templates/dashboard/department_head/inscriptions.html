@@ -1,0 +1,761 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Gestion des Inscriptions - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-inscriptions">
+    <!-- Header compact -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Inscriptions</span>
+            </div>
+            <h1>Gestion des Inscriptions</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ inscriptions.paginator.count }} total</span>
+                <span class="stat-badge actives">{{ stats.actives }} actives</span>
+                <span class="stat-badge complet">{{ stats.paiement_complet }} paiement complet</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportInscriptions()" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="addInscription()">
+                <i class="fas fa-plus"></i> Nouvelle
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtres compacts -->
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <input type="text" name="search" placeholder="Rechercher..."
+                       value="{{ current_filters.search }}" class="form-input-sm">
+            </div>
+            <div class="filter-group">
+                <select name="statut" class="form-select-sm">
+                    <option value="">Tous statuts</option>
+                    {% for statut_key, statut_label in statuts %}
+                        <option value="{{ statut_key }}" {% if current_filters.statut == statut_key %}selected{% endif %}>
+                            {{ statut_label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="statut_paiement" class="form-select-sm">
+                    <option value="">Tous paiements</option>
+                    {% for statut_key, statut_label in statuts_paiement %}
+                        <option value="{{ statut_key }}" {% if current_filters.statut_paiement == statut_key %}selected{% endif %}>
+                            {{ statut_label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="classe" class="form-select-sm">
+                    <option value="">Toutes classes</option>
+                    {% for classe in classes %}
+                        <option value="{{ classe.id }}" {% if current_filters.classe == classe.id|stringformat:"s" %}selected{% endif %}>
+                            {{ classe.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:admin_inscriptions' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Actions en lot -->
+    <div class="bulk-actions-bar" id="bulkActionsBar" style="display: none;">
+        <div class="bulk-info">
+            <i class="fas fa-check-square"></i>
+            <span id="selectedCount">0</span> sélectionné(s)
+        </div>
+        <div class="bulk-buttons">
+            <button class="btn btn-sm btn-info" onclick="bulkSendMessage()">
+                <i class="fas fa-envelope"></i> Message
+            </button>
+            <button class="btn btn-sm btn-warning" onclick="bulkExport()">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Tableau optimisé -->
+    <div class="inscriptions-table-container">
+        <div class="table-wrapper">
+            <table class="inscriptions-table">
+                <thead>
+                    <tr>
+                        <th width="30">
+                            <input type="checkbox" class="select-all-header" id="selectAllInscriptions">
+                        </th>
+                        <th width="120">N° Inscription</th>
+                        <th width="200">Étudiant</th>
+                        <th width="150">Formation</th>
+                        <th width="120">Classe</th>
+                        <th width="100">Frais scolarité</th>
+                        <th width="100">Montant payé</th>
+                        <th width="80">Solde</th>
+                        <th width="100">Statut</th>
+                        <th width="100">Paiement</th>
+                        <th width="80">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inscription in inscriptions %}
+                    <tr class="inscription-row">
+                        <td>
+                            <input type="checkbox" class="inscription-checkbox" value="{{ inscription.id }}">
+                        </td>
+                        <td>
+                            <code class="numero-inscription">{{ inscription.numero_inscription }}</code>
+                        </td>
+                        <td>
+                            <div class="student-info">
+                                <div class="student-name">{{ inscription.apprenant.get_full_name|truncatechars:30 }}</div>
+                                <small class="matricule-info">{{ inscription.apprenant.matricule }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="formation-info">
+                                <div class="filiere-name">{{ inscription.candidature.filiere.nom|truncatechars:25 }}</div>
+                                <small class="niveau-name">{{ inscription.candidature.niveau.nom }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            {% if inscription.classe_assignee %}
+                                <span class="classe-badge">{{ inscription.classe_assignee.nom }}</span>
+                            {% else %}
+                                <span class="text-muted">Non assignée</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            <span class="montant-badge">{{ inscription.frais_scolarite|floatformat:0 }} FCFA</span>
+                        </td>
+                        <td class="text-right">
+                            <span class="montant-paye">{{ inscription.total_paye|floatformat:0 }} FCFA</span>
+                        </td>
+                        <td class="text-right">
+                            <span class="solde-badge {% if inscription.solde > 0 %}solde-restant{% else %}solde-zero{% endif %}">
+                                {{ inscription.solde|floatformat:0 }} FCFA
+                            </span>
+                        </td>
+                        <td>
+                            <span class="status-badge status-{{ inscription.statut|lower }}">
+                                {% if inscription.statut == 'ACTIVE' %}
+                                    <i class="fas fa-check-circle"></i>
+                                {% elif inscription.statut == 'SUSPENDED' %}
+                                    <i class="fas fa-pause-circle"></i>
+                                {% elif inscription.statut == 'GRADUATED' %}
+                                    <i class="fas fa-graduation-cap"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle"></i>
+                                {% endif %}
+                                {{ inscription.get_statut_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="payment-badge payment-{{ inscription.statut_paiement|lower }}">
+                                {% if inscription.statut_paiement == 'PENDING' %}
+                                    <i class="fas fa-clock"></i>
+                                {% elif inscription.statut_paiement == 'PARTIAL' %}
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                {% elif inscription.statut_paiement == 'COMPLETE' %}
+                                    <i class="fas fa-check-circle"></i>
+                                {% else %}
+                                    <i class="fas fa-exclamation-circle"></i>
+                                {% endif %}
+                                {{ inscription.get_statut_paiement_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-buttons-sm">
+                                <button class="btn-icon-sm btn-primary" onclick="viewInscription('{{ inscription.id }}')" title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <div class="dropdown-compact">
+                                    <button class="btn-icon-sm btn-outline dropdown-toggle">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="dropdown-menu-compact">
+                                        <a href="#" onclick="viewPayments('{{ inscription.id }}')">
+                                            <i class="fas fa-credit-card"></i> Paiements
+                                        </a>
+                                        <a href="#" onclick="editInscription('{{ inscription.id }}')">
+                                            <i class="fas fa-edit"></i> Modifier
+                                        </a>
+                                        <a href="#" onclick="assignClass('{{ inscription.id }}')">
+                                            <i class="fas fa-users"></i> Assigner classe
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        <a href="#" onclick="generateCard('{{ inscription.id }}')">
+                                            <i class="fas fa-id-card"></i> Carte étudiant
+                                        </a>
+                                        <a href="#" onclick="generateCertificate('{{ inscription.id }}')">
+                                            <i class="fas fa-certificate"></i> Certificat
+                                        </a>
+                                        <div class="dropdown-divider"></div>
+                                        {% if inscription.statut == 'ACTIVE' %}
+                                            <a href="#" onclick="suspendInscription('{{ inscription.id }}')" class="text-warning">
+                                                <i class="fas fa-pause"></i> Suspendre
+                                            </a>
+                                        {% elif inscription.statut == 'SUSPENDED' %}
+                                            <a href="#" onclick="activateInscription('{{ inscription.id }}')" class="text-success">
+                                                <i class="fas fa-play"></i> Réactiver
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="empty-state">
+                            <div class="empty-content">
+                                <i class="fas fa-user-check fa-2x text-muted"></i>
+                                <p class="mt-2">Aucune inscription trouvée</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% include 'components/pagination.html' with page_obj=inscriptions %}
+    </div>
+</div>
+
+<style>
+.admin-inscriptions {
+    padding: 15px;
+}
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: var(--shadow-sm);
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav .current {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.header-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.stat-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--light-gray);
+    border-radius: 12px;
+    font-size: 11px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.stat-badge.actives {
+    background: #d4edda;
+    color: #155724;
+}
+
+.stat-badge.complet {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.filters-section {
+    background: var(--white);
+    padding: 12px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.form-input-sm, .form-select-sm {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    height: 32px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.bulk-actions-bar {
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: var(--border-radius);
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--font-size-sm);
+}
+
+.bulk-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #155724;
+    font-weight: 500;
+}
+
+.bulk-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.inscriptions-table-container {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.inscriptions-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 100%;
+    table-layout: auto;
+}
+
+.inscriptions-table th {
+    background: var(--light-gray);
+    padding: 8px 6px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+}
+
+.inscriptions-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--gray);
+    vertical-align: middle;
+    font-size: var(--font-size-xs);
+}
+
+.numero-inscription {
+    background: #e8f5e9;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #2e7d32;
+    font-weight: 600;
+}
+
+.student-info, .formation-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.student-name {
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: var(--font-size-sm);
+}
+
+.matricule-info {
+    color: var(--text-light);
+    font-size: 10px;
+    font-family: monospace;
+}
+
+.filiere-name {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 11px;
+}
+
+.niveau-name {
+    color: var(--text-light);
+    font-size: 10px;
+}
+
+.classe-badge {
+    display: inline-flex;
+    padding: 3px 8px;
+    background: #f3e5f5;
+    color: #7b1fa2;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.montant-badge, .montant-paye {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.solde-badge {
+    display: inline-flex;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.solde-restant {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.solde-zero {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.status-active { background: #d4edda; color: #155724; }
+.status-suspended { background: #fff3cd; color: #856404; }
+.status-transferred { background: #d1ecf1; color: #0c5460; }
+.status-withdrawn { background: #f8d7da; color: #721c24; }
+.status-graduated { background: #d1ecf1; color: #004085; }
+.status-expelled { background: #f8d7da; color: #721c24; }
+
+.payment-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.payment-pending { background: #e0e0e0; color: #616161; }
+.payment-partial { background: #fff3cd; color: #856404; }
+.payment-complete { background: #d4edda; color: #155724; }
+.payment-overdue { background: #f8d7da; color: #721c24; }
+
+.action-buttons-sm {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.btn-icon-sm {
+    width: 24px;
+    height: 24px;
+    border-radius: 3px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.3s;
+}
+
+.btn-icon-sm.btn-primary { background: var(--primary-color); color: white; }
+.btn-icon-sm.btn-outline {
+    background: white;
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.dropdown-compact {
+    position: relative;
+}
+
+.dropdown-menu-compact {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    min-width: 180px;
+}
+
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.dropdown-menu-compact a:hover {
+    background: var(--light-gray);
+}
+
+.text-success { color: var(--success-color); }
+.text-warning { color: var(--warning-color); }
+.text-muted { color: var(--text-light); }
+.dropdown-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 3px 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-content {
+    color: var(--text-light);
+}
+
+.mt-2 { margin-top: 8px; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+@media (max-width: 768px) {
+    .filters-form {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .inscriptions-table {
+        min-width: 1200px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAllInscriptions');
+    const checkboxes = document.querySelectorAll('.inscription-checkbox');
+    const bulkBar = document.getElementById('bulkActionsBar');
+    const selectedCount = document.getElementById('selectedCount');
+
+    selectAll?.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+        updateBulkActions();
+    });
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    function updateBulkActions() {
+        const selected = document.querySelectorAll('.inscription-checkbox:checked').length;
+        selectedCount.textContent = selected;
+        bulkBar.style.display = selected > 0 ? 'flex' : 'none';
+
+        if (selectAll) {
+            selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
+            selectAll.checked = selected === checkboxes.length;
+        }
+    }
+
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.style.display = 'none';
+            });
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        });
+    });
+
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+            menu.style.display = 'none';
+        });
+    });
+});
+
+function exportInscriptions() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/dashboard/admin/inscriptions/export/?${params.toString()}`;
+}
+
+function addInscription() {
+    window.location.href = `/dashboard/admin/inscriptions/add/`;
+}
+
+function viewInscription(inscriptionId) {
+    window.location.href = `/dashboard/admin/inscriptions/${inscriptionId}/`;
+}
+
+function viewPayments(inscriptionId) {
+    window.location.href = `/dashboard/admin/inscriptions/${inscriptionId}/payments/`;
+}
+
+function editInscription(inscriptionId) {
+    window.location.href = `/dashboard/admin/inscriptions/${inscriptionId}/edit/`;
+}
+
+function assignClass(inscriptionId) {
+    window.location.href = `/dashboard/admin/inscriptions/${inscriptionId}/assign-class/`;
+}
+
+function generateCard(inscriptionId) {
+    window.location.href = `/dashboard/admin/inscriptions/${inscriptionId}/generate-card/`;
+}
+
+function generateCertificate(inscriptionId) {
+    window.location.href = `/dashboard/admin/inscriptions/${inscriptionId}/generate-certificate/`;
+}
+
+function suspendInscription(inscriptionId) {
+    if (confirm('Suspendre cette inscription ?')) {
+        fetch(`/dashboard/admin/inscriptions/${inscriptionId}/suspend/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert('Erreur: ' + data.message);
+        });
+    }
+}
+
+function activateInscription(inscriptionId) {
+    if (confirm('Réactiver cette inscription ?')) {
+        fetch(`/dashboard/admin/inscriptions/${inscriptionId}/activate/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert('Erreur: ' + data.message);
+        });
+    }
+}
+
+function bulkSendMessage() {
+    const selected = Array.from(document.querySelectorAll('.inscription-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins une inscription');
+        return;
+    }
+    alert(`Message à ${selected.length} étudiant(s)`);
+}
+
+function bulkExport() {
+    const selected = Array.from(document.querySelectorAll('.inscription-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Veuillez sélectionner au moins une inscription');
+        return;
+    }
+    const params = new URLSearchParams();
+    params.set('inscriptions', selected.join(','));
+    window.location.href = `/dashboard/admin/inscriptions/export/?${params.toString()}`;
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

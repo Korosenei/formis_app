@@ -1,291 +1,561 @@
-{% extends 'base/dashboard_base.html' %} 
+{% extends 'base/dashboard_base.html' %}
 {% load static %}
 
-{% block title %}
-{% if object %}Modifier le cours{% else %}Nouveau cours{% endif %}
-{% endblock %}
-
-{% block extra_css %}
-<style>
-    .form-section {
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    .required-field::after {
-        content: " *";
-        color: #dc3545;
-    }
-</style>
-{% endblock %}
+{% block page_title %}{% if object %}Modifier{% else %}Créer{% endif %} un Cours{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="mb-0">
-                        <i class="fas fa-chalkboard-teacher me-2"></i>
-                        {% if object %}Modifier le cours{% else %}Nouveau cours{% endif %}
-                    </h4>
+<div class="form-container">
+    <div class="form-header">
+        <div class="breadcrumb-nav">
+            <a href="{% url 'courses:cours_list' %}">Cours</a>
+            <i class="fas fa-chevron-right"></i>
+            <span class="current">{% if object %}Modifier{% else %}Nouveau{% endif %}</span>
+        </div>
+        <h1>{% if object %}Modifier le cours{% else %}Créer un nouveau cours{% endif %}</h1>
+    </div>
+
+    <div class="form-card">
+        <form method="post" class="styled-form" id="coursForm">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ form.non_field_errors }}
                 </div>
-                <div class="card-body">
-                    <form method="post" id="coursForm">
-                        {% csrf_token %}
-                        
-                        <!-- Section Informations générales -->
-                        <div class="form-section">
-                            <h5 class="mb-3">
-                                <i class="fas fa-info-circle me-2"></i>Informations générales
-                            </h5>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label required-field">{{ form.titre.label }}</label>
-                                        {{ form.titre }}
-                                        {% if form.titre.errors %}
-                                        <div class="text-danger">{{ form.titre.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label required-field">{{ form.type_cours.label }}</label>
-                                        {{ form.type_cours }}
-                                        {% if form.type_cours.errors %}
-                                        <div class="text-danger">{{ form.type_cours.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">{{ form.description.label }}</label>
-                                {{ form.description }}
-                                {% if form.description.errors %}
-                                <div class="text-danger">{{ form.description.errors }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
+            {% endif %}
 
-                        <!-- Section Attribution -->
-                        <div class="form-section">
-                            <h5 class="mb-3">
-                                <i class="fas fa-users me-2"></i>Attribution
-                            </h5>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label class="form-label required-field">{{ form.classe.label }}</label>
-                                        {{ form.classe }}
-                                        {% if form.classe.errors %}
-                                        <div class="text-danger">{{ form.classe.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label class="form-label required-field">{{ form.matiere_module.label }}</label>
-                                        {{ form.matiere_module }}
-                                        {% if form.matiere_module.errors %}
-                                        <div class="text-danger">{{ form.matiere_module.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label class="form-label required-field">{{ form.enseignant.label }}</label>
-                                        {{ form.enseignant }}
-                                        {% if form.enseignant.errors %}
-                                        <div class="text-danger">{{ form.enseignant.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label required-field">{{ form.periode_academique.label }}</label>
-                                        {{ form.periode_academique }}
-                                        {% if form.periode_academique.errors %}
-                                        <div class="text-danger">{{ form.periode_academique.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">{{ form.statut.label }}</label>
-                                        {{ form.statut }}
-                                        {% if form.statut.errors %}
-                                        <div class="text-danger">{{ form.statut.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            <!-- Alertes de conflit -->
+            <div id="conflitAlert" class="alert alert-warning" style="display: none;">
+                <strong><i class="fas fa-exclamation-triangle"></i> Conflits détectés :</strong>
+                <ul id="conflitList"></ul>
+            </div>
 
-                        <!-- Section Planification -->
-                        <div class="form-section">
-                            <h5 class="mb-3">
-                                <i class="fas fa-calendar me-2"></i>Planification
-                            </h5>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label class="form-label required-field">{{ form.date_prevue.label }}</label>
-                                        {{ form.date_prevue }}
-                                        {% if form.date_prevue.errors %}
-                                        <div class="text-danger">{{ form.date_prevue.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label class="form-label required-field">{{ form.heure_debut_prevue.label }}</label>
-                                        {{ form.heure_debut_prevue }}
-                                        {% if form.heure_debut_prevue.errors %}
-                                        <div class="text-danger">{{ form.heure_debut_prevue.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label class="form-label required-field">{{ form.heure_fin_prevue.label }}</label>
-                                        {{ form.heure_fin_prevue }}
-                                        {% if form.heure_fin_prevue.errors %}
-                                        <div class="text-danger">{{ form.heure_fin_prevue.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">{{ form.salle.label }}</label>
-                                        {{ form.salle }}
-                                        {% if form.salle.errors %}
-                                        <div class="text-danger">{{ form.salle.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            <div class="form-section">
+                <h3>Informations générales</h3>
 
-                        <!-- Section Cours en ligne -->
-                        <div class="form-section">
-                            <h5 class="mb-3">
-                                <i class="fas fa-video me-2"></i>Cours en ligne
-                            </h5>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-check mb-3">
-                                        {{ form.cours_en_ligne }}
-                                        <label class="form-check-label" for="{{ form.cours_en_ligne.id_for_label }}">
-                                            {{ form.cours_en_ligne.label }}
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div id="streaming-options" style="display: none;">
-                                <div class="mb-3">
-                                    <label class="form-label">{{ form.url_streaming.label }}</label>
-                                    {{ form.url_streaming }}
-                                    {% if form.url_streaming.errors %}
-                                    <div class="text-danger">{{ form.url_streaming.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.titre.id_for_label }}" class="required">Titre du cours</label>
+                        {{ form.titre }}
+                        {% if form.titre.errors %}
+                            <div class="field-error">{{ form.titre.errors.0 }}</div>
+                        {% endif %}
+                    </div>
 
-                        <!-- Section Contenu pédagogique -->
-                        <div class="form-section">
-                            <h5 class="mb-3">
-                                <i class="fas fa-book-open me-2"></i>Contenu pédagogique
-                            </h5>
-                            <div class="mb-3">
-                                <label class="form-label">{{ form.objectifs.label }}</label>
-                                {{ form.objectifs }}
-                                {% if form.objectifs.errors %}
-                                <div class="text-danger">{{ form.objectifs.errors }}</div>
-                                {% endif %}
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">{{ form.contenu.label }}</label>
-                                {{ form.contenu }}
-                                {% if form.contenu.errors %}
-                                <div class="text-danger">{{ form.contenu.errors }}</div>
-                                {% endif %}
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">{{ form.prerequis.label }}</label>
-                                {{ form.prerequis }}
-                                {% if form.prerequis.errors %}
-                                <div class="text-danger">{{ form.prerequis.errors }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
+                    <div class="form-group">
+                        <label for="{{ form.type_cours.id_for_label }}" class="required">Type de cours</label>
+                        {{ form.type_cours }}
+                        {% if form.type_cours.errors %}
+                            <div class="field-error">{{ form.type_cours.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
 
-                        <!-- Boutons d'action -->
-                        <div class="text-end">
-                            <a href="{% if object %}{% url 'courses:cours_detail' object.pk %}{% else %}{% url 'courses:cours_list' %}{% endif %}" 
-                               class="btn btn-secondary me-2">
-                                <i class="fas fa-times me-1"></i>Annuler
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-1"></i>
-                                {% if object %}Modifier{% else %}Créer{% endif %}
-                            </button>
-                        </div>
-                    </form>
+                <div class="form-group">
+                    <label for="{{ form.description.id_for_label }}">Description</label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                        <div class="field-error">{{ form.description.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.objectifs.id_for_label }}">Objectifs pédagogiques</label>
+                    {{ form.objectifs }}
+                    {% if form.objectifs.errors %}
+                        <div class="field-error">{{ form.objectifs.errors.0 }}</div>
+                    {% endif %}
                 </div>
             </div>
+
+            <div class="form-section">
+                <h3>Affectation</h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.matiere.id_for_label }}" class="required">Matière</label>
+                        {{ form.matiere }}
+                        {% if form.matiere.errors %}
+                            <div class="field-error">{{ form.matiere.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.classe.id_for_label }}" class="required">Classe</label>
+                        {{ form.classe }}
+                        {% if form.classe.errors %}
+                            <div class="field-error">{{ form.classe.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.enseignant.id_for_label }}" class="required">Enseignant</label>
+                        {{ form.enseignant }}
+                        {% if form.enseignant.errors %}
+                            <div class="field-error">{{ form.enseignant.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.periode_academique.id_for_label }}" class="required">Période académique</label>
+                        {{ form.periode_academique }}
+                        {% if form.periode_academique.errors %}
+                            <div class="field-error">{{ form.periode_academique.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Planification</h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.date_prevue.id_for_label }}" class="required">Date</label>
+                        {{ form.date_prevue }}
+                        {% if form.date_prevue.errors %}
+                            <div class="field-error">{{ form.date_prevue.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.heure_debut_prevue.id_for_label }}" class="required">Heure de début</label>
+                        {{ form.heure_debut_prevue }}
+                        {% if form.heure_debut_prevue.errors %}
+                            <div class="field-error">{{ form.heure_debut_prevue.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.heure_fin_prevue.id_for_label }}" class="required">Heure de fin</label>
+                        {{ form.heure_fin_prevue }}
+                        {% if form.heure_fin_prevue.errors %}
+                            <div class="field-error">{{ form.heure_fin_prevue.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="duree-info">
+                    <i class="fas fa-clock"></i>
+                    Durée : <strong id="dureeCours">-</strong>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Lieu</h3>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.salle.id_for_label }}">Salle</label>
+                        {{ form.salle }}
+                        {% if form.salle.errors %}
+                            <div class="field-error">{{ form.salle.errors.0 }}</div>
+                        {% endif %}
+                        <button type="button" class="btn-link" onclick="checkSallesDisponibles()">
+                            <i class="fas fa-search"></i> Voir salles disponibles
+                        </button>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="form-check">
+                            {{ form.cours_en_ligne }}
+                            <label for="{{ form.cours_en_ligne.id_for_label }}" class="form-check-label">
+                                Cours en ligne
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" id="urlStreamingGroup" style="display: none;">
+                    <label for="{{ form.url_streaming.id_for_label }}">URL de streaming</label>
+                    {{ form.url_streaming }}
+                    {% if form.url_streaming.errors %}
+                        <div class="field-error">{{ form.url_streaming.errors.0 }}</div>
+                    {% endif %}
+                    <small class="form-text">Lien Zoom, Google Meet, Teams, etc.</small>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a href="{% url 'courses:cours_list' %}" class="btn btn-outline">
+                    <i class="fas fa-times"></i> Annuler
+                </a>
+                <button type="button" class="btn btn-secondary" onclick="checkConflits()">
+                    <i class="fas fa-check-circle"></i> Vérifier les conflits
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> {% if object %}Enregistrer{% else %}Créer le cours{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal salles disponibles -->
+<div id="sallesModal" class="modal">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h3>Salles disponibles</h3>
+            <button class="modal-close" onclick="closeSallesModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="sallesLoading">
+                <i class="fas fa-spinner fa-spin"></i> Chargement...
+            </div>
+            <div id="sallesList" style="display: none;"></div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<style>
+.form-container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+.form-header { margin-bottom: 20px; }
+.breadcrumb-nav {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.breadcrumb-nav a { color: #2563eb; text-decoration: none; }
+.breadcrumb-nav .current { color: #1f2937; font-weight: 500; }
+.form-header h1 { margin: 0; font-size: 22px; font-weight: 600; color: #1f2937; }
+.form-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    padding: 30px;
+}
+.alert {
+    padding: 12px 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+.alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.alert-warning { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.alert ul { margin: 8px 0 0 20px; }
+.form-section {
+    margin-bottom: 30px;
+    padding-bottom: 30px;
+    border-bottom: 1px solid #e5e7eb;
+}
+.form-section:last-of-type { border-bottom: none; }
+.form-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 20px 0;
+}
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+.form-group { margin-bottom: 20px; }
+.form-group label {
+    display: block;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+.form-group label.required::after {
+    content: "*";
+    color: #ef4444;
+    margin-left: 4px;
+}
+.form-control, .form-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+.form-control:focus, .form-select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+textarea.form-control { min-height: 80px; resize: vertical; }
+.form-text {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #6b7280;
+}
+.field-error {
+    color: #ef4444;
+    font-size: 12px;
+    margin-top: 4px;
+}
+.form-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 28px;
+}
+.form-check-input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+.form-check-label { cursor: pointer; margin: 0; font-weight: normal; }
+.duree-info {
+    background: #f3f4f6;
+    padding: 12px;
+    border-radius: 6px;
+    margin-top: 15px;
+    font-size: 14px;
+    color: #374151;
+}
+.duree-info i { color: #6b7280; margin-right: 8px; }
+.duree-info strong { color: #2563eb; }
+.btn-link {
+    background: none;
+    border: none;
+    color: #2563eb;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 4px 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+}
+.btn-link:hover { text-decoration: underline; }
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+}
+.btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+}
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-secondary { background: #6b7280; color: white; }
+.btn-secondary:hover { background: #4b5563; }
+.btn-outline {
+    background: white;
+    border: 1px solid #d1d5db;
+    color: #374151;
+}
+.btn-outline:hover { background: #f3f4f6; }
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+.modal.show { display: flex; }
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.modal-header h3 { margin: 0; font-size: 18px; font-weight: 600; }
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6b7280;
+}
+.modal-body { padding: 20px; }
+
+.salle-item {
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.salle-item:hover {
+    border-color: #2563eb;
+    background: #f3f4f6;
+}
+.salle-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+.salle-nom { font-weight: 600; color: #1f2937; }
+.salle-capacite {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+@media (max-width: 768px) {
+    .form-card { padding: 20px; }
+    .form-row { grid-template-columns: 1fr; }
+    .form-actions { flex-direction: column-reverse; }
+    .btn { width: 100%; justify-content: center; }
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Gestion du cours en ligne
+    // Afficher/masquer URL streaming
     const coursEnLigneCheckbox = document.getElementById('{{ form.cours_en_ligne.id_for_label }}');
-    const streamingOptions = document.getElementById('streaming-options');
-    
-    function toggleStreamingOptions() {
-        if (coursEnLigneCheckbox.checked) {
-            streamingOptions.style.display = 'block';
+    const urlStreamingGroup = document.getElementById('urlStreamingGroup');
+
+    function toggleUrlStreaming() {
+        urlStreamingGroup.style.display = coursEnLigneCheckbox.checked ? 'block' : 'none';
+    }
+
+    if (coursEnLigneCheckbox) {
+        toggleUrlStreaming();
+        coursEnLigneCheckbox.addEventListener('change', toggleUrlStreaming);
+    }
+
+    // Calculer la durée du cours
+    const heureDebutInput = document.getElementById('{{ form.heure_debut_prevue.id_for_label }}');
+    const heureFinInput = document.getElementById('{{ form.heure_fin_prevue.id_for_label }}');
+    const dureeCours = document.getElementById('dureeCours');
+
+    function calculateDuree() {
+        if (!heureDebutInput.value || !heureFinInput.value) {
+            dureeCours.textContent = '-';
+            return;
+        }
+
+        const [hd, md] = heureDebutInput.value.split(':').map(Number);
+        const [hf, mf] = heureFinInput.value.split(':').map(Number);
+
+        const debut = hd * 60 + md;
+        const fin = hf * 60 + mf;
+        const duree = fin - debut;
+
+        if (duree <= 0) {
+            dureeCours.textContent = 'Invalide';
+            dureeCours.style.color = '#ef4444';
         } else {
-            streamingOptions.style.display = 'none';
+            const heures = Math.floor(duree / 60);
+            const minutes = duree % 60;
+            dureeCours.textContent = heures > 0 ? `${heures}h${minutes > 0 ? minutes : ''}` : `${minutes}min`;
+            dureeCours.style.color = '#2563eb';
         }
     }
-    
-    coursEnLigneCheckbox.addEventListener('change', toggleStreamingOptions);
-    toggleStreamingOptions(); // Initial state
 
-    // Filtrage dynamique matière-module selon la classe
-    const classeSelect = document.getElementById('{{ form.classe.id_for_label }}');
-    const matiereModuleSelect = document.getElementById('{{ form.matiere_module.id_for_label }}');
-    
-    if (classeSelect && matiereModuleSelect) {
-        classeSelect.addEventListener('change', function() {
-            const classeId = this.value;
-            if (classeId) {
-                fetch(`{% url 'courses:ajax_matiere_modules' %}?niveau_id=${classeId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        matiereModuleSelect.innerHTML = '<option value="">---------</option>';
-                        data.results.forEach(item => {
-                            const option = document.createElement('option');
-                            option.value = item.id;
-                            option.textContent = item.text;
-                            matiereModuleSelect.appendChild(option);
-                        });
-                    })
-                    .catch(error => console.error('Error:', error));
-            }
-        });
+    if (heureDebutInput && heureFinInput) {
+        calculateDuree();
+        heureDebutInput.addEventListener('change', calculateDuree);
+        heureFinInput.addEventListener('change', calculateDuree);
     }
 });
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function checkConflits() {
+    const classeId = document.getElementById('{{ form.classe.id_for_label }}').value;
+    const enseignantId = document.getElementById('{{ form.enseignant.id_for_label }}').value;
+    const salleId = document.getElementById('{{ form.salle.id_for_label }}').value;
+    const date = document.getElementById('{{ form.date_prevue.id_for_label }}').value;
+    const heureDebut = document.getElementById('{{ form.heure_debut_prevue.id_for_label }}').value;
+    const heureFin = document.getElementById('{{ form.heure_fin_prevue.id_for_label }}').value;
+
+    if (!date || !heureDebut || !heureFin) {
+        alert('Veuillez remplir la date et les heures');
+        return;
+    }
+
+    const params = new URLSearchParams({
+        date: date,
+        heure_debut: heureDebut,
+        heure_fin: heureFin
+    });
+
+    document.getElementById('sallesLoading').style.display = 'block';
+    document.getElementById('sallesList').style.display = 'none';
+    document.getElementById('sallesModal').classList.add('show');
+
+    fetch(`/courses/ajax/salles-disponibles/?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('sallesLoading').style.display = 'none';
+            const listDiv = document.getElementById('sallesList');
+
+            if (data.salles && data.salles.length > 0) {
+                listDiv.innerHTML = data.salles.map(salle => `
+                    <div class="salle-item" onclick="selectSalle('${salle.id}', '${salle.nom}')">
+                        <div class="salle-item-header">
+                            <span class="salle-nom">${salle.code} - ${salle.nom}</span>
+                            <span class="salle-capacite">
+                                <i class="fas fa-users"></i> ${salle.capacite} places
+                            </span>
+                        </div>
+                    </div>
+                `).join('');
+                listDiv.style.display = 'block';
+            } else {
+                listDiv.innerHTML = '<p style="text-align: center; color: #6b7280;">Aucune salle disponible</p>';
+                listDiv.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors du chargement des salles');
+            closeSallesModal();
+        });
+}
+
+function selectSalle(salleId, salleNom) {
+    const salleSelect = document.getElementById('{{ form.salle.id_for_label }}');
+    salleSelect.value = salleId;
+    closeSallesModal();
+}
+
+function closeSallesModal() {
+    document.getElementById('sallesModal').classList.remove('show');
+}
 </script>
 {% endblock %}

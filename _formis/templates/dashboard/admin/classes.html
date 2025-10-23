@@ -34,8 +34,8 @@
             </div>
             <h1>Gestion des Classes</h1>
             <div class="header-stats">
-                <span class="stat-badge">{{ classes.paginator.count }} total</span>
-                <span class="stat-badge actifs">{{ classes.object_list|length }} visibles</span>
+                <span class="stat-badge">{{ page_obj.paginator.count }} total</span>
+                <span class="stat-badge actifs">{{ classes|length }} sur cette page</span>
             </div>
         </div>
         <div class="header-actions">
@@ -275,7 +275,9 @@
         </div>
 
         <!-- Pagination -->
-        {% include 'components/pagination.html' with page_obj=classes %}
+        {% if classes %}
+            {% include 'components/pagination.html' with page_obj=page_obj %}
+        {% endif %}
     </div>
 </div>
 

@@ -1,0 +1,1011 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{{ evaluation.titre }} - Détail{% endblock %}
+
+{% block content %}
+<div class="evaluation-detail-apprenant">
+    <!-- Header -->
+    <div class="detail-header">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <a href="{% url 'dashboard:student_evaluations' %}">Évaluations</a>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">{{ evaluation.titre }}</span>
+            </div>
+            <h1>{{ evaluation.titre }}</h1>
+            <div class="eval-meta">
+                <span class="meta-badge type">{{ evaluation.get_type_evaluation_display }}</span>
+                <span class="meta-badge matiere">{{ evaluation.matiere.nom }}</span>
+                <span class="meta-badge enseignant">{{ evaluation.enseignant.get_full_name }}</span>
+            </div>
+        </div>
+
+        <div class="header-status">
+            {% if composition.statut == 'CORRIGEE' %}
+                <div class="note-finale">
+                    <div class="note-label">Votre note</div>
+                    <div class="note-value">{{ composition.note_obtenue }}<span>/{{ evaluation.note_maximale }}</span></div>
+                </div>
+            {% else %}
+                <span class="status-badge-large {{ composition.statut|lower }}">
+                    {{ composition.get_statut_display }}
+                </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Informations de l'évaluation -->
+    <div class="info-grid">
+        <div class="info-card">
+            <div class="info-icon blue">
+                <i class="fas fa-calendar-alt"></i>
+            </div>
+            <div class="info-content">
+                <div class="info-label">Début</div>
+                <div class="info-value">{{ evaluation.date_debut|date:"d/m/Y" }}</div>
+                <div class="info-time">{{ evaluation.date_debut|date:"H:i" }}</div>
+            </div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-icon green">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="info-content">
+                <div class="info-label">Fin</div>
+                <div class="info-value">{{ evaluation.date_fin|date:"d/m/Y" }}</div>
+                <div class="info-time">{{ evaluation.date_fin|date:"H:i" }}</div>
+            </div>
+        </div>
+
+        {% if evaluation.duree_minutes %}
+        <div class="info-card">
+            <div class="info-icon orange">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="info-content">
+                <div class="info-label">Durée</div>
+                <div class="info-value">{{ evaluation.duree_minutes }} min</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="info-card">
+            <div class="info-icon purple">
+                <i class="fas fa-star"></i>
+            </div>
+            <div class="info-content">
+                <div class="info-label">Coefficient</div>
+                <div class="info-value">{{ evaluation.coefficient }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Description -->
+    {% if evaluation.description %}
+    <div class="section-card">
+        <div class="section-header">
+            <h3><i class="fas fa-align-left"></i> Description</h3>
+        </div>
+        <div class="section-content">
+            <p>{{ evaluation.description }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Sujet -->
+    {% if evaluation.fichier_evaluation %}
+    <div class="section-card">
+        <div class="section-header">
+            <h3><i class="fas fa-file-pdf"></i> Sujet de l'évaluation</h3>
+        </div>
+        <div class="section-content">
+            <div class="file-viewer">
+                <div class="file-preview">
+                    <i class="fas fa-file-pdf fa-3x"></i>
+                    <p>Sujet de l'évaluation</p>
+                </div>
+                <div class="file-actions-list">
+                    <a href="{% url 'evaluations:voir_fichier' 'evaluation' evaluation.id %}"
+                       class="btn btn-primary" target="_blank">
+                        <i class="fas fa-eye"></i> Voir le sujet
+                    </a>
+                    <a href="{% url 'evaluations:telecharger_evaluation' evaluation.id %}"
+                       class="btn btn-outline">
+                        <i class="fas fa-download"></i> Télécharger
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Upload de fichiers -->
+    {% if composition.peut_soumettre %}
+    <div class="section-card upload-section">
+        <div class="section-header">
+            <h3><i class="fas fa-upload"></i> Soumettre votre copie</h3>
+            {% if evaluation.est_active %}
+            <div class="countdown" data-end-time="{{ evaluation.date_fin.isoformat }}">
+                <i class="fas fa-hourglass-half"></i>
+                <span id="countdown-text">Calcul...</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="section-content">
+            <!-- Zone de drag & drop -->
+            <div class="dropzone" id="dropzone">
+                <div class="dropzone-content">
+                    <i class="fas fa-cloud-upload-alt fa-3x"></i>
+                    <p class="dropzone-text">Glissez vos fichiers ici ou cliquez pour sélectionner</p>
+                    <p class="dropzone-hint">Formats acceptés: PDF, DOC, DOCX, JPG, PNG (Max: 10 MB)</p>
+                    <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display: none;">
+                </div>
+            </div>
+
+            <!-- Fichiers uploadés -->
+            <div id="uploaded-files" class="uploaded-files">
+                {% for fichier in fichiers %}
+                <div class="uploaded-file-item" data-id="{{ fichier.id }}">
+                    <div class="file-icon">
+                        <i class="fas fa-file"></i>
+                    </div>
+                    <div class="file-info">
+                        <div class="file-name">{{ fichier.nom_original }}</div>
+                        <div class="file-size">{{ fichier.taille|filesizeformat }}</div>
+                    </div>
+                    <button class="btn-delete" onclick="deleteFile({{ fichier.id }})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Bouton de soumission -->
+            <div class="submit-section">
+                <button class="btn btn-success btn-lg" onclick="submitComposition()" id="submitBtn">
+                    <i class="fas fa-paper-plane"></i> Soumettre ma copie
+                </button>
+                <p class="submit-warning">
+                    <i class="fas fa-info-circle"></i>
+                    Assurez-vous d'avoir uploadé tous vos fichiers avant de soumettre
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Copie soumise -->
+    {% if composition.statut in 'SOUMISE,EN_RETARD,CORRIGEE' %}
+    <div class="section-card">
+        <div class="section-header">
+            <h3><i class="fas fa-check-circle"></i> Votre copie</h3>
+        </div>
+        <div class="section-content">
+            <div class="submission-info">
+                <div class="submission-status">
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <strong>Copie soumise le {{ composition.date_soumission|date:"d/m/Y à H:i" }}</strong>
+                        {% if composition.est_en_retard %}
+                            <span class="warning-text">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Soumis en retard
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="submitted-files-list">
+                <h4>Fichiers soumis ({{ fichiers.count }})</h4>
+                {% for fichier in fichiers %}
+                <div class="submitted-file-item">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>{{ fichier.nom_original }}</span>
+                    <a href="{% url 'evaluations:telecharger_composition' fichier.id %}"
+                       class="btn-sm btn-outline">
+                        <i class="fas fa-download"></i>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Correction -->
+    {% if composition.statut == 'CORRIGEE' %}
+    <div class="section-card correction-section">
+        <div class="section-header">
+            <h3><i class="fas fa-graduation-cap"></i> Correction</h3>
+        </div>
+        <div class="section-content">
+            <div class="note-detail">
+                <div class="note-box">
+                    <div class="note-box-label">Note obtenue</div>
+                    <div class="note-box-value">{{ composition.note_obtenue }}</div>
+                    <div class="note-box-max">/ {{ evaluation.note_maximale }}</div>
+                </div>
+
+                {% if composition.note_avec_penalite != composition.note_obtenue %}
+                <div class="note-box warning">
+                    <div class="note-box-label">Après pénalité</div>
+                    <div class="note-box-value">{{ composition.note_avec_penalite }}</div>
+                    <div class="note-box-max">/ {{ evaluation.note_maximale }}</div>
+                </div>
+                {% endif %}
+
+                {% if note %}
+                <div class="note-box info">
+                    <div class="note-box-label">Note sur 20</div>
+                    <div class="note-box-value">{{ note.note_sur_20|floatformat:2 }}</div>
+                    <div class="note-box-max">/ 20</div>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if composition.commentaire_correction %}
+            <div class="commentaire-enseignant">
+                <h4><i class="fas fa-comment-alt"></i> Commentaire de l'enseignant</h4>
+                <p>{{ composition.commentaire_correction }}</p>
+            </div>
+            {% endif %}
+
+            {% if composition.fichier_correction_personnalise %}
+            <div class="correction-file">
+                <i class="fas fa-file-alt"></i>
+                <span>Correction personnalisée</span>
+                <a href="{{ composition.fichier_correction_personnalise.url }}"
+                   class="btn btn-primary" target="_blank">
+                    <i class="fas fa-download"></i> Télécharger
+                </a>
+            </div>
+            {% endif %}
+
+            {% if evaluation.correction_visible and evaluation.fichier_correction %}
+            <div class="correction-generale">
+                <h4><i class="fas fa-file-alt"></i> Correction générale</h4>
+                <a href="{% url 'evaluations:telecharger_fichier_correction' evaluation.id %}"
+                   class="btn btn-info">
+                    <i class="fas fa-download"></i> Télécharger la correction
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.evaluation-detail-apprenant { padding: 15px; max-width: 1200px; margin: 0 auto; }
+
+.detail-header {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.breadcrumb-nav {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav a { color: #2563eb; text-decoration: none; }
+.breadcrumb-nav .current { color: #1f2937; font-weight: 500; }
+
+.header-content h1 {
+    margin: 0 0 10px 0;
+    font-size: 22px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.eval-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.meta-badge {
+    padding: 4px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.meta-badge.type { background: #dbeafe; color: #1e40af; }
+.meta-badge.matiere { background: #f3f4f6; color: #4b5563; }
+.meta-badge.enseignant { background: #fef3c7; color: #78350f; }
+
+.note-finale {
+    text-align: center;
+    padding: 15px 25px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    color: white;
+}
+
+.note-label {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-bottom: 5px;
+}
+
+.note-value {
+    font-size: 36px;
+    font-weight: 700;
+}
+
+.note-value span {
+    font-size: 18px;
+    opacity: 0.8;
+}
+
+.status-badge-large {
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.status-badge-large.en_cours { background: #dbeafe; color: #1e40af; }
+.status-badge-large.soumise { background: #d1fae5; color: #065f46; }
+.status-badge-large.en_retard { background: #fef3c7; color: #92400e; }
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.info-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.info-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+}
+
+.info-icon.blue { background: #3b82f6; }
+.info-icon.green { background: #10b981; }
+.info-icon.orange { background: #f59e0b; }
+.info-icon.purple { background: #8b5cf6; }
+
+.info-content { flex: 1; }
+
+.info-label {
+    font-size: 11px;
+    color: #6b7280;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.info-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.info-time {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.section-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.section-header {
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.countdown {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: #f59e0b;
+    font-weight: 600;
+}
+
+.section-content { padding: 20px; }
+
+.dropzone {
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.dropzone:hover {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.dropzone.dragover {
+    border-color: #2563eb;
+    background: #dbeafe;
+}
+
+.dropzone-content i {
+    color: #9ca3af;
+    margin-bottom: 15px;
+}
+
+.dropzone-text {
+    font-size: 16px;
+    font-weight: 500;
+    color: #1f2937;
+    margin-bottom: 8px;
+}
+
+.dropzone-hint {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.uploaded-files {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.uploaded-file-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.uploaded-file-item:hover {
+    background: #f3f4f6;
+}
+
+.file-icon {
+    width: 40px;
+    height: 40px;
+    background: #2563eb;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+}
+
+.file-info { flex: 1; }
+
+.file-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: #1f2937;
+    margin-bottom: 3px;
+}
+
+.file-size {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.btn-delete {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #fee2e2;
+    color: #ef4444;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-delete:hover {
+    background: #fecaca;
+}
+
+.submit-section {
+    margin-top: 30px;
+    text-align: center;
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+
+.btn-lg { padding: 12px 24px; font-size: 16px; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-success { background: #10b981; color: white; }
+.btn-success:hover { background: #059669; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-info { background: #3b82f6; color: white; }
+.btn-info:hover { background: #2563eb; }
+.btn-outline { background: white; border: 1px solid #e5e7eb; color: #6b7280; }
+.btn-outline:hover { background: #f3f4f6; }
+
+.submit-warning {
+    margin-top: 15px;
+    font-size: 13px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.submission-info {
+    padding: 15px;
+    background: #d1fae5;
+    border-left: 4px solid #10b981;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+
+.submission-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: #065f46;
+}
+
+.submission-status i {
+    font-size: 24px;
+    color: #10b981;
+}
+
+.warning-text {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #f59e0b;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+.submitted-files-list h4 {
+    margin: 0 0 15px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.submitted-file-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    background: #f9fafb;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.submitted-file-item i {
+    color: #ef4444;
+    font-size: 20px;
+}
+
+.submitted-file-item span {
+    flex: 1;
+    font-size: 13px;
+    color: #1f2937;
+}
+
+.correction-section .section-content {
+    background: linear-gradient(135deg, #fef3c7 0%, #fef9e7 100%);
+}
+
+.note-detail {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.note-box {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.note-box.warning {
+    background: #fef3c7;
+    border: 2px solid #f59e0b;
+}
+
+.note-box.info {
+    background: #dbeafe;
+    border: 2px solid #2563eb;
+}
+
+.note-box-label {
+    font-size: 11px;
+    color: #6b7280;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.note-box-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #2563eb;
+}
+
+.note-box-max {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.commentaire-enseignant {
+    padding: 20px;
+    background: white;
+    border-left: 4px solid #2563eb;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+
+.commentaire-enseignant h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e40af;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.commentaire-enseignant p {
+    margin: 0;
+    font-size: 14px;
+    color: #1f2937;
+    line-height: 1.6;
+}
+
+.correction-file {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.correction-file i {
+    font-size: 24px;
+    color: #10b981;
+}
+
+.correction-file span {
+    flex: 1;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.correction-generale {
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.correction-generale h4 {
+    margin: 0 0 15px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.file-viewer {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.file-preview {
+    width: 120px;
+    height: 120px;
+    background: #f9fafb;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.file-preview i { color: #ef4444; }
+
+.file-preview p {
+    margin: 0;
+    font-size: 12px;
+    color: #6b7280;
+    text-align: center;
+}
+
+.file-actions-list {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .detail-header {
+        flex-direction: column;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .note-detail {
+        grid-template-columns: 1fr;
+    }
+
+    .file-viewer {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadedFiles = document.getElementById('uploaded-files');
+
+    if (dropzone && fileInput) {
+        // Click to select files
+        dropzone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Drag & drop handlers
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+    }
+
+    // Countdown
+    const countdownEl = document.querySelector('.countdown');
+    if (countdownEl) {
+        const endTime = new Date(countdownEl.dataset.endTime).getTime();
+
+        const updateCountdown = () => {
+            const now = new Date().getTime();
+            const distance = endTime - now;
+
+            if (distance < 0) {
+                document.getElementById('countdown-text').textContent = 'Terminé';
+                return;
+            }
+
+            const hours = Math.floor(distance / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            document.getElementById('countdown-text').textContent =
+                `${hours}h ${minutes}m ${seconds}s restant`;
+        };
+
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+    }
+});
+
+function handleFiles(files) {
+    const formData = new FormData();
+
+    Array.from(files).forEach(file => {
+        if (file.size > 10 * 1024 * 1024) {
+            alert(`Le fichier ${file.name} est trop volumineux (max 10 MB)`);
+            return;
+        }
+
+        formData.append('fichier', file);
+
+        // Upload via AJAX
+        fetch('{% url "evaluations:upload_composition" evaluation.id %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                addFileToList(data.fichier);
+            } else {
+                alert('Erreur: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de l\'upload');
+        });
+    });
+}
+
+function addFileToList(fichier) {
+    const uploadedFiles = document.getElementById('uploaded-files');
+
+    const fileItem = document.createElement('div');
+    fileItem.className = 'uploaded-file-item';
+    fileItem.dataset.id = fichier.id;
+    fileItem.innerHTML = `
+        <div class="file-icon">
+            <i class="fas fa-file"></i>
+        </div>
+        <div class="file-info">
+            <div class="file-name">${fichier.nom}</div>
+            <div class="file-size">${formatBytes(fichier.taille)}</div>
+        </div>
+        <button class="btn-delete" onclick="deleteFile(${fichier.id})">
+            <i class="fas fa-trash"></i>
+        </button>
+    `;
+
+    uploadedFiles.appendChild(fileItem);
+}
+
+function deleteFile(fileId) {
+    if (!confirm('Supprimer ce fichier ?')) return;
+
+    fetch(`/evaluations/fichier-composition/${fileId}/supprimer/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const fileItem = document.querySelector(`[data-id="${fileId}"]`);
+            if (fileItem) fileItem.remove();
+        } else {
+            alert('Erreur: ' + data.error);
+        }
+    });
+}
+
+function submitComposition() {
+    const uploadedFiles = document.querySelectorAll('.uploaded-file-item');
+
+    if (uploadedFiles.length === 0) {
+        alert('Veuillez uploader au moins un fichier avant de soumettre');
+        return;
+    }
+
+    if (!confirm('Êtes-vous sûr de vouloir soumettre votre copie ? Vous ne pourrez plus la modifier après.')) {
+        return;
+    }
+
+    fetch('{% url "evaluations:soumettre_composition" evaluation.id %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Copie soumise avec succès !');
+            location.reload();
+        } else {
+            alert('Erreur: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la soumission');
+    });
+}
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+</script>
+{% endblock %}

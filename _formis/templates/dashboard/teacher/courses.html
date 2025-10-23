@@ -1,8 +1,593 @@
-{% extends 'base/dashboard_base.html' %} 
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
 
-{% block page_title %}Tableau de Bord - Enseignant{% endblock %} 
-
-{% block breadcrumb %}Mes cours{% endblock %} 
+{% block page_title %}Mes Cours - Enseignant{% endblock %}
 
 {% block content %}
+<div class="teacher-courses">
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Enseignant</span>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">Mes Cours</span>
+            </div>
+            <h1>Mes Enseignements</h1>
+            <div class="header-stats">
+                <span class="stat-badge">{{ page_obj.paginator.count }} cours</span>
+                <span class="stat-badge today">{{ total_aujourdhui }} aujourd'hui</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportCourses()" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <select name="matiere" class="form-select-sm">
+                    <option value="">Toutes matières</option>
+                    {% for mat in matieres %}
+                        <option value="{{ mat.id }}" {% if current_filters.matiere == mat.id|stringformat:"s" %}selected{% endif %}>
+                            {{ mat.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="classe" class="form-select-sm">
+                    <option value="">Toutes classes</option>
+                    {% for classe in classes %}
+                        <option value="{{ classe.id }}" {% if current_filters.classe == classe.id|stringformat:"s" %}selected{% endif %}>
+                            {{ classe.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <input type="date" name="date_debut" value="{{ current_filters.date_debut }}"
+                       class="form-input-sm" placeholder="Date début">
+            </div>
+            <div class="filter-group">
+                <select name="statut" class="form-select-sm">
+                    <option value="">Tous statuts</option>
+                    {% for key, label in statuts %}
+                        <option value="{{ key }}" {% if current_filters.statut == key %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a href="{% url 'dashboard:teacher_courses' %}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="courses-list">
+        {% for cours in courses %}
+        <div class="cours-card {% if cours.statut == 'EN_COURS' %}in-progress{% endif %}" id="cours-{{ cours.id }}">
+            <div class="cours-header">
+                <div class="cours-date-badge">
+                    <i class="fas fa-calendar"></i>
+                    {{ cours.date_prevue|date:"d/m/Y" }}
+                </div>
+                <div class="cours-info">
+                    <h3>{{ cours.titre }}</h3>
+                    <div class="cours-meta">
+                        <span class="meta-tag matiere" style="background: {{ cours.matiere.couleur }}20; color: {{ cours.matiere.couleur }};">
+                            <i class="fas fa-book"></i>
+                            {{ cours.matiere.nom }}
+                        </span>
+                        <span class="meta-tag classe">
+                            <i class="fas fa-users"></i>
+                            {{ cours.classe.nom }}
+                        </span>
+                        <span class="meta-tag type">
+                            <i class="fas fa-tag"></i>
+                            {{ cours.get_type_cours_display }}
+                        </span>
+                    </div>
+                </div>
+                <div class="cours-status">
+                    <span class="status-badge status-{{ cours.statut|lower }}">
+                        {% if cours.statut == 'PROGRAMME' %}
+                            <i class="fas fa-clock"></i> Programmé
+                        {% elif cours.statut == 'EN_COURS' %}
+                            <i class="fas fa-play-circle"></i> En cours
+                        {% elif cours.statut == 'TERMINE' %}
+                            <i class="fas fa-check-circle"></i> Terminé
+                        {% elif cours.statut == 'ANNULE' %}
+                            <i class="fas fa-ban"></i> Annulé
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <div class="cours-body">
+                <div class="cours-details-grid">
+                    <div class="detail-item">
+                        <i class="fas fa-clock"></i>
+                        <span>{{ cours.heure_debut_prevue|time:"H:i" }} - {{ cours.heure_fin_prevue|time:"H:i" }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-hourglass-half"></i>
+                        <span>{{ cours.duree_prevue }} min</span>
+                    </div>
+                    {% if cours.salle %}
+                    <div class="detail-item">
+                        <i class="fas fa-door-open"></i>
+                        <span>{{ cours.salle.nom }}</span>
+                    </div>
+                    {% endif %}
+                    {% if cours.cours_en_ligne %}
+                    <div class="detail-item online">
+                        <i class="fas fa-video"></i>
+                        <span>Cours en ligne</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if cours.description %}
+                <p class="cours-description">{{ cours.description|truncatechars:150 }}</p>
+                {% endif %}
+
+                <div class="cours-progress">
+                    <div class="progress-info">
+                        <span><i class="fas fa-user-check"></i> Présences:
+                            {% if cours.presence_prise %}
+                                <strong class="text-success">Prise</strong>
+                            {% else %}
+                                <strong class="text-warning">À prendre</strong>
+                            {% endif %}
+                        </span>
+                        <span><i class="fas fa-book-open"></i> Cahier:
+                            {% if cours.cahier_texte %}
+                                <strong class="text-success">Rempli</strong>
+                            {% else %}
+                                <strong class="text-warning">À remplir</strong>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cours-footer">
+                <a href="{% url 'courses:cours_detail' cours.id %}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-eye"></i> Détails
+                </a>
+
+                {% if cours.statut == 'PROGRAMME' %}
+                    <button class="btn btn-sm btn-success" onclick="startCours('{{ cours.id }}')">
+                        <i class="fas fa-play"></i> Démarrer
+                    </button>
+                {% elif cours.statut == 'EN_COURS' %}
+                    <button class="btn btn-sm btn-danger" onclick="endCours('{{ cours.id }}')">
+                        <i class="fas fa-stop"></i> Terminer
+                    </button>
+                {% endif %}
+
+                {% if cours.statut in 'EN_COURS,TERMINE' and not cours.presence_prise %}
+                    <a href="{% url 'courses:presence_bulk_create' cours.id %}" class="btn btn-sm btn-warning">
+                        <i class="fas fa-user-check"></i> Présences
+                    </a>
+                {% endif %}
+
+                {% if cours.statut in 'EN_COURS,TERMINE' %}
+                    <a href="{% url 'courses:cahier_texte_edit' cours.id %}" class="btn btn-sm btn-info">
+                        <i class="fas fa-book-open"></i> Cahier
+                    </a>
+                {% endif %}
+
+                <div class="dropdown-compact">
+                    <button class="btn btn-sm btn-outline dropdown-toggle">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <div class="dropdown-menu-compact">
+                        <a href="{% url 'courses:cours_detail' cours.id %}">
+                            <i class="fas fa-eye"></i> Voir détails
+                        </a>
+                        <a href="{% url 'courses:ressource_list' cours.id %}">
+                            <i class="fas fa-folder-open"></i> Ressources
+                        </a>
+                        {% if cours.cours_en_ligne and cours.url_streaming %}
+                        <a href="{{ cours.url_streaming }}" target="_blank">
+                            <i class="fas fa-video"></i> Streaming
+                        </a>
+                        {% endif %}
+                        <div class="dropdown-divider"></div>
+                        {% if cours.statut == 'PROGRAMME' %}
+                        <a href="#" onclick="cancelCours('{{ cours.id }}')" class="text-danger">
+                            <i class="fas fa-ban"></i> Annuler
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <i class="fas fa-chalkboard-teacher fa-3x"></i>
+            <h3>Aucun cours trouvé</h3>
+            <p>Vous n'avez pas de cours correspondant aux filtres sélectionnés</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% include 'components/pagination.html' with page_obj=courses %}
+</div>
+
+<style>
+.teacher-courses { padding: 15px; }
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.breadcrumb-nav {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.breadcrumb-nav .current { color: #2563eb; font-weight: 500; }
+.header-content h1 { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #1f2937; }
+.header-stats { display: flex; gap: 8px; margin-top: 5px; }
+.stat-badge {
+    padding: 2px 8px;
+    background: #f3f4f6;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+.stat-badge.today { background: #dbeafe; color: #1e40af; }
+.filters-section {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+.filters-form {
+    display: grid;
+    grid-template-columns: 1.5fr 1.5fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+.form-select-sm, .form-input-sm {
+    padding: 6px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    height: 32px;
+}
+.filter-actions { display: flex; gap: 5px; }
+.courses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+.cours-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s;
+}
+.cours-card.in-progress {
+    border-left: 4px solid #10b981;
+    background: linear-gradient(to right, #d1fae520, white);
+}
+.cours-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.cours-header {
+    padding: 15px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+}
+.cours-date-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.cours-info {
+    flex: 1;
+    min-width: 0;
+}
+.cours-info h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+.cours-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.meta-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+.meta-tag.classe { background: #dbeafe; color: #1e40af; }
+.meta-tag.type { background: #f3e5f5; color: #7b1fa2; }
+.cours-status { margin-left: auto; }
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.status-programme { background: #fff3e0; color: #e65100; }
+.status-en_cours { background: #d1fae5; color: #065f46; }
+.status-termine { background: #e0e7ff; color: #3730a3; }
+.status-annule { background: #fee2e2; color: #991b1b; }
+.cours-body { padding: 15px; }
+.cours-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #4b5563;
+}
+.detail-item i { color: #9ca3af; width: 16px; }
+.detail-item.online {
+    background: #e3f2fd;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: #1565c0;
+    font-weight: 500;
+}
+.cours-description {
+    margin: 12px 0;
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.5;
+}
+.cours-progress {
+    padding: 10px;
+    background: #f9fafb;
+    border-radius: 6px;
+    margin-top: 12px;
+}
+.progress-info {
+    display: flex;
+    justify-content: space-around;
+    font-size: 12px;
+    color: #4b5563;
+}
+.progress-info span { display: flex; align-items: center; gap: 5px; }
+.text-success { color: #10b981; }
+.text-warning { color: #f59e0b; }
+.cours-footer {
+    padding: 12px 15px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: #fafbfc;
+}
+.btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-success { background: #10b981; color: white; }
+.btn-success:hover { background: #059669; }
+.btn-danger { background: #ef4444; color: white; }
+.btn-danger:hover { background: #dc2626; }
+.btn-warning { background: #f59e0b; color: white; }
+.btn-warning:hover { background: #d97706; }
+.btn-info { background: #3b82f6; color: white; }
+.btn-info:hover { background: #2563eb; }
+.btn-outline { background: white; border: 1px solid #e5e7eb; color: #374151; }
+.btn-outline:hover { background: #f3f4f6; }
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #6b7280;
+}
+.btn-icon:hover { background: #f3f4f6; }
+.dropdown-compact { position: relative; }
+.dropdown-menu-compact {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+    min-width: 180px;
+    display: none;
+    z-index: 1000;
+    margin-bottom: 5px;
+}
+.dropdown-menu-compact.show { display: block; }
+.dropdown-menu-compact a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: #1f2937;
+    font-size: 12px;
+    transition: background 0.2s;
+}
+.dropdown-menu-compact a:hover { background: #f3f4f6; }
+.dropdown-divider { height: 1px; background: #e5e7eb; margin: 4px 0; }
+.text-danger { color: #ef4444; }
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.empty-state i { color: #d1d5db; margin-bottom: 20px; }
+.empty-state h3 { margin: 0 0 10px 0; color: #1f2937; font-size: 18px; }
+.empty-state p { color: #6b7280; }
+@media (max-width: 768px) {
+    .filters-form { grid-template-columns: 1fr; gap: 8px; }
+    .cours-header { flex-direction: column; }
+    .cours-details-grid { grid-template-columns: 1fr; }
+}
+</style>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.nextElementSibling;
+            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+                if (menu !== dropdown) menu.classList.remove('show');
+            });
+            dropdown.classList.toggle('show');
+        });
+    });
+
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
+            menu.classList.remove('show');
+        });
+    });
+});
+
+function startCours(coursId) {
+    if (confirm('Démarrer ce cours maintenant ?')) {
+        fetch(`/courses/cours/${coursId}/start/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    }
+}
+
+function endCours(coursId) {
+    if (confirm('Terminer ce cours ?')) {
+        fetch(`/courses/cours/${coursId}/end/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    }
+}
+
+function cancelCours(coursId) {
+    const motif = prompt('Motif d\'annulation:');
+    if (motif) {
+        fetch(`/courses/cours/${coursId}/cancel/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({motif: motif})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message || 'Erreur');
+        });
+    }
+}
+
+function exportCourses() {
+    const params = new URLSearchParams(window.location.search);
+    window.location.href = `/courses/cours/export/?${params.toString()}`;
+}
+</script>
 {% endblock %}

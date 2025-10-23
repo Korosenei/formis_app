@@ -1,8 +1,8 @@
+#apps/evaluations/models.py
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
-from django.urls import reverse
-from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from apps.core.models import BaseModel
 from decimal import Decimal
 import os
@@ -33,16 +33,14 @@ class Evaluation(BaseModel):
         on_delete=models.CASCADE,
         limit_choices_to={'role': 'ENSEIGNANT'},
         related_name='evaluations_creees',
-        verbose_name="Enseignant",
-        null=True
+        verbose_name="Enseignant"
     )
 
-    matiere_module = models.ForeignKey(
-        'courses.MatiereModule',
+    matiere = models.ForeignKey(
+        'courses.Matiere',
         on_delete=models.CASCADE,
         related_name='evaluations',
-        verbose_name="Matière du module",
-        null=True
+        verbose_name="Matière du module"
     )
 
     # Informations de base
@@ -61,7 +59,8 @@ class Evaluation(BaseModel):
         decimal_places=2,
         default=1.0,
         validators=[MinValueValidator(0.1)],
-        verbose_name="Coefficient"
+        verbose_name="Coefficient",
+        help_text="Doit respecter le coefficient total de la matière"
     )
     note_maximale = models.DecimalField(
         max_digits=5,
@@ -83,16 +82,21 @@ class Evaluation(BaseModel):
     # Fichiers
     fichier_evaluation = models.FileField(
         upload_to='evaluations/sujets/%Y/%m/',
-        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'doc', 'docx', 'txt'])],
-        verbose_name="Fichier d'évaluation",
-        default='evaluations/default.pdf'
+        null=True,
+        blank=True,
+        validators=[FileExtensionValidator(
+            allowed_extensions=['pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png']
+        )],
+        verbose_name="Fichier d'évaluation"
     )
 
     fichier_correction = models.FileField(
         upload_to='evaluations/corrections/%Y/%m/',
         null=True,
         blank=True,
-        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'doc', 'docx', 'txt'])],
+        validators=[FileExtensionValidator(
+            allowed_extensions=['pdf', 'doc', 'docx', 'txt']
+        )],
         verbose_name="Fichier de correction"
     )
 
@@ -141,7 +145,7 @@ class Evaluation(BaseModel):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.titre} - {self.matiere_module.matiere.nom}"
+        return f"{self.titre} - {self.matiere.nom}"
 
     def clean(self):
         # Vérifier que la date de fin est après la date de début
@@ -149,24 +153,44 @@ class Evaluation(BaseModel):
             raise ValidationError("La date de fin doit être postérieure à la date de début.")
 
         # Vérifier que le coefficient ne dépasse pas celui de la matière
-        if self.matiere_module:
+        if self.matiere:
             total_coefficients = Evaluation.objects.filter(
-                matiere_module=self.matiere_module,
+                matiere=self.matiere,
+                enseignant=self.enseignant,
                 statut__in=['PROGRAMMEE', 'EN_COURS', 'TERMINEE']
             ).exclude(pk=self.pk).aggregate(
                 total=models.Sum('coefficient')
-            )['total'] or 0
+            )['total'] or Decimal('0')
 
-            total_avec_cette_eval = total_coefficients + self.coefficient
-            if total_avec_cette_eval > self.matiere_module.coefficient:
+            total_avec_cette_eval = total_coefficients + Decimal(str(self.coefficient))
+            coef_matiere = Decimal(str(self.matiere.coefficient))
+
+            if total_avec_cette_eval > coef_matiere:
                 raise ValidationError(
                     f"La somme des coefficients ({total_avec_cette_eval}) "
-                    f"ne peut pas dépasser le coefficient de la matière ({self.matiere_module.coefficient})"
+                    f"ne peut pas dépasser le coefficient de la matière ({coef_matiere}). "
+                    f"Coefficient disponible : {coef_matiere - total_coefficients}"
                 )
 
     def save(self, *args, **kwargs):
-        self.clean()
+        self.full_clean()
         super().save(*args, **kwargs)
+
+    @property
+    def coefficient_restant_matiere(self):
+        """Calcule le coefficient restant disponible pour cette matière"""
+        if not self.matiere:
+            return 0
+
+        total_utilise = Evaluation.objects.filter(
+            matiere=self.matiere,
+            enseignant=self.enseignant,
+            statut__in=['PROGRAMMEE', 'EN_COURS', 'TERMINEE']
+        ).exclude(pk=self.pk).aggregate(
+            total=models.Sum('coefficient')
+        )['total'] or Decimal('0')
+
+        return float(Decimal(str(self.matiere.coefficient)) - total_utilise)
 
     @property
     def est_active(self):
@@ -193,8 +217,23 @@ class Evaluation(BaseModel):
 
         return False
 
-    def get_absolute_url(self):
-        return reverse('evaluation:detail', kwargs={'pk': self.pk})
+    @property
+    def taux_soumission(self):
+        """Calcule le taux de soumission"""
+        total_apprenants = sum(classe.apprenants.count() for classe in self.classes.all())
+        if total_apprenants == 0:
+            return 0
+        compositions_soumises = self.compositions.filter(statut__in=['SOUMISE', 'EN_RETARD', 'CORRIGEE']).count()
+        return (compositions_soumises / total_apprenants) * 100
+
+    @property
+    def taux_correction(self):
+        """Calcule le taux de correction"""
+        compositions_soumises = self.compositions.filter(statut__in=['SOUMISE', 'EN_RETARD']).count()
+        if compositions_soumises == 0:
+            return 100 if self.compositions.filter(statut='CORRIGEE').exists() else 0
+        compositions_corrigees = self.compositions.filter(statut='CORRIGEE').count()
+        return (compositions_corrigees / compositions_soumises) * 100
 
 class Composition(BaseModel):
     """Modèle pour les compositions des apprenants"""
@@ -305,17 +344,26 @@ class Composition(BaseModel):
             return timezone.now() > self.evaluation.date_fin
         return self.date_soumission > self.evaluation.date_fin
 
+    # @property
+    # def peut_soumettre(self):
+    #     """Vérifie si l'apprenant peut encore soumettre"""
+    #     if self.statut in ['SOUMISE', 'EN_RETARD', 'CORRIGEE']:
+    #         return False
+    #
+    #     now = timezone.now()
+    #     if now > self.evaluation.date_fin:
+    #         return self.evaluation.autorise_retard
+    #
+    #     return self.evaluation.est_active
+
     @property
     def peut_soumettre(self):
-        """Vérifie si l'apprenant peut encore soumettre"""
-        if self.statut in ['SOUMISE', 'EN_RETARD', 'CORRIGEE']:
-            return False
-
+        """
+        Vérifie si l'apprenant peut encore soumettre
+        uniquement en fonction de la durée de l'évaluation.
+        """
         now = timezone.now()
-        if now > self.evaluation.date_fin:
-            return self.evaluation.autorise_retard
-
-        return self.evaluation.est_active
+        return self.evaluation.date_debut <= now <= self.evaluation.date_fin
 
     @property
     def note_avec_penalite(self):
@@ -384,7 +432,7 @@ class FichierComposition(BaseModel):
         super().delete(*args, **kwargs)
 
 class Note(BaseModel):
-    """Modèle pour centraliser toutes les notes"""
+    """Notes attribuées aux apprenants"""
 
     # Relations
     apprenant = models.ForeignKey(
@@ -395,11 +443,11 @@ class Note(BaseModel):
         verbose_name="Apprenant"
     )
 
-    matiere_module = models.ForeignKey(
-        'courses.MatiereModule',
+    matiere = models.ForeignKey(
+        'courses.matiere',
         on_delete=models.CASCADE,
         related_name='notes',
-        verbose_name="Matière du module"
+        verbose_name="Matière"
     )
 
     evaluation = models.ForeignKey(
@@ -476,97 +524,3 @@ class Note(BaseModel):
     def coefficient_pondere(self):
         """Retourne le coefficient de l'évaluation"""
         return self.evaluation.coefficient
-
-class MoyenneModule(BaseModel):
-    """Modèle pour calculer et stocker les moyennes par module"""
-
-    # Relations
-    apprenant = models.ForeignKey(
-        'accounts.Utilisateur',
-        on_delete=models.CASCADE,
-        limit_choices_to={'role': 'APPRENANT'},
-        related_name='moyennes_modules',
-        verbose_name="Apprenant"
-    )
-
-    module = models.ForeignKey(
-        'courses.Module',
-        on_delete=models.CASCADE,
-        related_name='moyennes',
-        verbose_name="Module"
-    )
-
-    annee_academique = models.ForeignKey(
-        'establishments.AnneeAcademique',
-        on_delete=models.CASCADE,
-        related_name='moyennes_modules',
-        verbose_name="Année académique"
-    )
-
-    # Moyennes
-    moyenne_generale = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name="Moyenne générale"
-    )
-
-    total_credits = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        default=0,
-        verbose_name="Total crédits"
-    )
-
-    # Statut
-    validee = models.BooleanField(default=False, verbose_name="Validée")
-    date_validation = models.DateTimeField(
-        null=True,
-        blank=True,
-        verbose_name="Date de validation"
-    )
-
-    class Meta:
-        db_table = 'evaluation_moyenne_module'
-        verbose_name = "Moyenne de module"
-        verbose_name_plural = "Moyennes de modules"
-        unique_together = ['apprenant', 'module', 'annee_academique']
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.apprenant.get_full_name()} - {self.module.nom}: {self.moyenne_generale or 'N/A'}"
-
-    def calculer_moyenne(self):
-        """Calcule la moyenne du module pour cet apprenant"""
-        notes = Note.objects.filter(
-            apprenant=self.apprenant,
-            matiere_module__module=self.module,
-            evaluation__statut='TERMINEE'
-        )
-
-        if not notes.exists():
-            self.moyenne_generale = None
-            self.save()
-            return None
-
-        # Calcul de la moyenne pondérée par coefficient
-        somme_notes_ponderees = Decimal('0')
-        somme_coefficients = Decimal('0')
-
-        for note in notes:
-            note_sur_20 = note.note_sur_20
-            coefficient = note.coefficient_pondere
-
-            somme_notes_ponderees += note_sur_20 * coefficient
-            somme_coefficients += coefficient
-
-        if somme_coefficients > 0:
-            self.moyenne_generale = somme_notes_ponderees / somme_coefficients
-        else:
-            self.moyenne_generale = None
-
-        self.total_credits = self.module.credits_ects if self.moyenne_generale and self.moyenne_generale >= 10 else 0
-        self.save()
-
-        return self.moyenne_generale
