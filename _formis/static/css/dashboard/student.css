@@ -1,0 +1,458 @@
+/* ==================== BLOCKER INSCRIPTION ==================== */
+.inscription-blocker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    padding: 40px 20px;
+}
+
+.blocker-content {
+    text-align: center;
+    max-width: 500px;
+    padding: 40px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    animation: fadeInUp 0.5s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.blocker-content i {
+    font-size: 64px;
+    color: #667eea;
+    margin-bottom: 20px;
+    display: block;
+}
+
+.blocker-content h3 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2d3748;
+    margin: 0 0 15px 0;
+}
+
+.blocker-content p {
+    font-size: 16px;
+    color: #718096;
+    margin: 0 0 30px 0;
+    line-height: 1.6;
+}
+
+.btn-inscription {
+    padding: 14px 32px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-inscription:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+}
+
+.btn-inscription i {
+    font-size: 20px;
+}
+
+/* ==================== DASHBOARD ==================== */
+.student-dashboard {
+    padding: 20px 0;
+}
+
+/* Statistiques */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.stat-card.primary .stat-icon {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.stat-card.success .stat-icon {
+    background: linear-gradient(135deg, #1cc88a 0%, #17a2b8 100%);
+}
+
+.stat-card.warning .stat-icon {
+    background: linear-gradient(135deg, #f6c23e 0%, #e65100 100%);
+}
+
+.stat-card.info .stat-icon {
+    background: linear-gradient(135deg, #36b9cc 0%, #258391 100%);
+}
+
+.stat-card.danger .stat-icon {
+    background: linear-gradient(135deg, #e74a3b 0%, #be2617 100%);
+}
+
+.stat-content h3 {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 5px 0;
+    color: #2d3748;
+}
+
+.stat-content p {
+    font-size: 14px;
+    color: #718096;
+    margin: 0 0 8px 0;
+}
+
+.stat-info,
+.stat-change {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.stat-change.positive {
+    color: #1cc88a;
+}
+
+.stat-change.negative {
+    color: #e74a3b;
+}
+
+/* Prochain cours */
+.next-course-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 24px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+}
+
+.course-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.course-header h4 {
+    margin: 0;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-today {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.course-body h5 {
+    font-size: 24px;
+    margin: 0 0 15px 0;
+}
+
+.course-details {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.course-details span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+/* Sections */
+.content-sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.section-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.section-header {
+    padding: 20px;
+    border-bottom: 2px solid #f8f9fa;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.section-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #2d3748;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.view-all {
+    font-size: 13px;
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.view-all:hover {
+    text-decoration: underline;
+    color: #764ba2;
+}
+
+.section-body {
+    padding: 20px;
+}
+
+.item-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.item-row:last-child {
+    border-bottom: none;
+}
+
+.item-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.item-icon.primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.item-icon.warning {
+    background: linear-gradient(135deg, #f6c23e 0%, #e65100 100%);
+}
+
+.item-content {
+    flex: 1;
+}
+
+.item-content h5 {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.item-content p {
+    margin: 0;
+    font-size: 12px;
+    color: #718096;
+}
+
+.item-status {
+    text-align: right;
+}
+
+.badge-success {
+    background: #1cc88a;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-danger {
+    background: #e74a3b;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-warning {
+    background: #f6c23e;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #a0aec0;
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Paiement */
+.payment-summary {
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.progress-bar-container {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(135deg, #1cc88a 0%, #17a2b8 100%);
+    transition: width 0.3s ease;
+}
+
+.payment-amounts {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #718096;
+}
+
+.payment-total {
+    text-align: center;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid #e2e8f0;
+}
+
+/* Utilitaires */
+.text-muted {
+    color: #718096;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mt-3 {
+    margin-top: 15px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .content-sections {
+        grid-template-columns: 1fr;
+    }
+
+    .course-details {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .blocker-content {
+        padding: 30px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .stat-card {
+        padding: 20px;
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+    }
+
+    .stat-content h3 {
+        font-size: 24px;
+    }
+
+    .blocker-content {
+        padding: 20px 15px;
+    }
+
+    .blocker-content i {
+        font-size: 48px;
+    }
+
+    .blocker-content h3 {
+        font-size: 20px;
+    }
+}

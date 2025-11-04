@@ -41,7 +41,6 @@ CREATE TABLE public.academique_classe (
 );
 
 
-ALTER TABLE public.academique_classe OWNER TO postgres;
 
 --
 -- Name: academique_departement; Type: TABLE; Schema: public; Owner: postgres
@@ -63,7 +62,6 @@ CREATE TABLE public.academique_departement (
 );
 
 
-ALTER TABLE public.academique_departement OWNER TO postgres;
 
 --
 -- Name: academique_filiere; Type: TABLE; Schema: public; Owner: postgres
@@ -88,7 +86,6 @@ CREATE TABLE public.academique_filiere (
 );
 
 
-ALTER TABLE public.academique_filiere OWNER TO postgres;
 
 --
 -- Name: academique_niveau; Type: TABLE; Schema: public; Owner: postgres
@@ -108,7 +105,6 @@ CREATE TABLE public.academique_niveau (
 );
 
 
-ALTER TABLE public.academique_niveau OWNER TO postgres;
 
 --
 -- Name: academique_periode; Type: TABLE; Schema: public; Owner: postgres
@@ -135,7 +131,6 @@ CREATE TABLE public.academique_periode (
 );
 
 
-ALTER TABLE public.academique_periode OWNER TO postgres;
 
 --
 -- Name: academique_programme; Type: TABLE; Schema: public; Owner: postgres
@@ -159,7 +154,6 @@ CREATE TABLE public.academique_programme (
 );
 
 
-ALTER TABLE public.academique_programme OWNER TO postgres;
 
 --
 -- Name: auth_group; Type: TABLE; Schema: public; Owner: postgres
@@ -171,7 +165,6 @@ CREATE TABLE public.auth_group (
 );
 
 
-ALTER TABLE public.auth_group OWNER TO postgres;
 
 --
 -- Name: auth_group_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -198,7 +191,6 @@ CREATE TABLE public.auth_group_permissions (
 );
 
 
-ALTER TABLE public.auth_group_permissions OWNER TO postgres;
 
 --
 -- Name: auth_group_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -226,7 +218,6 @@ CREATE TABLE public.auth_permission (
 );
 
 
-ALTER TABLE public.auth_permission OWNER TO postgres;
 
 --
 -- Name: auth_permission_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -256,7 +247,6 @@ CREATE TABLE public.comptes_password_reset_token (
 );
 
 
-ALTER TABLE public.comptes_password_reset_token OWNER TO postgres;
 
 --
 -- Name: comptes_password_reset_token_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -295,7 +285,6 @@ CREATE TABLE public.comptes_profil_apprenant (
 );
 
 
-ALTER TABLE public.comptes_profil_apprenant OWNER TO postgres;
 
 --
 -- Name: comptes_profil_apprenant_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -329,7 +318,6 @@ CREATE TABLE public.comptes_profil_enseignant (
 );
 
 
-ALTER TABLE public.comptes_profil_enseignant OWNER TO postgres;
 
 --
 -- Name: comptes_profil_enseignant_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -356,7 +344,6 @@ CREATE TABLE public.comptes_profil_enseignant_matieres (
 );
 
 
-ALTER TABLE public.comptes_profil_enseignant_matieres OWNER TO postgres;
 
 --
 -- Name: comptes_profil_enseignant_matieres_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -391,7 +378,6 @@ CREATE TABLE public.comptes_profil_utilisateur (
 );
 
 
-ALTER TABLE public.comptes_profil_utilisateur OWNER TO postgres;
 
 --
 -- Name: comptes_profil_utilisateur_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -442,7 +428,6 @@ CREATE TABLE public.comptes_utilisateur (
 );
 
 
-ALTER TABLE public.comptes_utilisateur OWNER TO postgres;
 
 --
 -- Name: comptes_utilisateur_departements_intervention; Type: TABLE; Schema: public; Owner: postgres
@@ -455,7 +440,6 @@ CREATE TABLE public.comptes_utilisateur_departements_intervention (
 );
 
 
-ALTER TABLE public.comptes_utilisateur_departements_intervention OWNER TO postgres;
 
 --
 -- Name: comptes_utilisateur_departements_intervention_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -482,7 +466,6 @@ CREATE TABLE public.comptes_utilisateur_groups (
 );
 
 
-ALTER TABLE public.comptes_utilisateur_groups OWNER TO postgres;
 
 --
 -- Name: comptes_utilisateur_groups_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -509,7 +492,7 @@ CREATE TABLE public.comptes_utilisateur_user_permissions (
 );
 
 
-ALTER TABLE public.comptes_utilisateur_user_permissions OWNER TO postgres;
+
 
 --
 -- Name: comptes_utilisateur_user_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -544,7 +527,6 @@ CREATE TABLE public.courses_cahier_texte (
 );
 
 
-ALTER TABLE public.courses_cahier_texte OWNER TO postgres;
 
 --
 -- Name: courses_cours; Type: TABLE; Schema: public; Owner: postgres
@@ -578,7 +560,6 @@ CREATE TABLE public.courses_cours (
 );
 
 
-ALTER TABLE public.courses_cours OWNER TO postgres;
 
 --
 -- Name: courses_creneau_emploi_du_temps; Type: TABLE; Schema: public; Owner: postgres
@@ -596,7 +577,6 @@ CREATE TABLE public.courses_creneau_emploi_du_temps (
 );
 
 
-ALTER TABLE public.courses_creneau_emploi_du_temps OWNER TO postgres;
 
 --
 -- Name: courses_creneau_horaire; Type: TABLE; Schema: public; Owner: postgres
@@ -619,7 +599,6 @@ CREATE TABLE public.courses_creneau_horaire (
 );
 
 
-ALTER TABLE public.courses_creneau_horaire OWNER TO postgres;
 
 --
 -- Name: courses_emploi_du_temps; Type: TABLE; Schema: public; Owner: postgres
@@ -641,7 +620,6 @@ CREATE TABLE public.courses_emploi_du_temps (
 );
 
 
-ALTER TABLE public.courses_emploi_du_temps OWNER TO postgres;
 
 --
 -- Name: courses_matiere; Type: TABLE; Schema: public; Owner: postgres
@@ -667,7 +645,6 @@ CREATE TABLE public.courses_matiere (
 );
 
 
-ALTER TABLE public.courses_matiere OWNER TO postgres;
 
 --
 -- Name: courses_matiere_module; Type: TABLE; Schema: public; Owner: postgres
@@ -687,7 +664,6 @@ CREATE TABLE public.courses_matiere_module (
 );
 
 
-ALTER TABLE public.courses_matiere_module OWNER TO postgres;
 
 --
 -- Name: courses_module; Type: TABLE; Schema: public; Owner: postgres
@@ -706,8 +682,6 @@ CREATE TABLE public.courses_module (
 );
 
 
-ALTER TABLE public.courses_module OWNER TO postgres;
-
 --
 -- Name: courses_module_prerequis; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -719,7 +693,6 @@ CREATE TABLE public.courses_module_prerequis (
 );
 
 
-ALTER TABLE public.courses_module_prerequis OWNER TO postgres;
 
 --
 -- Name: courses_module_prerequis_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -756,7 +729,6 @@ CREATE TABLE public.courses_presence (
 );
 
 
-ALTER TABLE public.courses_presence OWNER TO postgres;
 
 --
 -- Name: courses_ressource; Type: TABLE; Schema: public; Owner: postgres
@@ -783,7 +755,6 @@ CREATE TABLE public.courses_ressource (
 );
 
 
-ALTER TABLE public.courses_ressource OWNER TO postgres;
 
 --
 -- Name: django_admin_log; Type: TABLE; Schema: public; Owner: postgres
@@ -802,7 +773,6 @@ CREATE TABLE public.django_admin_log (
 );
 
 
-ALTER TABLE public.django_admin_log OWNER TO postgres;
 
 --
 -- Name: django_admin_log_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -829,7 +799,6 @@ CREATE TABLE public.django_content_type (
 );
 
 
-ALTER TABLE public.django_content_type OWNER TO postgres;
 
 --
 -- Name: django_content_type_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -857,7 +826,6 @@ CREATE TABLE public.django_migrations (
 );
 
 
-ALTER TABLE public.django_migrations OWNER TO postgres;
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -884,7 +852,6 @@ CREATE TABLE public.django_session (
 );
 
 
-ALTER TABLE public.django_session OWNER TO postgres;
 
 --
 -- Name: enrollment_abandon; Type: TABLE; Schema: public; Owner: postgres
@@ -909,7 +876,6 @@ CREATE TABLE public.enrollment_abandon (
 );
 
 
-ALTER TABLE public.enrollment_abandon OWNER TO postgres;
 
 --
 -- Name: enrollment_candidature; Type: TABLE; Schema: public; Owner: postgres
@@ -955,7 +921,6 @@ CREATE TABLE public.enrollment_candidature (
 );
 
 
-ALTER TABLE public.enrollment_candidature OWNER TO postgres;
 
 --
 -- Name: enrollment_document_candidature; Type: TABLE; Schema: public; Owner: postgres
@@ -979,7 +944,6 @@ CREATE TABLE public.enrollment_document_candidature (
 );
 
 
-ALTER TABLE public.enrollment_document_candidature OWNER TO postgres;
 
 --
 -- Name: enrollment_document_requis; Type: TABLE; Schema: public; Owner: postgres
@@ -1001,7 +965,6 @@ CREATE TABLE public.enrollment_document_requis (
 );
 
 
-ALTER TABLE public.enrollment_document_requis OWNER TO postgres;
 
 --
 -- Name: enrollment_historique; Type: TABLE; Schema: public; Owner: postgres
@@ -1020,7 +983,6 @@ CREATE TABLE public.enrollment_historique (
 );
 
 
-ALTER TABLE public.enrollment_historique OWNER TO postgres;
 
 --
 -- Name: enrollment_inscription; Type: TABLE; Schema: public; Owner: postgres
@@ -1048,7 +1010,6 @@ CREATE TABLE public.enrollment_inscription (
 );
 
 
-ALTER TABLE public.enrollment_inscription OWNER TO postgres;
 
 --
 -- Name: enrollment_periode_candidature; Type: TABLE; Schema: public; Owner: postgres
@@ -1068,7 +1029,6 @@ CREATE TABLE public.enrollment_periode_candidature (
 );
 
 
-ALTER TABLE public.enrollment_periode_candidature OWNER TO postgres;
 
 --
 -- Name: enrollment_periode_candidature_filieres; Type: TABLE; Schema: public; Owner: postgres
@@ -1081,7 +1041,6 @@ CREATE TABLE public.enrollment_periode_candidature_filieres (
 );
 
 
-ALTER TABLE public.enrollment_periode_candidature_filieres OWNER TO postgres;
 
 --
 -- Name: enrollment_periode_candidature_filieres_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -1119,7 +1078,6 @@ CREATE TABLE public.enrollment_transfert (
 );
 
 
-ALTER TABLE public.enrollment_transfert OWNER TO postgres;
 
 --
 -- Name: establishments_annee_academique; Type: TABLE; Schema: public; Owner: postgres
@@ -1150,7 +1108,6 @@ CREATE TABLE public.establishments_annee_academique (
 );
 
 
-ALTER TABLE public.establishments_annee_academique OWNER TO postgres;
 
 --
 -- Name: establishments_bareme_notation; Type: TABLE; Schema: public; Owner: postgres
@@ -1169,8 +1126,6 @@ CREATE TABLE public.establishments_bareme_notation (
     etablissement_id uuid NOT NULL
 );
 
-
-ALTER TABLE public.establishments_bareme_notation OWNER TO postgres;
 
 --
 -- Name: establishments_campus; Type: TABLE; Schema: public; Owner: postgres
@@ -1203,7 +1158,6 @@ CREATE TABLE public.establishments_campus (
 );
 
 
-ALTER TABLE public.establishments_campus OWNER TO postgres;
 
 --
 -- Name: establishments_etablissement; Type: TABLE; Schema: public; Owner: postgres
@@ -1237,7 +1191,6 @@ CREATE TABLE public.establishments_etablissement (
 );
 
 
-ALTER TABLE public.establishments_etablissement OWNER TO postgres;
 
 --
 -- Name: establishments_jour_ferie; Type: TABLE; Schema: public; Owner: postgres
@@ -1262,8 +1215,6 @@ CREATE TABLE public.establishments_jour_ferie (
 );
 
 
-ALTER TABLE public.establishments_jour_ferie OWNER TO postgres;
-
 --
 -- Name: establishments_localite; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -1279,7 +1230,6 @@ CREATE TABLE public.establishments_localite (
 );
 
 
-ALTER TABLE public.establishments_localite OWNER TO postgres;
 
 --
 -- Name: establishments_niveau_note; Type: TABLE; Schema: public; Owner: postgres
@@ -1299,7 +1249,6 @@ CREATE TABLE public.establishments_niveau_note (
 );
 
 
-ALTER TABLE public.establishments_niveau_note OWNER TO postgres;
 
 --
 -- Name: establishments_parametres; Type: TABLE; Schema: public; Owner: postgres
@@ -1335,7 +1284,6 @@ CREATE TABLE public.establishments_parametres (
 );
 
 
-ALTER TABLE public.establishments_parametres OWNER TO postgres;
 
 --
 -- Name: establishments_salle; Type: TABLE; Schema: public; Owner: postgres
@@ -1368,7 +1316,6 @@ CREATE TABLE public.establishments_salle (
 );
 
 
-ALTER TABLE public.establishments_salle OWNER TO postgres;
 
 --
 -- Name: establishments_type_etablissement; Type: TABLE; Schema: public; Owner: postgres
@@ -1386,8 +1333,6 @@ CREATE TABLE public.establishments_type_etablissement (
     actif boolean NOT NULL
 );
 
-
-ALTER TABLE public.establishments_type_etablissement OWNER TO postgres;
 
 --
 -- Name: evaluation_composition; Type: TABLE; Schema: public; Owner: postgres
@@ -1410,7 +1355,6 @@ CREATE TABLE public.evaluation_composition (
 );
 
 
-ALTER TABLE public.evaluation_composition OWNER TO postgres;
 
 --
 -- Name: evaluation_composition_fichiers_composition; Type: TABLE; Schema: public; Owner: postgres
@@ -1423,7 +1367,6 @@ CREATE TABLE public.evaluation_composition_fichiers_composition (
 );
 
 
-ALTER TABLE public.evaluation_composition_fichiers_composition OWNER TO postgres;
 
 --
 -- Name: evaluation_composition_fichiers_composition_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -1468,7 +1411,6 @@ CREATE TABLE public.evaluation_evaluation (
 );
 
 
-ALTER TABLE public.evaluation_evaluation OWNER TO postgres;
 
 --
 -- Name: evaluation_evaluation_classes; Type: TABLE; Schema: public; Owner: postgres
@@ -1481,7 +1423,6 @@ CREATE TABLE public.evaluation_evaluation_classes (
 );
 
 
-ALTER TABLE public.evaluation_evaluation_classes OWNER TO postgres;
 
 --
 -- Name: evaluation_evaluation_classes_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -1514,7 +1455,6 @@ CREATE TABLE public.evaluation_fichier_composition (
 );
 
 
-ALTER TABLE public.evaluation_fichier_composition OWNER TO postgres;
 
 --
 -- Name: evaluation_note; Type: TABLE; Schema: public; Owner: postgres
@@ -1536,8 +1476,6 @@ CREATE TABLE public.evaluation_note (
 );
 
 
-ALTER TABLE public.evaluation_note OWNER TO postgres;
-
 --
 -- Name: notifications_message; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -1553,7 +1491,6 @@ CREATE TABLE public.notifications_message (
 );
 
 
-ALTER TABLE public.notifications_message OWNER TO postgres;
 
 --
 -- Name: notifications_message_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -1585,7 +1522,6 @@ CREATE TABLE public.notifications_notification (
 );
 
 
-ALTER TABLE public.notifications_notification OWNER TO postgres;
 
 --
 -- Name: notifications_notification_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -1620,7 +1556,6 @@ CREATE TABLE public.payments_historique_paiement (
 );
 
 
-ALTER TABLE public.payments_historique_paiement OWNER TO postgres;
 
 --
 -- Name: payments_inscription_paiement; Type: TABLE; Schema: public; Owner: postgres
@@ -1641,7 +1576,6 @@ CREATE TABLE public.payments_inscription_paiement (
 );
 
 
-ALTER TABLE public.payments_inscription_paiement OWNER TO postgres;
 
 --
 -- Name: payments_paiement; Type: TABLE; Schema: public; Owner: postgres
@@ -1670,7 +1604,6 @@ CREATE TABLE public.payments_paiement (
 );
 
 
-ALTER TABLE public.payments_paiement OWNER TO postgres;
 
 --
 -- Name: payments_plan_paiement; Type: TABLE; Schema: public; Owner: postgres
@@ -1695,7 +1628,6 @@ CREATE TABLE public.payments_plan_paiement (
 );
 
 
-ALTER TABLE public.payments_plan_paiement OWNER TO postgres;
 
 --
 -- Name: payments_remboursement_paiement; Type: TABLE; Schema: public; Owner: postgres
@@ -1717,7 +1649,6 @@ CREATE TABLE public.payments_remboursement_paiement (
 );
 
 
-ALTER TABLE public.payments_remboursement_paiement OWNER TO postgres;
 
 --
 -- Name: payments_tranche_paiement; Type: TABLE; Schema: public; Owner: postgres
@@ -1737,7 +1668,6 @@ CREATE TABLE public.payments_tranche_paiement (
 );
 
 
-ALTER TABLE public.payments_tranche_paiement OWNER TO postgres;
 
 --
 -- Data for Name: academique_classe; Type: TABLE DATA; Schema: public; Owner: postgres

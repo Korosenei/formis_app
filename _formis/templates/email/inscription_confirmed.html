@@ -1,0 +1,122 @@
+<!-- templates/email/inscription_confirmed.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription confirmée</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5; padding: 20px; }
+        .email-container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
+        .header-icon { width: 80px; height: 80px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; font-size: 40px; }
+        .header h1 { font-size: 28px; margin-bottom: 10px; }
+        .content { padding: 40px 30px; }
+        .success-box { background: linear-gradient(135deg, #d1e7dd 0%, #a3cfbb 100%); padding: 25px; border-radius: 8px; border-left: 4px solid #1cc88a; margin: 20px 0; text-align: center; }
+        .success-box h2 { color: #0a3622; font-size: 24px; margin-bottom: 10px; }
+        .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 20px 0; }
+        .info-item { background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 3px solid #667eea; }
+        .info-label { font-size: 12px; color: #6c757d; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
+        .info-value { font-size: 15px; color: #2c3e50; font-weight: 600; }
+        .payment-summary { background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .cta-button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #dee2e6; font-size: 13px; color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="header-icon">✅</div>
+            <h1>Inscription confirmée !</h1>
+            <p>Bienvenue parmi nous</p>
+        </div>
+
+        <div class="content">
+            <div style="font-size: 18px; margin-bottom: 20px;">
+                Bonjour <strong>{{ inscription.apprenant.prenom }} {{ inscription.apprenant.nom }}</strong>,
+            </div>
+
+            <div class="success-box">
+                <h2>🎉 Félicitations !</h2>
+                <p style="color: #0a3622; font-size: 16px; margin-top: 10px;">
+                    Votre inscription est maintenant <strong>CONFIRMÉE et ACTIVE</strong>
+                </p>
+            </div>
+
+            <h3 style="margin: 30px 0 15px 0; color: #2c3e50;">📋 Informations d'inscription</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">N° Inscription</div>
+                    <div class="info-value">{{ inscription.numero_inscription }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Matricule</div>
+                    <div class="info-value">{{ inscription.apprenant.matricule }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Formation</div>
+                    <div class="info-value">{{ inscription.candidature.filiere.nom }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Niveau</div>
+                    <div class="info-value">{{ inscription.candidature.niveau.nom }}</div>
+                </div>
+                {% if inscription.classe_assignee %}
+                <div class="info-item">
+                    <div class="info-label">Classe</div>
+                    <div class="info-value">{{ inscription.classe_assignee.nom }}</div>
+                </div>
+                {% endif %}
+                <div class="info-item">
+                    <div class="info-label">Année</div>
+                    <div class="info-value">{{ inscription.candidature.annee_academique.nom }}</div>
+                </div>
+            </div>
+
+            <div class="payment-summary">
+                <h3 style="color: #1565c0; margin-bottom: 15px;">💳 Situation financière</h3>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="color: #6c757d;">Type de paiement</span>
+                        <strong style="color: #2c3e50;">{{ inscription.plan_paiement_inscription.get_type_paiement_display }}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="color: #6c757d;">Montant payé</span>
+                        <strong style="color: #1cc88a;">{{ inscription.plan_paiement_inscription.montant_total_paye|floatformat:0 }} XOF</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #6c757d;">Solde restant</span>
+                        <strong style="color: {% if inscription.plan_paiement_inscription.solde_restant > 0 %}#e74a3b{% else %}#1cc88a{% endif %}">
+                            {{ inscription.plan_paiement_inscription.solde_restant|floatformat:0 }} XOF
+                        </strong>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #e8f4f8 0%, #d1e7f0 100%); padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #0c5460; margin-bottom: 15px;">🎯 Prochaines étapes</h3>
+                <ol style="margin-left: 20px; color: #0c5460;">
+                    <li style="margin-bottom: 10px;">Connectez-vous à votre tableau de bord</li>
+                    <li style="margin-bottom: 10px;">Consultez votre emploi du temps</li>
+                    <li style="margin-bottom: 10px;">Accédez à vos cours et ressources</li>
+                    <li>Restez informé des évaluations à venir</li>
+                </ol>
+            </div>
+
+            <div style="text-align: center;">
+                <a href="{{ login_url }}" class="cta-button">
+                    🚀 Accéder au tableau de bord
+                </a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Nous vous souhaitons une excellente année académique !</p>
+            <p style="margin-top: 15px; font-size: 11px; color: #adb5bd;">
+                © {{ year }} {{ inscription.candidature.etablissement.nom }}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!-- templates/payments/error_public.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Erreur de paiement{% endblock %}
+
+{% block extra_css %}
+<style>
+    .error-container {
+        max-width: 700px;
+        margin: 80px auto;
+    }
+
+    .error-icon {
+        font-size: 80px;
+        color: #dc3545;
+        animation: shake 0.5s;
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-10px); }
+        75% { transform: translateX(10px); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container error-container">
+    <div class="text-center">
+        <div class="error-icon">
+            <i class="fas fa-times-circle"></i>
+        </div>
+
+        <h1 class="display-4 text-danger mb-4">
+            Paiement échoué
+        </h1>
+
+        <p class="lead">
+            Votre paiement n'a pas pu être traité.
+        </p>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="text-danger">
+                <i class="fas fa-exclamation-triangle"></i> Détails de l'erreur
+            </h5>
+            <hr>
+            <p><strong>Numéro de transaction:</strong> {{ paiement.numero_transaction }}</p>
+            <p><strong>Montant:</strong> {{ paiement.montant }} FCFA</p>
+            <p><strong>Motif:</strong> {{ error_message }}</p>
+        </div>
+    </div>
+
+    <div class="alert alert-warning mt-4">
+        <h6><i class="fas fa-info-circle"></i> Que faire maintenant ?</h6>
+        <ul class="mb-0">
+            <li>Vérifiez que vous avez suffisamment de fonds sur votre compte</li>
+            <li>Vérifiez que votre méthode de paiement est correcte</li>
+            <li>Réessayez le paiement</li>
+            <li>Si le problème persiste, contactez le support</li>
+        </ul>
+    </div>
+
+    <div class="text-center mt-4">
+        {% if token %}
+        <a href="{% url 'enrollment:inscription_avec_token' token %}"
+           class="btn btn-primary btn-lg">
+            <i class="fas fa-redo"></i> Réessayer le paiement
+        </a>
+        {% else %}
+        <a href="{% url 'enrollment:candidature_create' %}"
+           class="btn btn-primary btn-lg">
+            <i class="fas fa-home"></i> Retour à l'accueil
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="text-center mt-3">
+        <p class="text-muted">
+            <small>
+                <i class="fas fa-question-circle"></i>
+                Besoin d'aide ? Contactez le support de {{ candidature.etablissement.nom }}
+            </small>
+        </p>
+    </div>
+</div>
+{% endblock %}

@@ -1,175 +1,735 @@
 {% extends 'base/dashboard_base.html' %}
 {% load static %}
 
-{% block page_title %}Gestion des Cours - Admin{% endblock %}
+{% block page_title %}Mes Cours{% endblock %}
 
 {% block content %}
-<div class="admin-courses">
+<div class="student-courses">
     <div class="page-header-compact">
         <div class="header-content">
             <div class="breadcrumb-nav">
                 <span>Dashboard</span>
                 <i class="fas fa-chevron-right"></i>
-                <span>Administration</span>
-                <i class="fas fa-chevron-right"></i>
-                <span class="current">Cours</span>
+                <span class="current">Mes Cours</span>
             </div>
-            <h1>Gestion des Cours</h1>
+            <h1>Mes Cours de la Semaine</h1>
             <div class="header-stats">
-                <span class="stat-badge">{{ courses.paginator.count }} total</span>
+                <span class="stat-badge">{{ courses.count }} cours</span>
             </div>
         </div>
         <div class="header-actions">
-            <button class="btn-icon" onclick="exportCours()" title="Exporter">
-                <i class="fas fa-download"></i>
+            <button class="btn-icon" onclick="toggleView()" title="Changer de vue">
+                <i class="fas fa-th-list" id="viewToggleIcon"></i>
             </button>
-            <a href="{% url 'courses:cours_create' %}" class="btn btn-primary btn-sm">
-                <i class="fas fa-plus"></i> Ajouter
-            </a>
         </div>
     </div>
 
+    <!-- Navigation semaine -->
+    <div class="week-navigation">
+        <button class="btn-nav" onclick="previousWeek()">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="week-info">
+            <span class="week-label">Semaine du</span>
+            <span class="week-dates" id="weekDates">
+                {{ current_week_start|date:"d/m/Y" }} - {{ current_week_end|date:"d/m/Y" }}
+            </span>
+        </div>
+        <button class="btn-nav" onclick="nextWeek()">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+        <button class="btn btn-sm btn-outline" onclick="goToCurrentWeek()">
+            <i class="fas fa-calendar-day"></i> Aujourd'hui
+        </button>
+    </div>
+
+    <!-- Filtres -->
     <div class="filters-section">
-        <form method="GET" class="filters-form">
+        <form method="GET" class="filters-form" id="filtersForm">
+            <input type="hidden" name="week_start" id="weekStartInput" value="{{ current_week_start|date:'Y-m-d' }}">
+
             <div class="filter-group">
-                <select name="matiere" class="form-select-sm">
-                    <option value="">Toutes matières</option>
+                <select name="matiere" class="form-select-sm" onchange="applyFilters()">
+                    <option value="">Toutes les matières</option>
                     {% for matiere in matieres %}
-                        <option value="{{ matiere.id }}" {% if current_filters.matiere == matiere.id|stringformat:"s" %}selected{% endif %}>
+                        <option value="{{ matiere.id }}"
+                                {% if current_filters.matiere == matiere.id|stringformat:"s" %}selected{% endif %}>
                             {{ matiere.nom }}
                         </option>
                     {% endfor %}
                 </select>
             </div>
+
             <div class="filter-group">
-                <select name="classe" class="form-select-sm">
-                    <option value="">Toutes classes</option>
-                    {% for classe in classes %}
-                        <option value="{{ classe.id }}" {% if current_filters.classe == classe.id|stringformat:"s" %}selected{% endif %}>
-                            {{ classe.nom }}
-                        </option>
-                    {% endfor %}
+                <select name="statut" class="form-select-sm" onchange="applyFilters()">
+                    <option value="">Tous les statuts</option>
+                    <option value="PROGRAMME" {% if current_filters.statut == 'PROGRAMME' %}selected{% endif %}>
+                        Programmé
+                    </option>
+                    <option value="EN_COURS" {% if current_filters.statut == 'EN_COURS' %}selected{% endif %}>
+                        En cours
+                    </option>
+                    <option value="TERMINE" {% if current_filters.statut == 'TERMINE' %}selected{% endif %}>
+                        Terminé
+                    </option>
+                    <option value="ANNULE" {% if current_filters.statut == 'ANNULE' %}selected{% endif %}>
+                        Annulé
+                    </option>
                 </select>
             </div>
+
             <div class="filter-group">
-                <input type="date" name="date_debut" value="{{ current_filters.date_debut }}" class="form-input-sm">
+                <input type="date"
+                       name="date_debut"
+                       value="{{ current_filters.date_debut }}"
+                       class="form-input-sm"
+                       onchange="applyFilters()">
             </div>
-            <div class="filter-group">
-                <select name="statut" class="form-select-sm">
-                    <option value="">Tous statuts</option>
-                    {% for key, label in statuts %}
-                        <option value="{{ key }}" {% if current_filters.statut == key %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+
             <div class="filter-actions">
-                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search"></i></button>
-                <a href="{% url 'dashboard:admin_courses' %}" class="btn btn-sm btn-outline"><i class="fas fa-undo"></i></a>
+                <button type="button" class="btn btn-sm btn-outline" onclick="resetFilters()">
+                    <i class="fas fa-undo"></i>
+                </button>
             </div>
         </form>
     </div>
 
-    <div class="courses-grid">
+    <!-- Vue liste (par défaut) -->
+    <div class="courses-list-view" id="listView">
+        {% regroup courses by date_prevue as courses_by_date %}
+        {% for date_group in courses_by_date %}
+        <div class="day-section">
+            <div class="day-header">
+                <div class="day-info">
+                    <span class="day-name">{{ date_group.grouper|date:"l" }}</span>
+                    <span class="day-date">{{ date_group.grouper|date:"d/m/Y" }}</span>
+                </div>
+                <span class="day-count">{{ date_group.list|length }} cours</span>
+            </div>
+
+            <div class="courses-timeline">
+                {% for cours in date_group.list %}
+                <div class="cours-card-horizontal">
+                    <div class="cours-time">
+                        <div class="time-start">{{ cours.heure_debut_prevue|time:"H:i" }}</div>
+                        <div class="time-separator"></div>
+                        <div class="time-end">{{ cours.heure_fin_prevue|time:"H:i" }}</div>
+                    </div>
+
+                    <div class="cours-color-bar" style="background-color: {{ cours.matiere.couleur }}"></div>
+
+                    <div class="cours-content">
+                        <div class="cours-header-inline">
+                            <h3>{{ cours.titre }}</h3>
+                            <span class="cours-type-badge {{ cours.type_cours|lower }}">
+                                {{ cours.get_type_cours_display }}
+                            </span>
+                        </div>
+
+                        <div class="cours-details-inline">
+                            <div class="detail-item">
+                                <i class="fas fa-book"></i>
+                                <span>{{ cours.matiere.nom }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <i class="fas fa-user-tie"></i>
+                                <span>{{ cours.enseignant.get_full_name }}</span>
+                            </div>
+                            {% if cours.salle %}
+                            <div class="detail-item">
+                                <i class="fas fa-door-open"></i>
+                                <span>{{ cours.salle.code }}</span>
+                            </div>
+                            {% endif %}
+                            {% if cours.cours_en_ligne %}
+                            <div class="detail-item online">
+                                <i class="fas fa-video"></i>
+                                <span>En ligne</span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        {% if cours.description %}
+                        <p class="cours-description">{{ cours.description|truncatechars:100 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="cours-actions-inline">
+                        <span class="status-badge {{ cours.statut|lower }}">
+                            {{ cours.get_statut_display }}
+                        </span>
+                        <a href="{% url 'courses:cours_detail' cours.id %}"
+                           class="btn btn-sm btn-primary">
+                            <i class="fas fa-eye"></i> Détails
+                        </a>
+                        {% if cours.cours_en_ligne and cours.url_streaming %}
+                        <a href="{% url 'courses:cours_streaming' cours.id %}"
+                           class="btn btn-sm btn-success"
+                           target="_blank">
+                            <i class="fas fa-video"></i> Rejoindre
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <i class="fas fa-calendar-times fa-3x"></i>
+            <h3>Aucun cours cette semaine</h3>
+            <p>Vous n'avez pas de cours programmés pour cette période</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Vue grille -->
+    <div class="courses-grid-view" id="gridView" style="display: none;">
         {% for cours in courses %}
-        <div class="cours-card">
-            <div class="cours-header">
+        <div class="cours-card-grid">
+            <div class="cours-card-header">
                 <div class="cours-color" style="background-color: {{ cours.matiere.couleur }}"></div>
                 <div class="cours-info">
-                    <h3>{{ cours.titre|truncatechars:50 }}</h3>
+                    <h3>{{ cours.titre|truncatechars:40 }}</h3>
                     <p class="cours-matiere">{{ cours.matiere.nom }}</p>
                 </div>
-                <span class="cours-type-badge {{ cours.type_cours|lower }}">{{ cours.get_type_cours_display }}</span>
+                <span class="cours-type-badge {{ cours.type_cours|lower }}">
+                    {{ cours.get_type_cours_display }}
+                </span>
             </div>
-            <div class="cours-body">
+
+            <div class="cours-card-body">
                 <div class="cours-detail">
-                    <i class="fas fa-calendar"></i> {{ cours.date_prevue|date:"d/m/Y" }}
+                    <i class="fas fa-calendar"></i>
+                    <span>{{ cours.date_prevue|date:"l d/m/Y" }}</span>
                 </div>
                 <div class="cours-detail">
-                    <i class="fas fa-clock"></i> {{ cours.heure_debut_prevue|time:"H:i" }} - {{ cours.heure_fin_prevue|time:"H:i" }}
+                    <i class="fas fa-clock"></i>
+                    <span>{{ cours.heure_debut_prevue|time:"H:i" }} - {{ cours.heure_fin_prevue|time:"H:i" }}</span>
+                </div>
+                <div class="cours-detail">
+                    <i class="fas fa-user-tie"></i>
+                    <span>{{ cours.enseignant.get_full_name }}</span>
                 </div>
                 {% if cours.salle %}
                 <div class="cours-detail">
-                    <i class="fas fa-door-open"></i> {{ cours.salle.code }}
+                    <i class="fas fa-door-open"></i>
+                    <span>{{ cours.salle.code }}</span>
+                </div>
+                {% endif %}
+                {% if cours.cours_en_ligne %}
+                <div class="cours-detail online">
+                    <i class="fas fa-video"></i>
+                    <span>Cours en ligne</span>
                 </div>
                 {% endif %}
             </div>
-            <div class="cours-footer">
-                <span class="status-badge {{ cours.statut|lower }}">{{ cours.get_statut_display }}</span>
-                <div class="cours-actions">
-                    <a href="{% url 'courses:cours_detail' cours.id %}" class="btn-icon-sm btn-primary"><i class="fas fa-eye"></i></a>
-                    <a href="{% url 'courses:cours_edit' cours.id %}" class="btn-icon-sm btn-info"><i class="fas fa-edit"></i></a>
+
+            <div class="cours-card-footer">
+                <span class="status-badge {{ cours.statut|lower }}">
+                    {{ cours.get_statut_display }}
+                </span>
+                <div class="card-actions">
+                    <a href="{% url 'courses:cours_detail' cours.id %}"
+                       class="btn-icon-sm btn-primary">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    {% if cours.cours_en_ligne and cours.url_streaming %}
+                    <a href="{% url 'courses:cours_streaming' cours.id %}"
+                       class="btn-icon-sm btn-success"
+                       target="_blank">
+                        <i class="fas fa-video"></i>
+                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
         {% empty %}
         <div class="empty-state-full">
-            <i class="fas fa-chalkboard fa-3x"></i>
-            <h3>Aucun cours trouvé</h3>
-            <a href="{% url 'courses:cours_create' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Ajouter un cours</a>
+            <i class="fas fa-calendar-times fa-3x"></i>
+            <h3>Aucun cours cette semaine</h3>
+            <p>Vous n'avez pas de cours programmés pour cette période</p>
         </div>
         {% endfor %}
     </div>
-
-    {% include 'components/pagination.html' with page_obj=courses %}
 </div>
 
 <style>
-.admin-courses { padding: 15px; }
-.page-header-compact { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; padding: 15px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-.breadcrumb-nav { font-size: 11px; color: #6b7280; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+.student-courses { padding: 15px; }
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.breadcrumb-nav {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
 .breadcrumb-nav .current { color: #2563eb; font-weight: 500; }
 .header-content h1 { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #1f2937; }
 .header-stats { display: flex; gap: 8px; margin-top: 5px; }
-.stat-badge { padding: 2px 8px; background: #f3f4f6; border-radius: 12px; font-size: 11px; font-weight: 500; }
-.header-actions { display: flex; gap: 8px; }
-.filters-section { background: white; padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; }
-.filters-form { display: grid; grid-template-columns: 1.5fr 1.5fr 1fr 1fr auto; gap: 12px; }
-.form-select-sm, .form-input-sm { padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; height: 32px; }
-.filter-actions { display: flex; gap: 5px; }
-.courses-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 15px; margin-bottom: 20px; }
-.cours-card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; border: 1px solid #e5e7eb; transition: transform 0.2s; }
-.cours-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-.cours-header { padding: 12px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 10px; background: #f9fafb; }
-.cours-color { width: 4px; height: 40px; border-radius: 2px; }
-.cours-info { flex: 1; }
-.cours-info h3 { margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #1f2937; }
-.cours-matiere { margin: 0; font-size: 12px; color: #6b7280; }
-.cours-type-badge { padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+.stat-badge {
+    padding: 2px 8px;
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.week-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+.btn-nav {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+.btn-nav:hover {
+    background: #f3f4f6;
+    border-color: #2563eb;
+    color: #2563eb;
+}
+.week-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.week-label {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 500;
+}
+.week-dates {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.filters-section {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+.filters-form {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr auto;
+    gap: 12px;
+}
+.form-select-sm, .form-input-sm {
+    padding: 6px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    height: 32px;
+}
+
+.day-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+    overflow: hidden;
+}
+.day-header {
+    padding: 12px 15px;
+    background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.day-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.day-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+}
+.day-date {
+    font-size: 12px;
+    color: rgba(255,255,255,0.9);
+}
+.day-count {
+    padding: 4px 10px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 12px;
+    font-size: 11px;
+    color: white;
+    font-weight: 500;
+}
+
+.courses-timeline { padding: 0; }
+
+.cours-card-horizontal {
+    display: grid;
+    grid-template-columns: 80px 4px 1fr auto;
+    gap: 15px;
+    padding: 15px;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.2s;
+}
+.cours-card-horizontal:hover { background: #f9fafb; }
+.cours-card-horizontal:last-child { border-bottom: none; }
+
+.cours-time {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.time-start {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+}
+.time-separator {
+    width: 2px;
+    height: 8px;
+    background: #d1d5db;
+}
+.time-end {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.cours-color-bar {
+    width: 4px;
+    border-radius: 2px;
+}
+
+.cours-content { flex: 1; }
+.cours-header-inline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.cours-header-inline h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+}
+.cours-details-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 8px;
+}
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #6b7280;
+}
+.detail-item i {
+    color: #9ca3af;
+    width: 14px;
+}
+.detail-item.online {
+    color: #10b981;
+    font-weight: 500;
+}
+.detail-item.online i { color: #10b981; }
+.cours-description {
+    margin: 8px 0 0 0;
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+.cours-actions-inline {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.cours-type-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+}
 .cours-type-badge.cm { background: #dbeafe; color: #1e40af; }
 .cours-type-badge.td { background: #d1fae5; color: #065f46; }
 .cours-type-badge.tp { background: #fed7aa; color: #92400e; }
 .cours-type-badge.evaluation { background: #fce7f3; color: #9f1239; }
-.cours-body { padding: 12px; }
-.cours-detail { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; color: #6b7280; }
-.cours-detail i { width: 16px; color: #9ca3af; }
-.cours-footer { padding: 12px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: #fafbfc; }
-.status-badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
 .status-badge.programme { background: #e0e7ff; color: #3730a3; }
 .status-badge.en_cours { background: #fef3c7; color: #92400e; }
 .status-badge.termine { background: #d1fae5; color: #065f46; }
 .status-badge.annule { background: #fee2e2; color: #991b1b; }
-.cours-actions { display: flex; gap: 5px; }
-.btn-icon-sm { width: 28px; height: 28px; border-radius: 4px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; text-decoration: none; }
-.btn-icon-sm.btn-primary { background: #2563eb; color: white; }
-.btn-icon-sm.btn-info { background: #3b82f6; color: white; }
-.btn-icon { width: 32px; height: 32px; font-size: 14px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: white; border: 1px solid #e5e7eb; }
-.btn { padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; text-decoration: none; }
+
+/* Vue grille */
+.courses-grid-view {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 15px;
+}
+.cours-card-grid {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    transition: transform 0.2s;
+}
+.cours-card-grid:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.cours-card-header {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f9fafb;
+}
+.cours-color {
+    width: 4px;
+    height: 40px;
+    border-radius: 2px;
+}
+.cours-info { flex: 1; }
+.cours-info h3 {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+}
+.cours-matiere {
+    margin: 0;
+    font-size: 12px;
+    color: #6b7280;
+}
+.cours-card-body {
+    padding: 12px;
+}
+.cours-detail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 12px;
+    color: #6b7280;
+}
+.cours-detail i {
+    width: 16px;
+    color: #9ca3af;
+}
+.cours-card-footer {
+    padding: 12px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fafbfc;
+}
+.card-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.btn {
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-decoration: none;
+    transition: all 0.2s;
+}
 .btn-sm { padding: 5px 10px; font-size: 11px; }
 .btn-primary { background: #2563eb; color: white; }
-.btn-outline { background: white; border: 1px solid #e5e7eb; color: #1f2937; }
-.empty-state-full { grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: white; border-radius: 8px; }
-.empty-state-full i { color: #d1d5db; margin-bottom: 20px; }
-.empty-state-full h3 { margin: 0 0 20px 0; color: #1f2937; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-success { background: #10b981; color: white; }
+.btn-success:hover { background: #059669; }
+.btn-outline {
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+}
+.btn-outline:hover { background: #f3f4f6; }
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.btn-icon-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 11px;
+    text-decoration: none;
+}
+.btn-icon-sm.btn-primary { background: #2563eb; color: white; }
+.btn-icon-sm.btn-success { background: #10b981; color: white; }
+
+.empty-state, .empty-state-full {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.empty-state-full { grid-column: 1 / -1; }
+.empty-state i, .empty-state-full i {
+    color: #d1d5db;
+    margin-bottom: 20px;
+}
+.empty-state h3, .empty-state-full h3 {
+    margin: 0 0 10px 0;
+    color: #1f2937;
+    font-size: 18px;
+}
+.empty-state p, .empty-state-full p {
+    color: #6b7280;
+    margin: 0;
+}
+
 @media (max-width: 768px) {
-    .courses-grid { grid-template-columns: 1fr; }
     .filters-form { grid-template-columns: 1fr; }
+    .courses-grid-view { grid-template-columns: 1fr; }
+    .cours-card-horizontal {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    .cours-time {
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 8px;
+    }
+    .time-separator {
+        width: 8px;
+        height: 2px;
+    }
+    .cours-actions-inline {
+        flex-direction: row;
+        align-items: center;
+    }
 }
 </style>
 
 <script>
-function exportCours() {
-    const params = new URLSearchParams(window.location.search);
-    window.location.href = `/courses/cours/export/?${params.toString()}`;
+let currentWeekStart = new Date('{{ current_week_start|date:"Y-m-d" }}');
+
+function applyFilters() {
+    document.getElementById('filtersForm').submit();
+}
+
+function resetFilters() {
+    window.location.href = '{% url "dashboard:student_courses" %}';
+}
+
+function toggleView() {
+    const listView = document.getElementById('listView');
+    const gridView = document.getElementById('gridView');
+    const icon = document.getElementById('viewToggleIcon');
+
+    if (listView.style.display === 'none') {
+        listView.style.display = 'block';
+        gridView.style.display = 'none';
+        icon.className = 'fas fa-th-list';
+    } else {
+        listView.style.display = 'none';
+        gridView.style.display = 'grid';
+        icon.className = 'fas fa-th';
+    }
+}
+
+function previousWeek() {
+    currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+    updateWeek();
+}
+
+function nextWeek() {
+    currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+    updateWeek();
+}
+
+function goToCurrentWeek() {
+    const today = new Date();
+    const dayOfWeek = today.getDay() || 7;
+    currentWeekStart = new Date(today);
+    currentWeekStart.setDate(today.getDate() - dayOfWeek + 1);
+    updateWeek();
+}
+
+function updateWeek() {
+    const weekEnd = new Date(currentWeekStart);
+    weekEnd.setDate(currentWeekStart.getDate() + 5);
+
+    const formatDate = (date) => {
+        const d = date.getDate().toString().padStart(2, '0');
+        const m = (date.getMonth() + 1).toString().padStart(2, '0');
+        const y = date.getFullYear();
+        return `${d}/${m}/${y}`;
+    };
+
+    document.getElementById('weekDates').textContent =
+        `${formatDate(currentWeekStart)} - ${formatDate(weekEnd)}`;
+
+    const y = currentWeekStart.getFullYear();
+    const m = (currentWeekStart.getMonth() + 1).toString().padStart(2, '0');
+    const d = currentWeekStart.getDate().toString().padStart(2, '0');
+    document.getElementById('weekStartInput').value = `${y}-${m}-${d}`;
+
+    applyFilters();
 }
 </script>
 {% endblock %}

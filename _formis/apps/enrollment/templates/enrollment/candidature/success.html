@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candidature Soumise - Système de Gestion Académique</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #f3f4f6 0%, #f9fafb 100%);
+            color: #2d3748;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .success-container {
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .success-card {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            animation: slideUp 500ms ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .success-header {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: #ffffff;
+            padding: 40px 32px;
+            text-align: center;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            animation: scaleIn 600ms ease 200ms backwards;
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0);
+            }
+            to {
+                transform: scale(1);
+            }
+        }
+
+        .success-icon i {
+            font-size: 3rem;
+        }
+
+        .success-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .success-subtitle {
+            font-size: 1.125rem;
+            opacity: 0.95;
+        }
+
+        .success-body {
+            padding: 32px;
+        }
+
+        .info-box {
+            background: #f0fdf4;
+            border: 2px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #dcfce7;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #166534;
+        }
+
+        .info-value {
+            color: #15803d;
+            font-weight: 500;
+            text-align: right;
+        }
+
+        .numero-candidature {
+            background: linear-gradient(135deg, #4fd1c7 0%, #3ba99f 100%);
+            color: #ffffff;
+            padding: 16px 24px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(79, 209, 199, 0.3);
+        }
+
+        .numero-label {
+            font-size: 0.875rem;
+            opacity: 0.9;
+            margin-bottom: 4px;
+        }
+
+        .numero-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .instructions {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .instructions-title {
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .instructions-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .instructions-list li {
+            padding: 8px 0;
+            padding-left: 28px;
+            position: relative;
+            color: #1e40af;
+        }
+
+        .instructions-list li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 200px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 150ms ease;
+            text-decoration: none;
+            font-family: inherit;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4fd1c7 0%, #3ba99f 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #3ba99f 0%, #4fd1c7 100%);
+            box-shadow: 0 6px 12px rgba(79, 209, 199, 0.3);
+        }
+
+        .btn-secondary {
+            background: #ffffff;
+            color: #4fd1c7;
+            border: 2px solid #4fd1c7;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(79, 209, 199, 0.1);
+        }
+
+        .email-sent {
+            text-align: center;
+            padding: 20px;
+            background: #fefce8;
+            border-radius: 8px;
+            margin-top: 24px;
+        }
+
+        .email-sent i {
+            font-size: 2rem;
+            color: #ca8a04;
+            margin-bottom: 8px;
+        }
+
+        .email-sent p {
+            color: #713f12;
+            margin: 0;
+        }
+
+        @media (max-width: 640px) {
+            .success-container {
+                padding: 0;
+            }
+
+            .success-header {
+                padding: 32px 20px;
+            }
+
+            .success-icon {
+                width: 64px;
+                height: 64px;
+            }
+
+            .success-icon i {
+                font-size: 2rem;
+            }
+
+            .success-title {
+                font-size: 1.5rem;
+            }
+
+            .success-subtitle {
+                font-size: 1rem;
+            }
+
+            .success-body {
+                padding: 24px 20px;
+            }
+
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+
+            .info-value {
+                text-align: left;
+            }
+
+            .numero-value {
+                font-size: 1.25rem;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="success-card">
+            <div class="success-header">
+                <div class="success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h1 class="success-title">Candidature Soumise !</h1>
+                <p class="success-subtitle">Votre demande a été enregistrée avec succès</p>
+            </div>
+
+            <div class="success-body">
+                <div class="numero-candidature">
+                    <div class="numero-label">Numéro de candidature</div>
+                    <div class="numero-value">{{ candidature.numero_candidature }}</div>
+                </div>
+
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Formation</span>
+                        <span class="info-value">{{ formation }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Établissement</span>
+                        <span class="info-value">{{ etablissement }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Candidat</span>
+                        <span class="info-value">{{ candidature.prenom }} {{ candidature.nom }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Date de soumission</span>
+                        <span class="info-value">{{ candidature.date_soumission|date:"d/m/Y à H:i" }}</span>
+                    </div>
+                </div>
+
+                <div class="instructions">
+                    <div class="instructions-title">
+                        <i class="fas fa-info-circle"></i>
+                        Prochaines étapes
+                    </div>
+                    <ul class="instructions-list">
+                        <li>Votre dossier sera examiné par l'administration dans les prochains jours</li>
+                        <li>Vous recevrez un email de confirmation à l'adresse : <strong>{{ candidature.email }}</strong></li>
+                        <li>Une notification vous sera envoyée dès qu'une décision sera prise</li>
+                        <li>Conservez votre numéro de candidature pour toute correspondance</li>
+                    </ul>
+                </div>
+
+                <div class="email-sent">
+                    <i class="fas fa-envelope"></i>
+                    <p>Un email de confirmation a été envoyé à votre adresse</p>
+                </div>
+
+                <div class="actions">
+                    <a href="{% url 'accounts:login' %}" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Se connecter
+                    </a>
+                    <a href="/" class="btn btn-secondary">
+                        <i class="fas fa-home"></i>
+                        Retour à l'accueil
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Animation d'entrée
+        document.addEventListener('DOMContentLoaded', () => {
+            // Confettis virtuels (optionnel)
+            console.log('Candidature soumise avec succès !');
+        });
+    </script>
+</body>
+</html>

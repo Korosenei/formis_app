@@ -1,194 +1,396 @@
-<!-- templates/emails/account_created.html -->
+<!-- templates/email/account_created.html -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Création de votre compte</title>
+    <title>Création de compte - {{ establishment.nom }}</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
             color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .email-container {
             max-width: 600px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .container {
-            background-color: #ffffff;
-            border-radius: 8px;
+            background: white;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
+
         .header {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 30px 20px;
+            padding: 40px 30px;
             text-align: center;
         }
+
+        .header-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            font-size: 40px;
+        }
+
         .header h1 {
-            margin: 0;
-            font-size: 24px;
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 700;
         }
-        .content {
-            padding: 30px;
-        }
-        .welcome-box {
-            background-color: #f0f9ff;
-            border-left: 4px solid #2563eb;
-            padding: 15px;
-            margin: 20px 0;
-        }
-        .credentials-box {
-            background-color: #f9fafb;
-            border: 2px solid #e5e7eb;
-            border-radius: 6px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        .credentials-box h3 {
-            margin-top: 0;
-            color: #1f2937;
+
+        .header p {
             font-size: 16px;
+            opacity: 0.95;
         }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .message {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #555;
+            margin-bottom: 30px;
+        }
+
+        .credentials-box {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-left: 4px solid #667eea;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+
+        .credentials-box h3 {
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .credential-item {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e5e7eb;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #dee2e6;
         }
+
         .credential-item:last-child {
             border-bottom: none;
         }
+
         .credential-label {
+            font-size: 13px;
+            color: #6c757d;
             font-weight: 600;
-            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
+
         .credential-value {
+            font-size: 16px;
+            color: #2c3e50;
+            font-weight: 700;
             font-family: 'Courier New', monospace;
-            background-color: #fff;
-            padding: 4px 8px;
-            border-radius: 4px;
-            border: 1px solid #d1d5db;
-        }
-        .password-value {
-            color: #dc2626;
-            font-weight: bold;
-        }
-        .btn {
-            display: inline-block;
-            padding: 12px 30px;
-            background-color: #2563eb;
-            color: white;
-            text-decoration: none;
+            background: white;
+            padding: 8px 15px;
             border-radius: 6px;
-            font-weight: 600;
-            margin: 20px 0;
-            text-align: center;
+            border: 1px solid #dee2e6;
         }
-        .btn:hover {
-            background-color: #1d4ed8;
-        }
-        .security-notice {
-            background-color: #fef3c7;
-            border-left: 4px solid #f59e0b;
-            padding: 15px;
-            margin: 20px 0;
-        }
-        .security-notice strong {
-            color: #92400e;
-        }
-        .footer {
-            background-color: #f9fafb;
+
+        .warning-box {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+            border-left: 4px solid #ffc107;
             padding: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: #6b7280;
-            border-top: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin: 30px 0;
         }
-        .footer p {
-            margin: 5px 0;
+
+        .warning-box h3 {
+            color: #856404;
+            font-size: 16px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        .logo {
-            font-size: 32px;
-            font-weight: bold;
+
+        .warning-box ol {
+            margin-left: 20px;
+            color: #856404;
+        }
+
+        .warning-box ol li {
+            margin-bottom: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .warning-box ol li strong {
+            color: #664d03;
+        }
+
+        .important-box {
+            background: linear-gradient(135deg, #f8d7da 0%, #f1aeb5 100%);
+            border-left: 4px solid #dc3545;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+
+        .important-box p {
+            color: #842029;
+            font-size: 14px;
+            line-height: 1.6;
             margin-bottom: 10px;
         }
-        ul {
-            padding-left: 20px;
+
+        .important-box strong {
+            font-weight: 700;
+            font-size: 15px;
         }
-        li {
-            margin: 8px 0;
+
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 16px 40px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 20px 0;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: transform 0.2s;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .info-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+
+        .info-item-label {
+            font-size: 12px;
+            color: #6c757d;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .info-item-value {
+            font-size: 15px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .footer p {
+            font-size: 13px;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+
+        .footer-links {
+            margin-top: 15px;
+        }
+
+        .footer-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 13px;
+            margin: 0 10px;
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, #dee2e6, transparent);
+            margin: 30px 0;
+        }
+
+        @media only screen and (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .content {
+                padding: 30px 20px;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .credential-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .credential-value {
+                width: 100%;
+                text-align: left;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="email-container">
+        <!-- Header -->
         <div class="header">
-            <div class="logo">FORMIS</div>
-            <h1>Bienvenue sur la plateforme</h1>
-            <p>{{ establishment.nom }}</p>
+            <div class="header-icon">🔑</div>
+            <h1>Bienvenue sur FORMIS !</h1>
+            <p>Vos identifiants de connexion</p>
         </div>
 
+        <!-- Content -->
         <div class="content">
-            <div class="welcome-box">
-                <h2 style="margin-top: 0; color: #1e40af;">Bonjour {{ user.prenom }} {{ user.nom }},</h2>
-                <p>Votre compte a été créé avec succès sur la plateforme FORMIS de <strong>{{ establishment.nom }}</strong>.</p>
+            <div class="greeting">
+                Bonjour <strong>{{ user.prenom }} {{ user.nom }}</strong>,
             </div>
 
+            <div class="message">
+                <p>Félicitations ! Votre candidature a été approuvée et votre compte a été créé avec succès sur la plateforme <strong>FORMIS</strong> de <strong>{{ establishment.nom }}</strong>.</p>
+            </div>
+
+            <!-- Credentials Box -->
             <div class="credentials-box">
-                <h3>🔐 Vos identifiants de connexion</h3>
+                <h3>🔐 VOS IDENTIFIANTS DE CONNEXION</h3>
+
                 <div class="credential-item">
-                    <span class="credential-label">Matricule :</span>
-                    <span class="credential-value">{{ user.matricule }}</span>
-                </div>
-                <div class="credential-item">
-                    <span class="credential-label">Email :</span>
+                    <span class="credential-label">📧 Email</span>
                     <span class="credential-value">{{ user.email }}</span>
                 </div>
+
                 <div class="credential-item">
-                    <span class="credential-label">Mot de passe temporaire :</span>
-                    <span class="credential-value password-value">{{ password }}</span>
+                    <span class="credential-label">🎫 Matricule</span>
+                    <span class="credential-value">{{ user.matricule }}</span>
                 </div>
+
                 <div class="credential-item">
-                    <span class="credential-label">Rôle :</span>
-                    <span class="credential-value">{{ user.get_role_display }}</span>
+                    <span class="credential-label">🔑 Mot de passe temporaire</span>
+                    <span class="credential-value">{{ password }}</span>
                 </div>
             </div>
 
+            <!-- Important Warning -->
+            <div class="important-box">
+                <p><strong>⚠️ ATTENTION - INSCRIPTION OBLIGATOIRE</strong></p>
+                <p>Lors de votre première connexion, vous devrez <strong>OBLIGATOIREMENT</strong> finaliser votre inscription en effectuant le paiement des frais de formation.</p>
+                <p>Sans cette étape, vous ne pourrez pas accéder à votre tableau de bord.</p>
+            </div>
+
+            <!-- Steps -->
+            <div class="warning-box">
+                <h3>📋 PROCHAINES ÉTAPES</h3>
+                <ol>
+                    <li><strong>Connectez-vous</strong> avec vos identifiants</li>
+                    <li><strong>Changez</strong> votre mot de passe temporaire</li>
+                    <li><strong>Choisissez</strong> votre plan de paiement (unique ou échelonné)</li>
+                    <li><strong>Effectuez</strong> le paiement de la première tranche</li>
+                    <li><strong>Accédez</strong> à votre tableau de bord</li>
+                </ol>
+            </div>
+
+            <!-- CTA Button -->
             <div style="text-align: center;">
-                <a href="{{ login_url }}" class="btn">Se connecter maintenant</a>
+                <a href="{{ login_url }}" class="cta-button">
+                    🚀 Se connecter maintenant
+                </a>
             </div>
 
-            <div class="security-notice">
-                <strong>⚠️ Important - Sécurité</strong>
-                <ul>
-                    <li>Changez votre mot de passe temporaire dès votre première connexion</li>
-                    <li>Ne partagez jamais vos identifiants avec qui que ce soit</li>
-                    <li>Conservez ce message de manière sécurisée</li>
-                </ul>
+            <div class="divider"></div>
+
+            <!-- Formation Info -->
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-item-label">Établissement</div>
+                    <div class="info-item-value">{{ establishment.nom }}</div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-item-label">Matricule</div>
+                    <div class="info-item-value">{{ user.matricule }}</div>
+                </div>
             </div>
 
-            <h3>📚 Prochaines étapes</h3>
-            <ol>
-                <li>Cliquez sur le bouton ci-dessus pour accéder à la plateforme</li>
-                <li>Connectez-vous avec vos identifiants</li>
-                <li>Changez votre mot de passe dans les paramètres</li>
-                <li>Complétez votre profil</li>
-            </ol>
-
-            <p style="margin-top: 30px;">
-                Si vous avez des questions ou rencontrez des difficultés, n'hésitez pas à contacter l'administration de votre établissement.
-            </p>
+            <div class="message" style="margin-top: 30px;">
+                <p style="font-size: 14px; color: #6c757d;">
+                    <strong>🔒 Sécurité :</strong><br>
+                    • Changez ce mot de passe lors de votre première connexion<br>
+                    • Ne partagez jamais vos identifiants<br>
+                    • Conservez-les en lieu sûr
+                </p>
+            </div>
         </div>
 
+        <!-- Footer -->
         <div class="footer">
-            <p><strong>{{ establishment.nom }}</strong></p>
-            <p>{{ establishment.adresse }}</p>
-            <p>Email : {{ establishment.email }} | Tél : {{ establishment.telephone }}</p>
-            <p style="margin-top: 15px; color: #9ca3af;">
-                Ce message a été généré automatiquement, merci de ne pas y répondre directement.
+            <p>Cet email a été envoyé par <strong>{{ establishment.nom }}</strong></p>
+            <p style="font-size: 12px; color: #adb5bd;">
+                Pour toute question, contactez l'administration de votre établissement
+            </p>
+            <div class="footer-links">
+                <a href="{{ login_url }}">Se connecter</a>
+                <span style="color: #dee2e6;">|</span>
+                <a href="#">Besoin d'aide ?</a>
+            </div>
+            <p style="margin-top: 20px; font-size: 11px; color: #adb5bd;">
+                © {{ year }} FORMIS - Tous droits réservés
             </p>
         </div>
     </div>

@@ -57,7 +57,7 @@ def send_application_approval_email(application):
     }
 
     subject = f"Candidature approuvée - {application.establishment.name}"
-    html_message = render_to_string('email/application_approved.html', context)
+    html_message = render_to_string('email/candidature_approved.html', context)
 
     send_mail(
         subject=subject,

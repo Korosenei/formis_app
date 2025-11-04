@@ -119,7 +119,7 @@ class Utilisateur(AbstractUser):
         urls_tableau_de_bord = {
             'SUPERADMIN': '/dashboard/superadmin/',
             'ADMIN': '/dashboard/admin/',
-            'CHEF_DEPARTEMENT': '/dashboard/department-head/',
+            'CHEF_DEPARTEMENT': '/dashboard/department_head/',
             'ENSEIGNANT': '/dashboard/teacher/',
             'APPRENANT': '/dashboard/student/',
         }

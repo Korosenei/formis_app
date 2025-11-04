@@ -33,6 +33,10 @@ from apps.evaluations.models import Evaluation, Note
 from apps.payments.models import Paiement, PlanPaiement, InscriptionPaiement
 from apps.documents.models import DemandeDocument
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class DashboardRedirectView(LoginRequiredMixin, TemplateView):
     """Redirige vers le bon dashboard selon le rôle"""
@@ -4108,7 +4112,6 @@ class TeacherReportsView(LoginRequiredMixin, TemplateView):
 # VUES APPRENANT
 # ================================
 class StudentDashboardView(LoginRequiredMixin, TemplateView):
-    """Tableau de bord principal de l'apprenant avec gestion complète des paiements"""
     template_name = 'dashboard/student/index.html'
     allowed_roles = ['APPRENANT']
 
@@ -4130,24 +4133,182 @@ class StudentDashboardView(LoginRequiredMixin, TemplateView):
             ).select_related(
                 'candidature__filiere',
                 'candidature__niveau',
+                'candidature__etablissement',
+                'candidature__annee_academique',
                 'classe_assignee'
             ).first()
 
             if inscription:
                 context['inscription'] = inscription
                 context['peut_acceder'] = True
-                dashboard_data = self.get_dashboard_data(etudiant, inscription)
-                context.update(dashboard_data)
+                context['afficher_modal'] = False
+
+                # Récupérer les données du dashboard
+                context.update(self.get_dashboard_data(etudiant, inscription))
             else:
+                # Pas d'inscription active - Afficher le modal
                 context['inscription'] = None
                 context['peut_acceder'] = False
-                statut_data = self.get_inscription_status_data(etudiant)
-                context.update(statut_data)
+                context['afficher_modal'] = True
+
+                # Récupérer les informations pour le modal
+                statut_info = self.get_inscription_status_data(etudiant)
+                context.update(statut_info)
 
         except Exception as e:
+            logger.error(f"Erreur chargement dashboard apprenant: {str(e)}", exc_info=True)
             context['inscription'] = None
             context['peut_acceder'] = False
-            context['erreur_statut'] = str(e)
+            context['afficher_modal'] = True
+            context['statut_modal'] = 'erreur'
+            context['message_modal'] = str(e)
+
+        return context
+
+    def get_inscription_status_data(self, etudiant):
+        """Récupère les données pour déterminer l'état d'inscription"""
+
+        # Vérifier les inscriptions en attente (paiement en cours)
+        inscription_pending = Inscription.objects.filter(
+            apprenant=etudiant,
+            statut='PENDING'
+        ).select_related('candidature').first()
+
+        if inscription_pending:
+            # Vérifier les paiements en cours pour cette inscription
+            paiements_en_cours = Paiement.objects.filter(
+                inscription_paiement__inscription=inscription_pending,
+                statut__in=['EN_ATTENTE', 'EN_COURS']
+            ).count()
+
+            if paiements_en_cours > 0:
+                return {
+                    'statut_modal': 'paiement_en_cours',
+                    'message_modal': f'Votre paiement est en cours de traitement. Veuillez patienter.',
+                    'paiements_en_cours': paiements_en_cours,
+                    'inscription_pending': inscription_pending,
+                }
+
+        # Vérifier les candidatures approuvées sans inscription
+        candidatures_approuvees = Candidature.objects.filter(
+            email=etudiant.email,
+            statut='APPROUVEE'
+        ).exclude(
+            inscription__isnull=False
+        ).count()
+
+        if candidatures_approuvees == 0:
+            # Aucune candidature approuvée
+            return {
+                'statut_modal': 'aucune_candidature',
+                'message_modal': 'Vous devez soumettre et faire approuver une candidature avant de vous inscrire.',
+                'candidatures_approuvees': 0,
+                'paiements_en_cours': 0,
+            }
+
+        # Candidature approuvée mais pas d'inscription
+        return {
+            'statut_modal': 'inscription_requise',
+            'message_modal': 'Veuillez finaliser votre inscription en effectuant le paiement.',
+            'candidatures_approuvees': candidatures_approuvees,
+            'paiements_en_cours': 0,
+        }
+
+    def get_dashboard_data(self, etudiant, inscription):
+        """Récupère les données du dashboard pour un étudiant inscrit"""
+        context = {}
+
+        # Classe et cours
+        classe = inscription.classe_assignee
+        context['classe_assignee'] = classe
+
+        if classe:
+            # Cours de la classe
+            mes_cours = Cours.objects.filter(
+                classe=classe
+            ).select_related('matiere', 'enseignant').order_by('matiere__nom')
+            context['mes_cours'] = mes_cours
+            context['total_cours'] = mes_cours.count()
+
+            # Prochain cours
+            prochain_cours = EmploiDuTemps.objects.filter(
+                classe=classe,
+                date_prevue__gte=timezone.now()
+            ).select_related(
+                'cours__matiere', 'cours__enseignant', 'salle'
+            ).order_by('date_prevue').first()
+            context['prochain_cours'] = prochain_cours
+            context['today'] = timezone.now().date()
+
+            # Évaluations à venir
+            evaluations_a_venir = Evaluation.objects.filter(
+                cours__classe=classe,
+                date_evaluation__gte=timezone.now(),
+                est_publiee=True
+            ).select_related('cours__matiere').order_by('date_evaluation')[:5]
+            context['evaluations_a_venir'] = evaluations_a_venir
+
+            # Dernières notes
+            dernieres_notes = Note.objects.filter(
+                apprenant=etudiant,
+                evaluation__cours__classe=classe
+            ).select_related(
+                'evaluation__cours__matiere'
+            ).order_by('-created_at')[:5]
+            context['dernieres_notes'] = dernieres_notes
+
+            # Calcul de la moyenne générale
+            notes_valeurs = Note.objects.filter(
+                apprenant=etudiant,
+                evaluation__cours__classe=classe
+            ).values_list('valeur', flat=True)
+
+            if notes_valeurs:
+                moyenne = sum(notes_valeurs) / len(notes_valeurs)
+                context['moyenne_generale'] = round(moyenne, 2)
+            else:
+                context['moyenne_generale'] = 0
+        else:
+            context['mes_cours'] = []
+            context['total_cours'] = 0
+            context['prochain_cours'] = None
+            context['evaluations_a_venir'] = []
+            context['dernieres_notes'] = []
+            context['moyenne_generale'] = 0
+
+        # Taux de présence (simplifié)
+        context['taux_presence'] = 85  # Placeholder
+
+        # Situation financière
+        try:
+            inscription_paiement = InscriptionPaiement.objects.get(
+                inscription=inscription
+            )
+
+            statut_financier = {
+                'pourcentage': inscription_paiement.pourcentage_paye,
+                'total_paye': inscription_paiement.montant_total_paye,
+                'solde': inscription_paiement.solde_restant,
+                'statut_display': inscription_paiement.get_statut_display(),
+                'est_en_retard': inscription_paiement.statut == 'EN_RETARD',
+                'peut_payer_tranche': inscription_paiement.type_paiement == 'ECHELONNE'
+                                      and inscription_paiement.solde_restant > 0
+            }
+
+            context['inscription_paiement'] = inscription_paiement
+            context['statut_financier'] = statut_financier
+        except InscriptionPaiement.DoesNotExist:
+            context['inscription_paiement'] = None
+            context['statut_financier'] = {
+                'pourcentage': 0,
+                'total_paye': 0,
+                'solde': inscription.frais_scolarite,
+                'statut_display': 'Non configuré',
+                'est_en_retard': False,
+                'peut_payer_tranche': False
+            }
+
+        context['notifications'] = []
 
         return context
 
@@ -4446,6 +4607,16 @@ class StudentCandidaturesView(LoginRequiredMixin, ListView):
             'niveau',
             'annee_academique'
         ).order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        qs = self.get_queryset()
+        context['total'] = qs.count()
+        context['en_attente'] = qs.filter(statut="SOUMISE").count()
+        context['en_cours'] = qs.filter(statut="EN_COURS_EXAMEN").count()
+        context['approuvees'] = qs.filter(statut="APPROUVEE").count()
+        context['rejettees'] = qs.filter(statut="REJETEE").count()
+        return context
 
 class StudentInscriptionsView(LoginRequiredMixin, ListView):
     """Mes inscriptions"""

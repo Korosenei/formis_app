@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouvelle Candidature - Système de Gestion Académique</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Reset et styles de base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #f3f4f6 0%, #f9fafb 100%);
+            color: #2d3748;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Container principal */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #4fd1c7 0%, #5b47fb 100%);
+            color: #ffffff;
+            padding: 32px 20px;
+            border-radius: 16px;
+            margin-bottom: 32px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+        }
+
+        .logo-text {
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        /* Barre de progression */
+        .progress-container {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .progress-bar {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .progress-bar::before {
+            content: "";
+            position: absolute;
+            top: 24px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #e2e8f0;
+            z-index: 0;
+        }
+
+        .progress-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+            flex: 1;
+        }
+
+        .step-number {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.125rem;
+            margin-bottom: 8px;
+            transition: all 300ms ease;
+        }
+
+        .progress-step.active .step-number,
+        .progress-step.completed .step-number {
+            background: linear-gradient(135deg, #4fd1c7 0%, #3ba99f 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(79, 209, 199, 0.3);
+        }
+
+        .step-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #64748b;
+            text-align: center;
+        }
+
+        .progress-step.active .step-label {
+            color: #4fd1c7;
+            font-weight: 600;
+        }
+
+        /* Messages */
+        .message-container {
+            margin-bottom: 24px;
+        }
+
+        .message {
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            animation: slideIn 300ms ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-success {
+            background: rgba(72, 187, 120, 0.1);
+            border-left: 4px solid #48bb78;
+            color: #2f855a;
+        }
+
+        .message-error {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+            color: #c53030;
+        }
+
+        .message-warning {
+            background: rgba(251, 191, 36, 0.1);
+            border-left: 4px solid #fbbf24;
+            color: #d97706;
+        }
+
+        /* Formulaire */
+        .candidature-form {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-step {
+            display: none;
+        }
+
+        .form-step.active {
+            display: block;
+            animation: fadeIn 400ms ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .step-header {
+            margin-bottom: 32px;
+        }
+
+        .step-header h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+
+        .step-header p {
+            color: #64748b;
+            font-size: 1rem;
+        }
+
+        .form-section {
+            margin-bottom: 32px;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group-full {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 0.875rem;
+        }
+
+        .form-label.required::after {
+            content: " *";
+            color: #ef4444;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 150ms ease;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: #4fd1c7;
+            box-shadow: 0 0 0 3px rgba(79, 209, 199, 0.15);
+        }
+
+        .form-input:disabled,
+        .form-select:disabled {
+            background: #f3f4f6;
+            cursor: not-allowed;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-error {
+            color: #ef4444;
+            font-size: 0.875rem;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .form-group.error .form-input,
+        .form-group.error .form-select,
+        .form-group.error .form-textarea {
+            border-color: #ef4444;
+        }
+
+        .form-group.error .form-error {
+            display: block;
+        }
+
+        /* Documents */
+        .documents-info {
+            margin-bottom: 24px;
+        }
+
+        .info-card {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .info-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .info-content h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 8px;
+        }
+
+        .info-content ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .info-content li {
+            padding-left: 20px;
+            position: relative;
+            margin-bottom: 4px;
+            color: #1e40af;
+        }
+
+        .info-content li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+        }
+
+        .documents-container {
+            display: grid;
+            gap: 16px;
+        }
+
+        .document-item {
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 200ms ease;
+        }
+
+        .document-item:hover {
+            border-color: #4fd1c7;
+            background: rgba(79, 209, 199, 0.02);
+        }
+
+        .document-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .document-title {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 1rem;
+        }
+
+        .document-required {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .document-description {
+            color: #64748b;
+            font-size: 0.875rem;
+            margin-bottom: 12px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+        }
+
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: #f9fafb;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 200ms ease;
+        }
+
+        .file-input-label:hover {
+            background: #f3f4f6;
+            border-color: #4fd1c7;
+        }
+
+        .file-input-label i {
+            color: #4fd1c7;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .file-name {
+            color: #64748b;
+            font-size: 0.875rem;
+            margin-top: 8px;
+        }
+
+        /* Récapitulatif */
+        .summary-container {
+            display: grid;
+            gap: 24px;
+        }
+
+        .summary-section {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .summary-section h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 16px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .summary-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .summary-label {
+            font-size: 0.875rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .summary-value {
+            font-size: 1rem;
+            color: #2d3748;
+            font-weight: 500;
+        }
+
+        /* Checkbox */
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            margin-top: 4px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .checkbox-label {
+            color: #2d3748;
+            font-size: 0.9375rem;
+            line-height: 1.5;
+        }
+
+        .link {
+            color: #4fd1c7;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .link:hover {
+            text-decoration: underline;
+        }
+
+        /* Actions du formulaire */
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 2px solid #e2e8f0;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .actions-right {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* Boutons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 150ms ease;
+            text-decoration: none;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4fd1c7 0%, #3ba99f 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #3ba99f 0%, #4fd1c7 100%);
+            box-shadow: 0 6px 12px rgba(79, 209, 199, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #cbd5e1;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: linear-gradient(135deg, #38a169 0%, #48bb78 100%);
+            box-shadow: 0 6px 12px rgba(72, 187, 120, 0.3);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: #4fd1c7;
+            border: 2px solid #4fd1c7;
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background: rgba(79, 209, 199, 0.1);
+        }
+
+        .btn-icon {
+            font-size: 1.125rem;
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(4px);
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-spinner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(79, 209, 199, 0.3);
+            border-radius: 50%;
+            border-top-color: #4fd1c7;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-spinner p {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+
+            .header {
+                padding: 24px 16px;
+            }
+
+            .logo-text {
+                font-size: 1.5rem;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+
+            .progress-bar {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .progress-bar::before {
+                display: none;
+            }
+
+            .progress-step {
+                flex: 0 0 auto;
+                width: 80px;
+                margin-bottom: 16px;
+            }
+
+            .step-label {
+                font-size: 0.75rem;
+            }
+
+            .candidature-form {
+                padding: 20px;
+            }
+
+            .step-header h2 {
+                font-size: 1.5rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .actions-right {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                padding: 20px 12px;
+            }
+
+            .logo-icon {
+                width: 36px;
+                height: 36px;
+            }
+
+            .logo-text {
+                font-size: 1.25rem;
+            }
+
+            .page-title {
+                font-size: 1.25rem;
+            }
+
+            .progress-container {
+                padding: 16px;
+            }
+
+            .step-number {
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
+            }
+
+            .candidature-form {
+                padding: 16px;
+            }
+
+            .step-header h2 {
+                font-size: 1.25rem;
+            }
+
+            .section-title {
+                font-size: 1.125rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- En-tête -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 14l9-5-9-5-9 5 9 5z" fill="currentColor"/>
+                        <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" fill="currentColor"/>
+                    </svg>
+                    <span class="logo-text">FORMIS</span>
+                </div>
+                <h1 class="page-title">Nouvelle Candidature</h1>
+            </div>
+        </header>
+
+        <!-- Barre de progression -->
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-step active" data-step="1">
+                    <span class="step-number">1</span>
+                    <span class="step-label">Formation</span>
+                </div>
+                <div class="progress-step" data-step="2">
+                    <span class="step-number">2</span>
+                    <span class="step-label">Informations</span>
+                </div>
+                <div class="progress-step" data-step="3">
+                    <span class="step-number">3</span>
+                    <span class="step-label">Documents</span>
+                </div>
+                <div class="progress-step" data-step="4">
+                    <span class="step-number">4</span>
+                    <span class="step-label">Validation</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages -->
+        <div id="message-container" class="message-container"></div>
+
+        <!-- Formulaire -->
+        <form id="candidature-form" class="candidature-form" novalidate>
+            {% csrf_token %}
+
+            <!-- Étape 1: Formation -->
+            <div class="form-step active" id="step-1">
+                <div class="step-header">
+                    <h2>Choix de la Formation</h2>
+                    <p>Sélectionnez l'établissement, la filière et le niveau souhaités</p>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="etablissement" class="form-label required">Établissement</label>
+                            <select id="etablissement" name="etablissement" class="form-select" required>
+                                <option value="">Sélectionnez un établissement</option>
+                            </select>
+                            <div class="form-error">Ce champ est obligatoire</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="annee_academique" class="form-label required">Année académique</label>
+                            <select id="annee_academique" name="annee_academique" class="form-select" required>
+                                <option value="">Sélectionnez l'année</option>
+                            </select>
+                            <div class="form-error">Ce champ est obligatoire</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="departement" class="form-label required">Département</label>
+                            <select id="departement" name="departement" class="form-select" required disabled>
+                                <option value="">Sélectionnez d'abord un établissement</option>
+                            </select>
+                            <div class="form-error">Ce champ est obligatoire</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="filiere" class="form-label required">Filière</label>
+                            <select id="filiere" name="filiere" class="form-select" required disabled>
+                                <option value="">Sélectionnez d'abord un département</option>
+                            </select>
+                            <div class="form-error">Ce champ est obligatoire</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="niveau" class="form-label required">Niveau</label>
+                            <select id="niveau" name="niveau" class="form-select" required disabled>
+                                <option value="">Sélectionnez d'abord une filière</option>
+                            </select>
+                            <div class="form-error">Ce champ est obligatoire</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Étape 2: Informations personnelles -->
+            <div class="form-step" id="step-2">
+                <div class="step-header">
+                    <h2>Informations Personnelles</h2>
+                    <p>Renseignez vos informations personnelles et de contact</p>
+                </div>
+
+                <!-- Identité -->
+                <div class="form-section">
+                    <h3 class="section-title">Identité</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="prenom" class="form-label required">Prénom(s)</label>
+                            <input type="text" id="prenom" name="prenom" class="form-input" required>
+                            <div class="form-error">Ce champ est obligatoire</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="nom" class="form-label required">Nom de famille</label>
+                            <input type="text" id="nom" name="nom" class="form-input" required>
+                            <div class="form-error">Ce champ est obligatoire</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="date_naissance" class="form-label required">Date de naissance</label>
+                            <input type="date" id="date_naissance" name="date_naissance" class="form-input" required>
+                            <div class="form-error">Ce champ est obligatoire</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="lieu_naissance" class="form-label required">Lieu de naissance</label>
+                            <input type="text" id="lieu_naissance" name="lieu_naissance" class="form-input" required>
+                            <div class="form-error">Ce champ est obligatoire</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="genre" class="form-label required">Genre</label>
+                            <select id="genre" name="genre" class="form-select" required>
+                                <option value="">Sélectionnez</option>
+                                <option value="M">Masculin</option>
+                                <option value="F">Féminin</option>
+                            </select>
+                            <div class="form-error">Ce champ est obligatoire</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact -->
+                <div class="form-section">
+                    <h3 class="section-title">Contact</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="telephone" class="form-label required">Téléphone</label>
+                            <input type="tel" id="telephone" name="telephone" class="form-input" placeholder="+226 XX XX XX XX" required>
+                            <div class="form-error">Ce champ est obligatoire</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email" class="form-label required">Email</label>
+                            <input type="email" id="email" name="email" class="form-input" placeholder="email@exemple.com" required>
+                            <div class="form-error">Veuillez entrer une adresse email valide</div>
+                        </div>
+
+                        <div class="form-group form-group-full">
+                            <label for="adresse" class="form-label required">Adresse complète</label>
+                            <textarea id="adresse" name="adresse" class="form-textarea" rows="3" required></textarea>
+                            <div class="form-error">Ce champ est obligatoire</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informations parentales -->
+                <div class="form-section">
+                    <h3 class="section-title">Informations des parents/tuteur</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="nom_pere" class="form-label">Nom du père</label>
+                            <input type="text" id="nom_pere" name="nom_pere" class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="telephone_pere" class="form-label">Téléphone du père</label>
+                            <input type="tel" id="telephone_pere" name="telephone_pere" class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="nom_mere" class="form-label">Nom de la mère</label>
+                            <input type="text" id="nom_mere" name="nom_mere" class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="telephone_mere" class="form-label">Téléphone de la mère</label>
+                            <input type="tel" id="telephone_mere" name="telephone_mere" class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="nom_tuteur" class="form-label">Nom du tuteur</label>
+                            <input type="text" id="nom_tuteur" name="nom_tuteur" class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="telephone_tuteur" class="form-label">Téléphone du tuteur</label>
+                            <input type="tel" id="telephone_tuteur" name="telephone_tuteur" class="form-input">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parcours académique -->
+                <div class="form-section">
+                    <h3 class="section-title">Parcours académique</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="ecole_precedente" class="form-label">École précédente</label>
+                            <input type="text" id="ecole_precedente" name="ecole_precedente" class="form-input">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="dernier_diplome" class="form-label">Dernier diplôme</label>
+                            <input type="text" id="dernier_diplome" name="dernier_diplome" class="form-input" placeholder="Ex: Baccalauréat série C">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="annee_obtention" class="form-label">Année d'obtention</label>
+                            <input type="number" id="annee_obtention" name="annee_obtention" class="form-input" min="1950" max="2024">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Étape 3: Documents -->
+            <div class="form-step" id="step-3">
+                <div class="step-header">
+                    <h2>Documents Requis</h2>
+                    <p>Téléchargez les documents nécessaires pour votre candidature</p>
+                </div>
+
+                <div class="documents-info">
+                    <div class="info-card">
+                        <div class="info-icon">ℹ️</div>
+                        <div class="info-content">
+                            <h4>Instructions importantes</h4>
+                            <ul>
+                                <li>Les documents marqués d'un astérisque (*) sont obligatoires</li>
+                                <li>Formats acceptés : PDF, JPG, PNG (max 5MB par fichier)</li>
+                                <li>Assurez-vous que vos documents sont lisibles et de bonne qualité</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="documents-container" class="documents-container">
+                    <p style="text-align: center; color: #64748b;">
+                        Sélectionnez d'abord une filière pour voir les documents requis
+                    </p>
+                </div>
+            </div>
+
+            <!-- Étape 4: Validation -->
+            <div class="form-step" id="step-4">
+                <div class="step-header">
+                    <h2>Validation de la Candidature</h2>
+                    <p>Vérifiez vos informations avant de soumettre votre candidature</p>
+                </div>
+
+                <div id="summary-container" class="summary-container">
+                    <!-- Le récapitulatif sera généré dynamiquement -->
+                </div>
+
+                <div class="form-section">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="terms" name="terms" required>
+                        <label for="terms" class="checkbox-label">
+                            J'ai lu et j'accepte les <a href="#" class="link">conditions générales</a> et la
+                            <a href="#" class="link">politique de confidentialité</a>
+                        </label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="data_consent" name="data_consent" required>
+                        <label for="data_consent" class="checkbox-label">
+                            J'autorise le traitement de mes données personnelles dans le cadre de ma candidature
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Boutons de navigation -->
+            <div class="form-actions">
+                <button type="button" id="prev-btn" class="btn btn-secondary" style="display: none;">
+                    <span class="btn-icon">←</span>
+                    Précédent
+                </button>
+
+                <div class="actions-right">
+                    <button type="button" id="save-draft-btn" class="btn btn-outline">
+                        <span class="btn-icon">💾</span>
+                        Sauvegarder brouillon
+                    </button>
+
+                    <button type="button" id="next-btn" class="btn btn-primary">
+                        Suivant
+                        <span class="btn-icon">→</span>
+                    </button>
+
+                    <button type="submit" id="submit-btn" class="btn btn-success" style="display: none;">
+                        <span class="btn-icon">✓</span>
+                        Soumettre candidature
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Loading overlay -->
+        <div id="loading-overlay" class="loading-overlay">
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Traitement en cours...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = '/academic/api/public';
+        const ESTABLISHMENTS_API = '/establishments/api/public';
+        const ENROLLMENT_API = '/enrollment/api/public';
+        let currentStep = 1;
+        const totalSteps = 4;
+        let documentsRequis = [];
+
+        // Éléments DOM
+        const form = document.getElementById('candidature-form');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const messageContainer = document.getElementById('message-container');
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', () => {
+            loadEtablissements();
+            loadAnneesAcademiques();
+            setupEventListeners();
+        });
+
+        // Configuration des écouteurs d'événements
+        function setupEventListeners() {
+            // Navigation
+            prevBtn.addEventListener('click', previousStep);
+            nextBtn.addEventListener('click', nextStep);
+            form.addEventListener('submit', handleSubmit);
+
+            // Cascades de sélection
+            document.getElementById('etablissement').addEventListener('change', handleEtablissementChange);
+            document.getElementById('departement').addEventListener('change', handleDepartementChange);
+            document.getElementById('filiere').addEventListener('change', handleFiliereChange);
+
+            // Validation en temps réel
+            form.querySelectorAll('input, select, textarea').forEach(field => {
+                field.addEventListener('blur', () => validateField(field));
+                field.addEventListener('input', () => {
+                    if (field.parentElement.classList.contains('error')) {
+                        validateField(field);
+                    }
+                });
+            });
+        }
+
+        // Chargement des établissements
+        async function loadEtablissements() {
+            try {
+                showLoading(true);
+                const response = await fetch(`${ESTABLISHMENTS_API}/etablissements/`);
+
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Réponse établissements:', data);
+
+                const select = document.getElementById('etablissement');
+                select.innerHTML = '<option value="">Sélectionnez un établissement</option>';
+
+                if (data.success && data.results) {
+                    data.results.forEach(etab => {
+                        const option = document.createElement('option');
+                        option.value = etab.id;
+                        option.textContent = etab.nom;
+                        select.appendChild(option);
+                    });
+                } else {
+                    showMessage('Aucun établissement disponible', 'warning');
+                }
+            } catch (error) {
+                console.error('Erreur chargement établissements:', error);
+                showMessage('Erreur lors du chargement des établissements', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Chargement des années académiques
+        async function loadAnneesAcademiques() {
+            try {
+                const select = document.getElementById('annee_academique');
+                select.innerHTML = '<option value="">Sélectionnez l\'année</option>';
+
+                // Essayer de charger depuis l'API
+                const response = await fetch(`${ESTABLISHMENTS_API}/annees-academiques/`);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.results) {
+                        data.results.forEach(annee => {
+                            const option = document.createElement('option');
+                            option.value = annee.id;
+                            option.textContent = annee.nom;
+                            select.appendChild(option);
+                        });
+                        return;
+                    }
+                }
+
+                // Fallback si l'API n'est pas disponible
+                console.log('Utilisation du fallback pour les années académiques');
+                const currentYear = new Date().getFullYear();
+                for (let i = 0; i < 3; i++) {
+                    const year = currentYear + i;
+                    const option = document.createElement('option');
+                    option.value = `${year}-${year + 1}`;
+                    option.textContent = `${year}-${year + 1}`;
+                    select.appendChild(option);
+                }
+
+            } catch (error) {
+                console.error('Erreur chargement années académiques:', error);
+                // Fallback manuel en cas d'erreur
+                const select = document.getElementById('annee_academique');
+                const currentYear = new Date().getFullYear();
+                for (let i = 0; i < 3; i++) {
+                    const year = currentYear + i;
+                    const option = document.createElement('option');
+                    option.value = `${year}-${year + 1}`;
+                    option.textContent = `${year}-${year + 1}`;
+                    select.appendChild(option);
+                }
+            }
+        }
+
+        // Gestion changement établissement
+        async function handleEtablissementChange(e) {
+            const etablissementId = e.target.value;
+            const departementSelect = document.getElementById('departement');
+            const filiereSelect = document.getElementById('filiere');
+            const niveauSelect = document.getElementById('niveau');
+
+            // Reset des selects dépendants
+            resetSelect(departementSelect, 'Chargement...');
+            resetSelect(filiereSelect, 'Sélectionnez d\'abord un département');
+            resetSelect(niveauSelect, 'Sélectionnez d\'abord une filière');
+
+            if (!etablissementId) {
+                resetSelect(departementSelect, 'Sélectionnez d\'abord un établissement');
+                return;
+            }
+
+            try {
+                showLoading(true);
+                const response = await fetch(`${API_BASE}/departements/${etablissementId}/`);
+
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Réponse départements:', data);
+
+                if (data.success) {
+                    departementSelect.innerHTML = '<option value="">Sélectionnez un département</option>';
+
+                    if (data.results && data.results.length > 0) {
+                        data.results.forEach(dept => {
+                            const option = document.createElement('option');
+                            option.value = dept.id;
+                            option.textContent = dept.nom;
+                            departementSelect.appendChild(option);
+                        });
+                        departementSelect.disabled = false;
+                    } else {
+                        resetSelect(departementSelect, 'Aucun département disponible');
+                        showMessage('Aucun département disponible pour cet établissement', 'warning');
+                    }
+                } else {
+                    showMessage(data.error || 'Erreur lors du chargement des départements', 'error');
+                }
+            } catch (error) {
+                console.error('Erreur chargement départements:', error);
+                showMessage('Erreur lors du chargement des départements', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Gestion changement département
+        async function handleDepartementChange(e) {
+            const departementId = e.target.value;
+            const filiereSelect = document.getElementById('filiere');
+            const niveauSelect = document.getElementById('niveau');
+
+            resetSelect(filiereSelect, 'Chargement...');
+            resetSelect(niveauSelect, 'Sélectionnez d\'abord une filière');
+
+            if (!departementId) {
+                resetSelect(filiereSelect, 'Sélectionnez d\'abord un département');
+                return;
+            }
+
+            try {
+                showLoading(true);
+                const response = await fetch(`${API_BASE}/filieres/${departementId}/`);
+
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Réponse filières:', data);
+
+                if (data.success) {
+                    filiereSelect.innerHTML = '<option value="">Sélectionnez une filière</option>';
+
+                    if (data.results && data.results.length > 0) {
+                        data.results.forEach(fil => {
+                            const option = document.createElement('option');
+                            option.value = fil.id;
+                            option.textContent = fil.nom;
+                            filiereSelect.appendChild(option);
+                        });
+                        filiereSelect.disabled = false;
+                    } else {
+                        resetSelect(filiereSelect, 'Aucune filière disponible');
+                        showMessage('Aucune filière disponible pour ce département', 'warning');
+                    }
+                } else {
+                    showMessage(data.error || 'Erreur lors du chargement des filières', 'error');
+                }
+            } catch (error) {
+                console.error('Erreur chargement filières:', error);
+                showMessage('Erreur lors du chargement des filières', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Gestion changement filière
+        async function handleFiliereChange(e) {
+            const filiereId = e.target.value;
+            const niveauSelect = document.getElementById('niveau');
+
+            resetSelect(niveauSelect, 'Chargement...');
+
+            if (!filiereId) {
+                resetSelect(niveauSelect, 'Sélectionnez d\'abord une filière');
+                return;
+            }
+
+            try {
+                showLoading(true);
+                // Charger les niveaux
+                const niveauxResponse = await fetch(`${API_BASE}/niveaux/${filiereId}/`);
+
+                if (!niveauxResponse.ok) {
+                    throw new Error(`Erreur HTTP: ${niveauxResponse.status}`);
+                }
+
+                const niveauxData = await niveauxResponse.json();
+                console.log('Réponse niveaux:', niveauxData);
+
+                if (niveauxData.success) {
+                    niveauSelect.innerHTML = '<option value="">Sélectionnez un niveau</option>';
+
+                    if (niveauxData.results && niveauxData.results.length > 0) {
+                        // Filtrer pour n'afficher que les niveaux d'ordre 1
+                        const niveauxOrdre1 = niveauxData.results.filter(niv => niv.ordre === 1);
+
+                        if (niveauxOrdre1.length > 0) {
+                            niveauxOrdre1.forEach(niv => {
+                                const option = document.createElement('option');
+                                option.value = niv.id;
+                                option.textContent = niv.nom;
+                                niveauSelect.appendChild(option);
+                            });
+                            niveauSelect.disabled = false;
+                        } else {
+                            resetSelect(niveauSelect, 'Aucun niveau disponible (ordre 1)');
+                            showMessage('Aucun niveau de premier ordre disponible pour cette filière', 'warning');
+                        }
+                    } else {
+                        resetSelect(niveauSelect, 'Aucun niveau disponible');
+                        showMessage('Aucun niveau disponible pour cette filière', 'warning');
+                    }
+                } else {
+                    showMessage(niveauxData.error || 'Erreur lors du chargement des niveaux', 'error');
+                }
+
+                // Charger les documents requis
+                await loadDocumentsRequis(filiereId);
+
+            } catch (error) {
+                console.error('Erreur chargement niveaux:', error);
+                showMessage('Erreur lors du chargement des niveaux', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Chargement des documents requis
+        async function loadDocumentsRequis(filiereId) {
+            try {
+                const response = await fetch(`${ENROLLMENT_API}/documents-requis/filiere/${filiereId}/`);
+
+                if (!response.ok) {
+                    console.warn('API documents requis non disponible');
+                    return;
+                }
+
+                const data = await response.json();
+                console.log('Réponse documents requis:', data);
+
+                if (data.success) {
+                    documentsRequis = data.data?.documents_requis || [];
+                    renderDocuments();
+                }
+            } catch (error) {
+                console.warn('Erreur chargement documents requis:', error);
+                // Ne pas afficher d'erreur pour les documents (optionnel)
+            }
+        }
+
+        // Rendu des documents
+        function renderDocuments() {
+            const container = document.getElementById('documents-container');
+
+            if (documentsRequis.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: #64748b; padding: 40px;">
+                        <i class="fas fa-file-alt" style="font-size: 3rem; margin-bottom: 16px; color: #cbd5e1;"></i>
+                        <p>Aucun document requis spécifique pour cette formation</p>
+                        <p style="font-size: 0.875rem; margin-top: 8px;">
+                            Les documents standard seront demandés lors de la validation
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '';
+
+            documentsRequis.forEach(doc => {
+                const docItem = document.createElement('div');
+                docItem.className = 'document-item';
+                docItem.innerHTML = `
+                    <div class="document-header">
+                        <div class="document-title">${doc.nom}</div>
+                        ${doc.est_obligatoire ? '<span class="document-required">Obligatoire *</span>' : ''}
+                    </div>
+                    ${doc.description ? `<div class="document-description">${doc.description}</div>` : ''}
+                    <div class="file-input-wrapper">
+                        <label for="document_${doc.type_document}" class="file-input-label">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Choisir un fichier</span>
+                        </label>
+                        <input type="file"
+                               id="document_${doc.type_document}"
+                               name="document_${doc.type_document}"
+                               class="file-input"
+                               accept="${doc.formats_autorises?.map(f => '.' + f).join(',') || '.pdf,.jpg,.jpeg,.png'}"
+                               ${doc.est_obligatoire ? 'required' : ''}>
+                        <div class="file-name" id="file-name-${doc.type_document}"></div>
+                    </div>
+                `;
+                container.appendChild(docItem);
+
+                // Gestion affichage nom fichier
+                const fileInput = document.getElementById(`document_${doc.type_document}`);
+                fileInput.addEventListener('change', (e) => {
+                    const fileName = e.target.files[0]?.name || '';
+                    document.getElementById(`file-name-${doc.type_document}`).textContent = fileName;
+                });
+            });
+        }
+
+        // Utilitaire reset select
+        function resetSelect(select, placeholder) {
+            select.innerHTML = `<option value="">${placeholder}</option>`;
+            select.disabled = true;
+        }
+
+        // Navigation entre les étapes
+        function nextStep() {
+            if (!validateCurrentStep()) {
+                showMessage('Veuillez remplir tous les champs obligatoires', 'error');
+                return;
+            }
+
+            if (currentStep < totalSteps) {
+                hideStep(currentStep);
+                currentStep++;
+                showStep(currentStep);
+                updateProgress();
+                updateButtons();
+
+                // Générer le récapitulatif à la dernière étape
+                if (currentStep === totalSteps) {
+                    generateSummary();
+                }
+            }
+        }
+
+        function previousStep() {
+            if (currentStep > 1) {
+                hideStep(currentStep);
+                currentStep--;
+                showStep(currentStep);
+                updateProgress();
+                updateButtons();
+            }
+        }
+
+        function showStep(step) {
+            document.getElementById(`step-${step}`).classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function hideStep(step) {
+            document.getElementById(`step-${step}`).classList.remove('active');
+        }
+
+        function updateProgress() {
+            document.querySelectorAll('.progress-step').forEach((step, index) => {
+                if (index + 1 < currentStep) {
+                    step.classList.add('completed');
+                    step.classList.remove('active');
+                } else if (index + 1 === currentStep) {
+                    step.classList.add('active');
+                    step.classList.remove('completed');
+                } else {
+                    step.classList.remove('active', 'completed');
+                }
+            });
+        }
+
+        function updateButtons() {
+            prevBtn.style.display = currentStep > 1 ? 'inline-flex' : 'none';
+            nextBtn.style.display = currentStep < totalSteps ? 'inline-flex' : 'none';
+            submitBtn.style.display = currentStep === totalSteps ? 'inline-flex' : 'none';
+        }
+
+        // Validation
+        function validateCurrentStep() {
+            const currentStepEl = document.getElementById(`step-${currentStep}`);
+            const requiredFields = currentStepEl.querySelectorAll('[required]');
+            let isValid = true;
+
+            requiredFields.forEach(field => {
+                if (!validateField(field)) {
+                    isValid = false;
+                }
+            });
+
+            return isValid;
+        }
+
+        function validateField(field) {
+            const formGroup = field.closest('.form-group');
+            const value = field.value.trim();
+            let isValid = true;
+
+            if (field.hasAttribute('required') && !value) {
+                isValid = false;
+            }
+
+            if (field.type === 'email' && value && !isValidEmail(value)) {
+                isValid = false;
+            }
+
+            if (field.type === 'tel' && value && !isValidPhone(value)) {
+                isValid = false;
+            }
+
+            if (isValid) {
+                formGroup?.classList.remove('error');
+            } else {
+                formGroup?.classList.add('error');
+            }
+
+            return isValid;
+        }
+
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function isValidPhone(phone) {
+            // Validation basique pour les numéros internationaux
+            return /^[\+]?[0-9\s\-\(\)]{8,}$/.test(phone);
+        }
+
+        // Génération du récapitulatif
+        function generateSummary() {
+            const container = document.getElementById('summary-container');
+            const formData = new FormData(form);
+
+            // Formation
+            const etablissement = document.getElementById('etablissement');
+            const anneeAcademique = document.getElementById('annee_academique');
+            const departement = document.getElementById('departement');
+            const filiere = document.getElementById('filiere');
+            const niveau = document.getElementById('niveau');
+
+            let html = `
+                <div class="summary-section">
+                    <h3>Formation</h3>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="summary-label">Établissement</div>
+                            <div class="summary-value">${etablissement.options[etablissement.selectedIndex]?.text || '-'}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Année académique</div>
+                            <div class="summary-value">${anneeAcademique.options[anneeAcademique.selectedIndex]?.text || '-'}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Département</div>
+                            <div class="summary-value">${departement.options[departement.selectedIndex]?.text || '-'}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Filière</div>
+                            <div class="summary-value">${filiere.options[filiere.selectedIndex]?.text || '-'}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Niveau</div>
+                            <div class="summary-value">${niveau.options[niveau.selectedIndex]?.text || '-'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-section">
+                    <h3>Informations personnelles</h3>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="summary-label">Nom complet</div>
+                            <div class="summary-value">${formData.get('prenom')} ${formData.get('nom')}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Date de naissance</div>
+                            <div class="summary-value">${formData.get('date_naissance') || '-'}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Lieu de naissance</div>
+                            <div class="summary-value">${formData.get('lieu_naissance') || '-'}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Genre</div>
+                            <div class="summary-value">${formData.get('genre') === 'M' ? 'Masculin' : formData.get('genre') === 'F' ? 'Féminin' : '-'}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Email</div>
+                            <div class="summary-value">${formData.get('email') || '-'}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Téléphone</div>
+                            <div class="summary-value">${formData.get('telephone') || '-'}</div>
+                        </div>
+                        <div class="summary-item form-group-full">
+                            <div class="summary-label">Adresse</div>
+                            <div class="summary-value">${formData.get('adresse') || '-'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Informations parentales si renseignées
+            const nomPere = formData.get('nom_pere');
+            const nomMere = formData.get('nom_mere');
+            const nomTuteur = formData.get('nom_tuteur');
+
+            if (nomPere || nomMere || nomTuteur) {
+                html += `
+                    <div class="summary-section">
+                        <h3>Informations des parents/tuteur</h3>
+                        <div class="summary-grid">
+                            ${nomPere ? `
+                                <div class="summary-item">
+                                    <div class="summary-label">Nom du père</div>
+                                    <div class="summary-value">${nomPere}</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">Téléphone du père</div>
+                                    <div class="summary-value">${formData.get('telephone_pere') || '-'}</div>
+                                </div>
+                            ` : ''}
+                            ${nomMere ? `
+                                <div class="summary-item">
+                                    <div class="summary-label">Nom de la mère</div>
+                                    <div class="summary-value">${nomMere}</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">Téléphone de la mère</div>
+                                    <div class="summary-value">${formData.get('telephone_mere') || '-'}</div>
+                                </div>
+                            ` : ''}
+                            ${nomTuteur ? `
+                                <div class="summary-item">
+                                    <div class="summary-label">Nom du tuteur</div>
+                                    <div class="summary-value">${nomTuteur}</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">Téléphone du tuteur</div>
+                                    <div class="summary-value">${formData.get('telephone_tuteur') || '-'}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Parcours académique si renseigné
+            const ecolePrecedente = formData.get('ecole_precedente');
+            const dernierDiplome = formData.get('dernier_diplome');
+
+            if (ecolePrecedente || dernierDiplome) {
+                html += `
+                    <div class="summary-section">
+                        <h3>Parcours académique</h3>
+                        <div class="summary-grid">
+                            ${ecolePrecedente ? `
+                                <div class="summary-item">
+                                    <div class="summary-label">École précédente</div>
+                                    <div class="summary-value">${ecolePrecedente}</div>
+                                </div>
+                            ` : ''}
+                            ${dernierDiplome ? `
+                                <div class="summary-item">
+                                    <div class="summary-label">Dernier diplôme</div>
+                                    <div class="summary-value">${dernierDiplome}</div>
+                                </div>
+                            ` : ''}
+                            ${formData.get('annee_obtention') ? `
+                                <div class="summary-item">
+                                    <div class="summary-label">Année d'obtention</div>
+                                    <div class="summary-value">${formData.get('annee_obtention')}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        // Soumission du formulaire
+        async function handleSubmit(e) {
+            e.preventDefault();
+
+            if (!document.getElementById('terms').checked || !document.getElementById('data_consent').checked) {
+                showMessage('Vous devez accepter les conditions pour continuer', 'error');
+                return;
+            }
+
+            const formData = new FormData(form);
+
+            showLoading(true);
+
+            try {
+                const response = await fetch(form.action || window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('Candidature soumise avec succès !', 'success');
+                    setTimeout(() => {
+                        window.location.href = data.redirect_url || '/';
+                    }, 1500);
+                } else {
+                    showMessage(data.message || 'Une erreur est survenue lors de la soumission', 'error');
+                }
+            } catch (error) {
+                showMessage('Erreur de connexion lors de la soumission', 'error');
+                console.error('Erreur soumission:', error);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Affichage des messages
+        function showMessage(message, type = 'error') {
+            const messageEl = document.createElement('div');
+            messageEl.className = `message message-${type}`;
+            messageEl.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'exclamation-circle'}"></i>
+                <span>${message}</span>
+            `;
+
+            messageContainer.innerHTML = '';
+            messageContainer.appendChild(messageEl);
+
+            setTimeout(() => {
+                messageEl.remove();
+            }, 5000);
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Affichage du loading
+        function showLoading(show) {
+            if (show) {
+                loadingOverlay.classList.add('show');
+            } else {
+                loadingOverlay.classList.remove('show');
+            }
+        }
+    </script>
+</body>
+</html>

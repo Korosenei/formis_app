@@ -40,7 +40,7 @@ from apps.payments.models import Paiement, PlanPaiement, InscriptionPaiement
 
 class LoginView(FormView):
     """Vue de connexion"""
-    template_name = 'auth/login.html'
+    template_name = 'accounts/login.html'
     form_class = LoginForm
 
     def dispatch(self, request, *args, **kwargs):
@@ -167,7 +167,7 @@ class ForgotPasswordView(FormView):
 
 class ResetPasswordView(FormView):
     """Vue de réinitialisation du mot de passe"""
-    template_name = 'auth/reset_password.html'
+    template_name = 'accounts/reset_password.html'
     form_class = ResetPasswordForm
     success_url = reverse_lazy('accounts:login')
 

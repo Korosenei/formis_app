@@ -1,289 +1,226 @@
 {% extends 'base/dashboard_base.html' %}
 {% load static %}
 
-{% block page_title %}Emplois du Temps - Administration{% endblock %}
+{% block page_title %}Mon Emploi du Temps{% endblock %}
 
 {% block content %}
-<div class="admin-emplois-du-temps">
+<div class="student-emploi-du-temps">
     <div class="page-header-compact">
         <div class="header-content">
             <div class="breadcrumb-nav">
                 <span>Dashboard</span>
                 <i class="fas fa-chevron-right"></i>
-                <span>Administration</span>
-                <i class="fas fa-chevron-right"></i>
-                <span class="current">Emplois du temps</span>
+                <span class="current">Emploi du temps</span>
             </div>
-            <h1>Gestion des Emplois du Temps</h1>
+            <h1>Mon Emploi du Temps</h1>
+            {% if emploi_du_temps %}
             <div class="header-stats">
-                <span class="stat-badge">{{ page_obj.paginator.count }} total</span>
-                <span class="stat-badge publies">{{ nombre_publies }} publiés</span>
+                <span class="stat-badge">
+                    <i class="fas fa-calendar-week"></i>
+                    Semaine du {{ emploi_du_temps.semaine_debut|date:"d/m" }}
+                </span>
             </div>
+            {% endif %}
         </div>
         <div class="header-actions">
-            <button class="btn btn-secondary btn-sm" onclick="openGenerateModal()">
-                <i class="fas fa-magic"></i> Générer auto
+            <button class="btn-icon" onclick="exportToPDF()" title="Exporter en PDF">
+                <i class="fas fa-file-pdf"></i>
             </button>
-            <a href="{% url 'courses:emploi_du_temps_create' %}" class="btn btn-primary btn-sm">
-                <i class="fas fa-plus"></i> Nouveau
-            </a>
+            <button class="btn-icon" onclick="printSchedule()" title="Imprimer">
+                <i class="fas fa-print"></i>
+            </button>
         </div>
     </div>
 
-    <div class="filters-section">
-        <form method="GET" class="filters-form">
-            <div class="filter-group">
-                <select name="type" class="form-select-sm" id="typeFilter" onchange="toggleFilters(this.value)">
-                    <option value="classe" {% if current_filters.type == 'classe' %}selected{% endif %}>Par Classe</option>
-                    <option value="enseignant" {% if current_filters.type == 'enseignant' %}selected{% endif %}>Par Enseignant</option>
-                </select>
-            </div>
-
-            <div class="filter-group" id="classeFilter">
-                <select name="classe" class="form-select-sm">
-                    <option value="">Toutes classes</option>
-                    {% for classe in classes %}
-                        <option value="{{ classe.id }}" {% if current_filters.classe == classe.id|stringformat:"s" %}selected{% endif %}>
-                            {{ classe.nom }} - {{ classe.niveau.filiere.nom }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="filter-group" id="enseignantFilter" style="display: none;">
-                <select name="enseignant" class="form-select-sm">
-                    <option value="">Tous enseignants</option>
-                    {% for enseignant in enseignants %}
-                        <option value="{{ enseignant.id }}" {% if current_filters.enseignant == enseignant.id|stringformat:"s" %}selected{% endif %}>
-                            {{ enseignant.get_full_name }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <select name="periode" class="form-select-sm">
-                    <option value="">Toutes périodes</option>
-                    {% for periode in periodes %}
-                        <option value="{{ periode.id }}" {% if current_filters.periode == periode.id|stringformat:"s" %}selected{% endif %}>
-                            {{ periode.nom }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <select name="statut" class="form-select-sm">
-                    <option value="">Tous statuts</option>
-                    <option value="publie" {% if current_filters.statut == 'publie' %}selected{% endif %}>Publiés</option>
-                    <option value="non_publie" {% if current_filters.statut == 'non_publie' %}selected{% endif %}>Brouillons</option>
-                    <option value="actuel" {% if current_filters.statut == 'actuel' %}selected{% endif %}>Actuels</option>
-                </select>
-            </div>
-
-            <div class="filter-actions">
-                <button type="submit" class="btn btn-sm btn-primary">
-                    <i class="fas fa-search"></i>
-                </button>
-                <a href="{% url 'dashboard:admin_emplois_du_temps' %}" class="btn btn-sm btn-outline">
-                    <i class="fas fa-undo"></i>
-                </a>
-            </div>
-        </form>
+    <!-- Navigation semaine -->
+    <div class="week-navigation">
+        <button class="btn-nav" onclick="previousWeek()">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="week-info">
+            <span class="week-label">Semaine du</span>
+            <span class="week-dates" id="weekDates">
+                {{ week_start|date:"d/m/Y" }} - {{ week_end|date:"d/m/Y" }}
+            </span>
+        </div>
+        <button class="btn-nav" onclick="nextWeek()">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+        <button class="btn btn-sm btn-primary" onclick="goToCurrentWeek()">
+            <i class="fas fa-calendar-day"></i> Cette semaine
+        </button>
     </div>
 
-    <div class="edt-grid">
-        {% for edt in emplois_du_temps %}
-        <div class="edt-card" id="edt-card-{{ edt.id }}">
-            <div class="edt-card-header">
-                <div class="edt-title">
-                    <h3>{{ edt.nom|truncatechars:50 }}</h3>
-                    <div class="edt-target">
-                        {% if edt.classe %}
-                            <i class="fas fa-users"></i> {{ edt.classe.nom }}
-                        {% elif edt.enseignant %}
-                            <i class="fas fa-user-tie"></i> {{ edt.enseignant.get_full_name }}
-                        {% endif %}
-                    </div>
+    {% if emploi_du_temps or cours_semaine %}
+    <!-- Calendrier hebdomadaire -->
+    <div class="weekly-calendar">
+        <!-- En-tête avec heures -->
+        <div class="calendar-header">
+            <div class="time-column-header">Heures</div>
+            {% for day in days %}
+            <div class="day-header {% if day.is_today %}today{% endif %}">
+                <div class="day-name">{{ day.name }}</div>
+                <div class="day-date">{{ day.date|date:"d/m" }}</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Corps du calendrier -->
+        <div class="calendar-body">
+            <!-- Colonne des heures -->
+            <div class="time-column">
+                {% for hour in hours %}
+                <div class="time-slot">
+                    <span class="time-label">{{ hour }}:00</span>
                 </div>
-                <div class="edt-badges">
-                    {% if edt.actuel %}
-                        <span class="badge badge-primary"><i class="fas fa-star"></i> Actuel</span>
-                    {% endif %}
-                    {% if edt.publie %}
-                        <span class="badge badge-success"><i class="fas fa-check"></i> Publié</span>
-                    {% else %}
-                        <span class="badge badge-warning"><i class="fas fa-clock"></i> Brouillon</span>
-                    {% endif %}
-                </div>
+                {% endfor %}
             </div>
 
-            <div class="edt-card-body">
-                <div class="edt-info">
-                    <div class="info-item">
-                        <i class="fas fa-calendar-week"></i>
-                        <span>Semaine du {{ edt.semaine_debut|date:"d/m/Y" }}</span>
+            <!-- Colonnes des jours -->
+            {% for day in days %}
+            <div class="day-column" data-day="{{ day.num }}">
+                <!-- Grille horaire -->
+                {% for hour in hours %}
+                <div class="hour-slot" data-hour="{{ hour }}"></div>
+                {% endfor %}
+
+                <!-- Cours de la journée -->
+                {% for cours in cours_semaine %}
+                {% if cours.date_prevue == day.date %}
+                <div class="cours-block {{ cours.type_cours|lower }}"
+                     style="
+                         top: {{ cours.position_top }}px;
+                         height: {{ cours.height }}px;
+                         background: linear-gradient(135deg, {{ cours.matiere.couleur }}ee 0%, {{ cours.matiere.couleur }} 100%);
+                     "
+                     onclick="showCoursDetail('{{ cours.id }}')">
+                    <div class="cours-block-time">
+                        {{ cours.heure_debut_prevue|time:"H:i" }} - {{ cours.heure_fin_prevue|time:"H:i" }}
                     </div>
-                    <div class="info-item">
-                        <i class="fas fa-calendar"></i>
-                        <span>{{ edt.periode_academique.nom }}</span>
+                    <div class="cours-block-title">{{ cours.titre|truncatechars:30 }}</div>
+                    <div class="cours-block-info">
+                        <span class="cours-block-type">{{ cours.get_type_cours_display }}</span>
                     </div>
-                    <div class="info-item">
-                        <i class="fas fa-clock"></i>
-                        <span>{{ edt.creneaux.count }} créneaux</span>
+                    {% if cours.salle %}
+                    <div class="cours-block-salle">
+                        <i class="fas fa-door-open"></i> {{ cours.salle.code }}
                     </div>
-                    {% if edt.cree_par %}
-                    <div class="info-item">
-                        <i class="fas fa-user"></i>
-                        <span>{{ edt.cree_par.get_full_name|truncatechars:20 }}</span>
+                    {% endif %}
+                    {% if cours.cours_en_ligne %}
+                    <div class="cours-block-online">
+                        <i class="fas fa-video"></i> En ligne
                     </div>
                     {% endif %}
                 </div>
-            </div>
-
-            <div class="edt-card-footer">
-                <a href="{% url 'courses:emploi_du_temps_detail' edt.id %}" class="btn btn-sm btn-primary">
-                    <i class="fas fa-eye"></i> Voir
-                </a>
-                <a href="{% url 'courses:emploi_du_temps_edit' edt.id %}" class="btn btn-sm btn-info">
-                    <i class="fas fa-edit"></i> Modifier
-                </a>
-                {% if not edt.publie %}
-                    <button class="btn btn-sm btn-success" onclick="publishEDT('{{ edt.id }}')">
-                        <i class="fas fa-check"></i> Publier
-                    </button>
                 {% endif %}
-                <div class="dropdown-compact">
-                    <button class="btn btn-sm btn-outline dropdown-toggle">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                    <div class="dropdown-menu-compact">
-                        <a href="{% url 'courses:emploi_du_temps_detail' edt.id %}">
-                            <i class="fas fa-eye"></i> Détails
-                        </a>
-                        <a href="#" onclick="exportEDTPDF('{{ edt.id }}')">
-                            <i class="fas fa-file-pdf"></i> Export PDF
-                        </a>
-                        <a href="#" onclick="exportEDTExcel('{{ edt.id }}')">
-                            <i class="fas fa-file-excel"></i> Export Excel
-                        </a>
-                        <a href="#" onclick="duplicateEDT('{{ edt.id }}')">
-                            <i class="fas fa-copy"></i> Dupliquer
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        {% if not edt.publie %}
-                            <a href="#" onclick="publishEDT('{{ edt.id }}')" class="text-success">
-                                <i class="fas fa-check"></i> Publier
-                            </a>
-                        {% else %}
-                            <a href="#" onclick="unpublishEDT('{{ edt.id }}')" class="text-warning">
-                                <i class="fas fa-eye-slash"></i> Dépublier
-                            </a>
-                        {% endif %}
-                        <div class="dropdown-divider"></div>
-                        <a href="#" onclick="deleteEDT('{{ edt.id }}')" class="text-danger">
-                            <i class="fas fa-trash"></i> Supprimer
-                        </a>
-                    </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Légende -->
+    <div class="calendar-legend">
+        <h4><i class="fas fa-info-circle"></i> Légende</h4>
+        <div class="legend-items">
+            <div class="legend-item">
+                <span class="legend-badge cm"></span>
+                <span>Cours Magistral</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-badge td"></span>
+                <span>Travaux Dirigés</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-badge tp"></span>
+                <span>Travaux Pratiques</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-badge evaluation"></span>
+                <span>Évaluation</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-badge rattrapage"></span>
+                <span>Rattrapage</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Récapitulatif de la semaine -->
+    <div class="week-summary">
+        <h3><i class="fas fa-chart-bar"></i> Récapitulatif de la semaine</h3>
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="summary-content">
+                    <div class="summary-value">{{ total_heures }}h</div>
+                    <div class="summary-label">Total d'heures</div>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-icon">
+                    <i class="fas fa-book"></i>
+                </div>
+                <div class="summary-content">
+                    <div class="summary-value">{{ nombre_matieres }}</div>
+                    <div class="summary-label">Matières</div>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-icon">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                </div>
+                <div class="summary-content">
+                    <div class="summary-value">{{ cours_semaine|length }}</div>
+                    <div class="summary-label">Séances</div>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-icon">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <div class="summary-content">
+                    <div class="summary-value">{{ nombre_evaluations }}</div>
+                    <div class="summary-label">Évaluations</div>
                 </div>
             </div>
         </div>
-        {% empty %}
-        <div class="empty-state-full">
-            <i class="fas fa-calendar-alt fa-3x"></i>
-            <h3>Aucun emploi du temps trouvé</h3>
-            <p>Créez un nouvel emploi du temps ou générez-en un automatiquement</p>
-            <div class="empty-actions">
-                <button class="btn btn-secondary" onclick="openGenerateModal()">
-                    <i class="fas fa-magic"></i> Générer automatiquement
-                </button>
-                <a href="{% url 'courses:emploi_du_temps_create' %}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Créer manuellement
-                </a>
-            </div>
-        </div>
-        {% endfor %}
     </div>
 
-    {% include 'components/pagination.html' %}
+    {% else %}
+    <!-- État vide -->
+    <div class="empty-state">
+        <i class="fas fa-calendar-times fa-4x"></i>
+        <h3>Aucun emploi du temps disponible</h3>
+        <p>Votre emploi du temps n'a pas encore été publié pour cette semaine.</p>
+        <p class="empty-hint">Contactez votre administration pour plus d'informations.</p>
+    </div>
+    {% endif %}
 </div>
 
-<!-- Modal de génération automatique -->
-<div id="generateModal" class="modal">
-    <div class="modal-content">
+<!-- Modal détails cours -->
+<div id="coursDetailModal" class="modal">
+    <div class="modal-content modal-medium">
         <div class="modal-header">
-            <h3><i class="fas fa-magic"></i> Générer un emploi du temps</h3>
-            <button class="modal-close" onclick="closeGenerateModal()">&times;</button>
+            <h3 id="modalTitle"><i class="fas fa-info-circle"></i> Détails du cours</h3>
+            <button class="modal-close" onclick="closeCoursDetail()">&times;</button>
         </div>
-        <div class="modal-body">
-            <form id="generateForm">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label class="required">Type d'emploi du temps</label>
-                    <select name="type" class="form-select" onchange="toggleGenerateType(this.value)">
-                        <option value="classe">Pour une classe</option>
-                        <option value="enseignant">Pour un enseignant</option>
-                    </select>
-                </div>
-
-                <div class="form-group" id="genClasseGroup">
-                    <label class="required">Classe</label>
-                    <select name="classe_id" class="form-select" required>
-                        <option value="">Sélectionner une classe...</option>
-                        {% for classe in classes %}
-                            <option value="{{ classe.id }}">
-                                {{ classe.nom }} - {{ classe.niveau.filiere.nom }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="form-group" id="genEnseignantGroup" style="display: none;">
-                    <label class="required">Enseignant</label>
-                    <select name="enseignant_id" class="form-select">
-                        <option value="">Sélectionner un enseignant...</option>
-                        {% for enseignant in enseignants %}
-                            <option value="{{ enseignant.id }}">
-                                {{ enseignant.get_full_name }} ({{ enseignant.matricule }})
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="required">Période académique</label>
-                    <select name="periode_id" class="form-select" required>
-                        <option value="">Sélectionner une période...</option>
-                        {% for periode in periodes %}
-                            <option value="{{ periode.id }}">{{ periode.nom }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="required">Semaine de début (Lundi)</label>
-                    <input type="date" name="semaine_debut" class="form-control" required>
-                    <small class="form-text">Sélectionner un lundi</small>
-                </div>
-
-                <div class="form-group">
-                    <label>Nombre de semaines</label>
-                    <input type="number" name="nb_semaines" class="form-control" value="1" min="1" max="16">
-                    <small class="form-text">Génération pour plusieurs semaines consécutives</small>
-                </div>
-            </form>
+        <div class="modal-body" id="modalBody">
+            <!-- Contenu chargé dynamiquement -->
         </div>
         <div class="modal-footer">
-            <button class="btn btn-outline" onclick="closeGenerateModal()">Annuler</button>
-            <button class="btn btn-primary" onclick="submitGenerate()">
-                <i class="fas fa-magic"></i> Générer
-            </button>
+            <button class="btn btn-outline" onclick="closeCoursDetail()">Fermer</button>
+            <a id="modalDetailLink" href="#" class="btn btn-primary">
+                <i class="fas fa-eye"></i> Voir le cours
+            </a>
         </div>
     </div>
 </div>
 
 <style>
-.admin-emplois-du-temps { padding: 15px; }
+.student-emploi-du-temps { padding: 15px; }
 .page-header-compact {
     display: flex;
     justify-content: space-between;
@@ -303,188 +240,359 @@
     gap: 5px;
 }
 .breadcrumb-nav .current { color: #2563eb; font-weight: 500; }
-.header-content h1 { margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #1f2937; }
+.header-content h1 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+}
 .header-stats { display: flex; gap: 8px; margin-top: 5px; }
 .stat-badge {
-    padding: 2px 8px;
-    background: #f3f4f6;
+    padding: 4px 10px;
+    background: #dbeafe;
+    color: #1e40af;
     border-radius: 12px;
     font-size: 11px;
-    color: #1f2937;
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
-.stat-badge.publies { background: #d1fae5; color: #065f46; }
 .header-actions { display: flex; gap: 8px; }
-.filters-section {
+
+.week-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    padding: 15px;
     background: white;
-    padding: 12px;
     border-radius: 6px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    margin-bottom: 15px;
-}
-.filters-form {
-    display: grid;
-    grid-template-columns: 1fr 1.2fr 1.2fr 1fr auto;
-    gap: 12px;
-    align-items: end;
-}
-.form-select-sm {
-    padding: 6px 10px;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    font-size: 13px;
-    height: 32px;
-}
-.filter-actions { display: flex; gap: 5px; }
-.edt-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-    gap: 15px;
     margin-bottom: 20px;
 }
-.edt-card {
+.btn-nav {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+.btn-nav:hover {
+    background: #f3f4f6;
+    border-color: #2563eb;
+    color: #2563eb;
+}
+.week-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.week-label {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 500;
+}
+.week-dates {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.weekly-calendar {
     background: white;
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
-    border: 1px solid #e5e7eb;
+    margin-bottom: 20px;
 }
-.edt-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-.edt-card-header {
-    padding: 12px 15px;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+
+.calendar-header {
+    display: grid;
+    grid-template-columns: 70px repeat(6, 1fr);
+    border-bottom: 2px solid #e5e7eb;
     background: #f9fafb;
 }
-.edt-title h3 {
-    margin: 0 0 6px 0;
+.time-column-header {
+    padding: 12px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    text-align: center;
+    border-right: 1px solid #e5e7eb;
+}
+.day-header {
+    padding: 12px 8px;
+    text-align: center;
+    border-right: 1px solid #e5e7eb;
+    transition: background 0.2s;
+}
+.day-header:last-child { border-right: none; }
+.day-header.today {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+}
+.day-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+.day-header.today .day-name { color: #1e40af; }
+.day-date {
+    font-size: 11px;
+    color: #6b7280;
+}
+.day-header.today .day-date { color: #3b82f6; }
+
+.calendar-body {
+    display: grid;
+    grid-template-columns: 70px repeat(6, 1fr);
+    position: relative;
+}
+
+.time-column {
+    border-right: 2px solid #e5e7eb;
+    background: #fafbfc;
+}
+.time-slot {
+    height: 60px;
+    border-bottom: 1px solid #f3f4f6;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 4px;
+}
+.time-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #6b7280;
+}
+
+.day-column {
+    position: relative;
+    border-right: 1px solid #e5e7eb;
+    min-height: 600px;
+}
+.day-column:last-child { border-right: none; }
+
+.hour-slot {
+    height: 60px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.cours-block {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    border-radius: 6px;
+    padding: 8px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    color: white;
+    font-size: 11px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 10;
+}
+.cours-block:hover {
+    transform: translateX(2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 20;
+}
+.cours-block-time {
+    font-size: 10px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    opacity: 0.95;
+}
+.cours-block-title {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+.cours-block-info {
+    margin-bottom: 4px;
+}
+.cours-block-type {
+    padding: 2px 6px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.cours-block-salle, .cours-block-online {
+    font-size: 10px;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.9;
+}
+
+.calendar-legend {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    padding: 15px;
+    margin-bottom: 20px;
+}
+.calendar-legend h4 {
+    margin: 0 0 12px 0;
     font-size: 14px;
     font-weight: 600;
     color: #1f2937;
-}
-.edt-target {
-    font-size: 12px;
-    color: #6b7280;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-.edt-badges { display: flex; gap: 5px; flex-direction: column; align-items: flex-end; }
-.badge {
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 500;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-.badge-primary { background: #dbeafe; color: #1e40af; }
-.badge-success { background: #d1fae5; color: #065f46; }
-.badge-warning { background: #fef3c7; color: #92400e; }
-.edt-card-body { padding: 12px 15px; }
-.edt-info {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-.info-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
-    color: #6b7280;
 }
-.info-item i { color: #9ca3af; width: 14px; }
-.edt-card-footer {
-    padding: 10px 15px;
-    border-top: 1px solid #e5e7eb;
+.legend-items {
     display: flex;
-    gap: 5px;
     flex-wrap: wrap;
-    background: #fafbfc;
+    gap: 15px;
 }
-.btn {
-    padding: 5px 10px;
-    border-radius: 4px;
-    border: none;
-    cursor: pointer;
-    font-size: 11px;
-    font-weight: 500;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: all 0.3s;
-    text-decoration: none;
-}
-.btn-sm { padding: 5px 10px; font-size: 11px; }
-.btn-primary { background: #2563eb; color: white; }
-.btn-primary:hover { background: #1d4ed8; }
-.btn-info { background: #3b82f6; color: white; }
-.btn-info:hover { background: #2563eb; }
-.btn-secondary { background: #6b7280; color: white; }
-.btn-secondary:hover { background: #4b5563; }
-.btn-success { background: #10b981; color: white; }
-.btn-success:hover { background: #059669; }
-.btn-outline { background: white; border: 1px solid #e5e7eb; color: #374151; }
-.btn-outline:hover { background: #f3f4f6; }
-
-.dropdown-compact {
-    position: relative;
-}
-.dropdown-menu-compact {
-    position: absolute;
-    bottom: 100%;
-    right: 0;
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    box-shadow: 0 10px 15px rgba(0,0,0,0.1);
-    min-width: 180px;
-    display: none;
-    z-index: 1000;
-    margin-bottom: 5px;
-}
-.dropdown-menu-compact.show { display: block; }
-.dropdown-menu-compact a {
+.legend-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
-    text-decoration: none;
-    color: #1f2937;
     font-size: 12px;
-    transition: background 0.2s;
+    color: #6b7280;
 }
-.dropdown-menu-compact a:hover { background: #f3f4f6; }
-.dropdown-menu-compact a i { width: 14px; text-align: center; }
-.dropdown-divider {
-    height: 1px;
-    background: #e5e7eb;
-    margin: 4px 0;
+.legend-badge {
+    width: 24px;
+    height: 12px;
+    border-radius: 3px;
 }
-.text-success { color: #10b981; }
-.text-warning { color: #f59e0b; }
-.text-danger { color: #ef4444; }
+.legend-badge.cm { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
+.legend-badge.td { background: linear-gradient(135deg, #34d399, #10b981); }
+.legend-badge.tp { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+.legend-badge.evaluation { background: linear-gradient(135deg, #f472b6, #ec4899); }
+.legend-badge.rattrapage { background: linear-gradient(135deg, #a78bfa, #8b5cf6); }
 
-.empty-state-full {
-    grid-column: 1 / -1;
+.week-summary {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    padding: 20px;
+}
+.week-summary h3 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+.summary-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+.summary-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    color: #2563eb;
+}
+.summary-content { flex: 1; }
+.summary-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 2px;
+}
+.summary-label {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.empty-state {
     text-align: center;
-    padding: 60px 20px;
+    padding: 80px 20px;
     background: white;
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-.empty-state-full i { color: #d1d5db; margin-bottom: 20px; }
-.empty-state-full h3 { margin: 0 0 10px 0; color: #1f2937; font-size: 18px; }
-.empty-state-full p { color: #6b7280; margin-bottom: 20px; }
-.empty-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.empty-state i {
+    color: #d1d5db;
+    margin-bottom: 20px;
+}
+.empty-state h3 {
+    margin: 0 0 10px 0;
+    color: #1f2937;
+    font-size: 20px;
+}
+.empty-state p {
+    color: #6b7280;
+    margin: 0 0 8px 0;
+    font-size: 14px;
+}
+.empty-hint {
+    color: #9ca3af;
+    font-size: 13px;
+    font-style: italic;
+}
+
+.btn {
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-outline {
+    background: white;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+}
+.btn-outline:hover { background: #f3f4f6; }
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-icon:hover {
+    background: #f3f4f6;
+    color: #2563eb;
+}
 
 .modal {
     display: none;
@@ -507,6 +615,7 @@
     max-height: 90vh;
     overflow-y: auto;
 }
+.modal-medium { max-width: 700px; }
 .modal-header {
     padding: 20px;
     border-bottom: 1px solid #e5e7eb;
@@ -537,37 +646,32 @@
     justify-content: flex-end;
     gap: 10px;
 }
-.form-group { margin-bottom: 15px; }
-.form-group label {
-    display: block;
-    font-weight: 500;
-    color: #374151;
-    margin-bottom: 6px;
-    font-size: 14px;
-}
-.form-group label.required::after {
-    content: "*";
-    color: #ef4444;
-    margin-left: 4px;
-}
-.form-control, .form-select {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 14px;
-}
-.form-text {
-    display: block;
-    margin-top: 4px;
-    font-size: 12px;
-    color: #6b7280;
+
+@media (max-width: 1024px) {
+    .calendar-header,
+    .calendar-body {
+        grid-template-columns: 60px repeat(6, 1fr);
+    }
+    .time-column-header,
+    .time-column {
+        font-size: 10px;
+    }
 }
 
 @media (max-width: 768px) {
-    .edt-grid { grid-template-columns: 1fr; }
-    .filters-form { grid-template-columns: 1fr; gap: 8px; }
-    .page-header-compact { flex-direction: column; gap: 10px; }
+    .calendar-header,
+    .calendar-body {
+        grid-template-columns: 50px repeat(3, 1fr);
+    }
+    .day-header:nth-child(n+5) {
+        display: none;
+    }
+    .day-column:nth-child(n+5) {
+        display: none;
+    }
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 </style>
 
@@ -587,138 +691,141 @@ function getCookie(name) {
     return cookieValue;
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    const typeFilter = document.getElementById('typeFilter');
-    if (typeFilter) {
-        toggleFilters(typeFilter.value);
-    }
+let currentWeekStart = new Date('{{ week_start|date:"Y-m-d" }}');
 
-    // Gestion des dropdowns
-    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
-        toggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const dropdown = this.nextElementSibling;
-            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
-                if (menu !== dropdown) menu.classList.remove('show');
-            });
-            dropdown.classList.toggle('show');
+function previousWeek() {
+    currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+    updateWeek();
+}
+
+function nextWeek() {
+    currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+    updateWeek();
+}
+
+function goToCurrentWeek() {
+    const today = new Date();
+    const dayOfWeek = today.getDay() || 7;
+    currentWeekStart = new Date(today);
+    currentWeekStart.setDate(today.getDate() - dayOfWeek + 1);
+    updateWeek();
+}
+
+function updateWeek() {
+    const weekEnd = new Date(currentWeekStart);
+    weekEnd.setDate(currentWeekStart.getDate() + 5);
+
+    const formatDate = (date) => {
+        const d = date.getDate().toString().padStart(2, '0');
+        const m = (date.getMonth() + 1).toString().padStart(2, '0');
+        const y = date.getFullYear();
+        return `${d}/${m}/${y}`;
+    };
+
+    const y = currentWeekStart.getFullYear();
+    const m = (currentWeekStart.getMonth() + 1).toString().padStart(2, '0');
+    const d = currentWeekStart.getDate().toString().padStart(2, '0');
+
+    window.location.href = `?week_start=${y}-${m}-${d}`;
+}
+
+function showCoursDetail(coursId) {
+    const modal = document.getElementById('coursDetailModal');
+    const modalBody = document.getElementById('modalBody');
+    const modalLink = document.getElementById('modalDetailLink');
+
+    modalBody.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>';
+    modal.classList.add('show');
+
+    fetch(`/courses/cours/${coursId}/`)
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const content = doc.querySelector('.cours-detail-content');
+
+            if (content) {
+                modalBody.innerHTML = content.innerHTML;
+            } else {
+                modalBody.innerHTML = '<p>Erreur lors du chargement des détails</p>';
+            }
+
+            modalLink.href = `/courses/cours/${coursId}/`;
+        })
+        .catch(() => {
+            modalBody.innerHTML = '<p>Erreur de connexion</p>';
         });
-    });
+}
 
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.dropdown-compact')) {
-            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
-                menu.classList.remove('show');
-            });
+function closeCoursDetail() {
+    document.getElementById('coursDetailModal').classList.remove('show');
+}
+
+function exportToPDF() {
+    window.print();
+}
+
+function printSchedule() {
+    window.print();
+}
+
+// Calcul des positions des cours
+document.addEventListener('DOMContentLoaded', function() {
+    const coursBlocks = document.querySelectorAll('.cours-block');
+
+    coursBlocks.forEach(block => {
+        const parent = block.parentElement;
+        const timeText = block.querySelector('.cours-block-time').textContent;
+        const times = timeText.match(/(\d{2}):(\d{2})/g);
+
+        if (times && times.length >= 2) {
+            const [startH, startM] = times[0].split(':').map(Number);
+            const [endH, endM] = times[1].split(':').map(Number);
+
+            const startMinutes = startH * 60 + startM;
+            const endMinutes = endH * 60 + endM;
+            const duration = endMinutes - startMinutes;
+
+            const dayStart = 8 * 60; // 8h00
+            const pixelsPerHour = 60;
+
+            const topPosition = ((startMinutes - dayStart) / 60) * pixelsPerHour;
+            const height = (duration / 60) * pixelsPerHour - 4;
+
+            block.style.top = `${topPosition}px`;
+            block.style.height = `${height}px`;
         }
     });
 });
 
-function toggleFilters(type) {
-    document.getElementById('classeFilter').style.display = type === 'classe' ? 'block' : 'none';
-    document.getElementById('enseignantFilter').style.display = type === 'enseignant' ? 'block' : 'none';
-}
-
-function openGenerateModal() {
-    document.getElementById('generateModal').classList.add('show');
-}
-
-function closeGenerateModal() {
-    document.getElementById('generateModal').classList.remove('show');
-}
-
-function toggleGenerateType(type) {
-    const classeGroup = document.getElementById('genClasseGroup');
-    const enseignantGroup = document.getElementById('genEnseignantGroup');
-
-    if (type === 'classe') {
-        classeGroup.style.display = 'block';
-        enseignantGroup.style.display = 'none';
-        classeGroup.querySelector('select').required = true;
-        enseignantGroup.querySelector('select').required = false;
-    } else {
-        classeGroup.style.display = 'none';
-        enseignantGroup.style.display = 'block';
-        classeGroup.querySelector('select').required = false;
-        enseignantGroup.querySelector('select').required = true;
+// Fermeture modal au clic extérieur
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('coursDetailModal');
+    if (e.target === modal) {
+        closeCoursDetail();
     }
-}
-
-function submitGenerate() {
-    const form = document.getElementById('generateForm');
-    const formData = new FormData(form);
-
-    fetch('/courses/emplois-du-temps/generate/', {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') },
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            closeGenerateModal();
-            window.location.href = `/courses/emplois-du-temps/${data.edt_id}/`;
-        } else {
-            alert(data.message || 'Erreur lors de la génération');
-        }
-    })
-    .catch(() => alert('Erreur de connexion'));
-}
-
-function publishEDT(edtId) {
-    if (confirm('Publier cet emploi du temps ?')) {
-        fetch(`/courses/emplois-du-temps/${edtId}/publish/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) location.reload();
-            else alert(data.message || 'Erreur');
-        });
-    }
-}
-
-function unpublishEDT(edtId) {
-    if (confirm('Dépublier cet emploi du temps ?')) {
-        // Implémenter la fonction
-        alert('Fonction à implémenter');
-    }
-}
-
-function exportEDTPDF(edtId) {
-    window.location.href = `/courses/emplois-du-temps/${edtId}/export/pdf/`;
-}
-
-function exportEDTExcel(edtId) {
-    window.location.href = `/courses/emplois-du-temps/${edtId}/export/excel/`;
-}
-
-function duplicateEDT(edtId) {
-    if (confirm('Dupliquer cet emploi du temps ?')) {
-        // Implémenter la fonction
-        alert('Fonction à implémenter');
-    }
-}
-
-function deleteEDT(edtId) {
-    if (confirm('Supprimer cet emploi du temps ? Cette action est irréversible.')) {
-        fetch(`/courses/emplois-du-temps/${edtId}/delete/`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCookie('csrftoken') }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById(`edt-card-${edtId}`).remove();
-            } else {
-                alert(data.message || 'Erreur');
-            }
-        });
-    }
-}
+});
 </script>
+
+<style media="print">
+@media print {
+    .page-header-compact,
+    .week-navigation,
+    .calendar-legend,
+    .week-summary,
+    .header-actions,
+    .btn,
+    .modal {
+        display: none !important;
+    }
+    .weekly-calendar {
+        box-shadow: none;
+        page-break-inside: avoid;
+    }
+    .cours-block {
+        box-shadow: none;
+        border: 1px solid rgba(0,0,0,0.2);
+    }
+}
+</style>
 {% endblock %}

@@ -60,6 +60,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'apps.accounts.middleware.InscriptionRequiredMiddleware', #Middleware qui vérifie si un apprenant a une inscription active
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -221,11 +222,12 @@ EMAIL_TIMEOUT = 30
 # Configuration LigdiCash
 LIGDICASH_API_KEY = "XAUN7RGRQFIBCKM2J"
 LIGDICASH_AUTH_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZF9hcHAiOiIyNjUwNiIsImlkX2Fib25uZSI6ODQ0MTU3LCJkYXRlY3JlYXRpb25fYXBwIjoiMjAyNS0wNy0zMCAwOTowMTozMSJ9.FRT51-fVdpxUd-mDn_wcldcRKHfWtEyM4u4se3bGwFc"
-LIGDICASH_PLATFORM = "live"
+LIGDICASH_PLATFORM = "test"
+LIGDICASH_MONTANT_MINIMUM = 100
 
 
 # Informations du site
-SITE_NAME = 'FORMIS - Plateforme de gestion des établissements'
+SITE_NAME = 'FORMIS'
 SITE_URL = 'http://localhost:8000'
 
 
@@ -274,6 +276,14 @@ LOGGING = {
             'handlers': ['console', 'file'],
             'level': 'DEBUG',
             'propagate': False,
+        },
+        'apps.enrollment': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+        },
+        'apps.payments': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
         },
         'django.core.mail': {
             'handlers': ['console', 'file'],

@@ -127,7 +127,7 @@ Dashboard > Administrateur
     <div class="quick-actions">
         <h4>Actions rapides</h4>
         <div class="actions-grid">
-            <a href="{% url 'enrollment:candidature_list' %}" class="action-btn">
+            <a href="#enrollment:candidature_list" class="action-btn">
                 <i class="fas fa-file-alt"></i>
                 <span>Gérer les candidatures</span>
                 {% if candidatures_en_attente > 0 %}
@@ -167,7 +167,7 @@ Dashboard > Administrateur
         <div class="activity-section">
             <div class="section-header">
                 <h4>Candidatures récentes</h4>
-                <a href="{% url 'enrollment:candidature_list' %}" class="view-all">Voir tout</a>
+                <a href="#enrollment:candidature_list" class="view-all">Voir tout</a>
             </div>
             <div class="activity-list">
                 {% for candidature in candidatures_recentes %}

@@ -1,61 +1,111 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Erreur de paiement - FORMIS</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        .error-bg {
-            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
-            min-height: 100vh;
-        }
-        .error-card {
-            border: none;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        }
-        .error-icon {
-            font-size: 4rem;
-            color: #dc3545;
-        }
-    </style>
-</head>
-<body class="error-bg d-flex align-items-center">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="card error-card">
-                    <div class="card-body text-center p-5">
-                        <div class="mb-4">
-                            <i class="bi bi-x-circle-fill error-icon"></i>
-                        </div>
+<!-- templates/payments/error.html -->
+{% extends "dashboard/base.html" %}
+{% load static %}
 
-                        <h1 class="text-danger mb-3">Paiement échoué</h1>
-                        <p class="text-muted mb-4">
-                            {{ error_message|default:"Une erreur est survenue lors du traitement de votre paiement." }}
-                        </p>
+{% block title %}Erreur de paiement{% endblock %}
 
-                        <div class="alert alert-warning">
-                            <i class="bi bi-info-circle me-2"></i>
-                            Aucun montant n'a été débité de votre compte. Vous pouvez réessayer le paiement.
-                        </div>
+{% block extra_css %}
+<style>
+.payment-error {
+    max-width: 600px;
+    margin: 50px auto;
+    text-align: center;
+    padding: 40px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
 
-                        <div class="mt-4">
-                            <a href="{% url 'payments:payer_ligdicash' paiement.id %}" class="btn btn-primary btn-lg me-3">
-                                <i class="bi bi-arrow-repeat"></i>
-                                Réessayer le paiement
-                            </a>
-                            <a href="{% url 'dashboard:student' %}" class="btn btn-outline-secondary">
-                                <i class="bi bi-house-door"></i>
-                                Retour au tableau de bord
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+.error-icon {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 30px;
+    background: linear-gradient(135deg, #e74a3b 0%, #dc3545 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 50px;
+    animation: errorShake 0.5s ease;
+}
+
+@keyframes errorShake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+    20%, 40%, 60%, 80% { transform: translateX(10px); }
+}
+
+.payment-error h1 {
+    color: #e74a3b;
+    margin-bottom: 20px;
+    font-size: 32px;
+}
+
+.error-message {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 20px;
+    border-radius: 12px;
+    margin: 30px 0;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.btn {
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-outline {
+    background: white;
+    border: 2px solid #e2e8f0;
+    color: #2d3748;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="payment-error">
+    <div class="error-icon">
+        <i class="fas fa-times"></i>
     </div>
-</body>
-</html>
+
+    <h1>Paiement échoué</h1>
+    <p>Votre paiement n'a pas pu être traité.</p>
+
+    <div class="error-message">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>{{ error_message|default:"Une erreur est survenue lors du traitement de votre paiement." }}</strong>
+    </div>
+
+    <p>Vous pouvez réessayer le paiement ou contacter l'administration si le problème persiste.</p>
+
+    <div class="action-buttons">
+        <a href="{% url 'dashboard:student' %}" class="btn btn-primary">
+            <i class="fas fa-redo"></i>
+            Réessayer
+        </a>
+        <a href="{% url 'dashboard:student' %}" class="btn btn-outline">
+            <i class="fas fa-home"></i>
+            Retour au tableau de bord
+        </a>
+    </div>
+</div>
+{% endblock %}

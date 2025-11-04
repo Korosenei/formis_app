@@ -456,7 +456,7 @@
         z-index: 10000;
         backdrop-filter: blur(4px);
       }
-      
+
       .loading-modal-content {
         background: white;
         padding: 2rem;
@@ -468,7 +468,7 @@
         gap: 1rem;
         min-width: 200px;
       }
-      
+
       .loading-spinner {
         width: 40px;
         height: 40px;
@@ -476,7 +476,7 @@
         align-items: center;
         justify-content: center;
       }
-      
+
       .spinner {
         width: 24px;
         height: 24px;
@@ -485,7 +485,7 @@
         border-top-color: var(--primary-color);
         animation: spin 1s linear infinite;
       }
-      
+
       .loading-text {
         margin: 0;
         color: var(--dark-color);
@@ -548,9 +548,9 @@
           <!-- Formulaire de connexion Django -->
           <form id="loginForm" method="post" action="{% url 'accounts:login' %}">
             {% csrf_token %}
-            
+
             <input type="hidden" name="next" value="{{ request.GET.next }}">
-            
+
             <div class="form-group">
               <label for="username" class="form-label">Nom d'utilisateur</label>
               <div class="input-with-icon">
@@ -638,7 +638,7 @@
 
         <form id="forgotPasswordForm" method="post" action="{% url 'accounts:forgot_password' %}">
           {% csrf_token %}
-          
+
           <div class="form-group">
             <label for="email" class="form-label">Adresse email</label>
             <div class="input-with-icon">
@@ -680,7 +680,7 @@
           modal.style.display = 'flex';
         }
       }
-      
+
       function hideLoadingModal() {
         const modal = document.getElementById('loadingModal');
         if (modal) {
@@ -721,7 +721,7 @@
 
         // Afficher le modal de chargement
         showLoadingModal();
-        
+
         // Désactiver le bouton
         submitButton.disabled = true;
       });
@@ -730,7 +730,7 @@
       function showError(message) {
         // Cacher le modal en cas d'erreur
         hideLoadingModal();
-        
+
         errorText.textContent = message;
         errorMessage.style.display = "flex";
         submitButton.disabled = false;
@@ -782,7 +782,7 @@
       // Focus automatique sur le champ username au chargement
       document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("username").focus();
-        
+
         // Masquer les messages Django après 5 secondes
         setTimeout(() => {
           const alerts = document.querySelectorAll('.alert');

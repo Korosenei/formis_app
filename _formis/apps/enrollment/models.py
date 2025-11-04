@@ -1,4 +1,5 @@
 # apps/enrollment/models.py
+from datetime import timedelta
 
 from django.db import models
 from django.core.validators import RegexValidator
@@ -115,6 +116,19 @@ class Candidature(BaseModel):
     """Candidatures"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
+    token_inscription = models.CharField(
+        max_length=64,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name="Token d'inscription"
+    )
+    token_inscription_expire = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Date d'expiration du token"
+    )
+
     # Informations de base
     numero_candidature = models.CharField(max_length=20, unique=True, verbose_name="Numéro de candidature")
 
@@ -218,6 +232,22 @@ class Candidature(BaseModel):
     )
     frais_dossier_payes = models.BooleanField(default=False, verbose_name="Frais de dossier payés")
     date_paiement_frais = models.DateTimeField(null=True, blank=True, verbose_name="Date de paiement des frais")
+
+    def generer_token_inscription(self):
+        """Génère un token unique pour l'inscription"""
+        import secrets
+        self.token_inscription = secrets.token_urlsafe(32)
+        # Token valide 30 jours
+        self.token_inscription_expire = timezone.now() + timedelta(days=30)
+        self.save(update_fields=['token_inscription', 'token_inscription_expire'])
+        return self.token_inscription
+
+    def token_est_valide(self):
+        """Vérifie si le token est encore valide"""
+        if not self.token_inscription or not self.token_inscription_expire:
+            return False
+        return timezone.now() < self.token_inscription_expire
+
 
     def save(self, *args, **kwargs):
         # Générer le numéro uniquement si toutes les infos sont présentes
@@ -394,7 +424,9 @@ class Inscription(BaseModel):
         on_delete=models.CASCADE,
         limit_choices_to={'role': 'APPRENANT'},
         related_name='inscriptions',
-        verbose_name="Apprenant"
+        verbose_name="Apprenant",
+        null=True,
+        blank=True
     )
 
     # Informations de l'inscription
@@ -495,16 +527,17 @@ class Inscription(BaseModel):
         if not self.numero_inscription:
             self.numero_inscription = self.generer_numero_inscription()
 
-        # Calculer le solde
-        self.solde = self.frais_scolarite - self.total_paye
+        # Calculer le solde seulement si apprenant existe
+        if self.apprenant:
+            self.solde = self.frais_scolarite - self.total_paye
 
-        # Mettre à jour le statut de paiement
-        if self.solde <= 0:
-            self.statut_paiement = 'COMPLETE'
-        elif self.total_paye > 0:
-            self.statut_paiement = 'PARTIAL'
-        else:
-            self.statut_paiement = 'PENDING'
+            # Mettre à jour le statut de paiement
+            if self.solde <= 0:
+                self.statut_paiement = 'COMPLETE'
+            elif self.total_paye > 0:
+                self.statut_paiement = 'PARTIAL'
+            else:
+                self.statut_paiement = 'PENDING'
 
         super().save(*args, **kwargs)
 
@@ -522,7 +555,10 @@ class Inscription(BaseModel):
         return f"INS{annee}{code_etablissement}{count:05d}"
 
     def __str__(self):
-        return f"{self.numero_inscription} - {self.apprenant.get_full_name()}"
+        if self.apprenant:
+            return f"{self.numero_inscription} - {self.apprenant.get_full_name()}"
+        else:
+            return f"{self.numero_inscription} - En attente de paiement"
 
 class HistoriqueInscription(BaseModel):
     """Historique des changements d'inscription"""

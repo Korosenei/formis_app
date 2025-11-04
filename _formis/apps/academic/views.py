@@ -16,6 +16,7 @@ from .models import Departement, Filiere, Niveau, Classe, PeriodeAcademique, Pro
 from .forms import ( DepartementForm, FiliereForm, NiveauForm,ClasseForm, PeriodeAcademiqueForm, ProgrammeForm, DepartementFilterForm, FiliereFilterForm
 )
 
+from apps.establishments.models import Etablissement, AnneeAcademique
 
 # ============ VUES POUR DEPARTEMENT ============
 class DepartementListView(LoginRequiredMixin, ListView):
@@ -676,7 +677,6 @@ class ClasseListView(LoginRequiredMixin, ListView):
         return queryset.order_by('nom')
 
     def get_context_data(self, **kwargs):
-        from apps.establishments.models import Etablissement, AnneeAcademique
 
         context = super().get_context_data(**kwargs)
         context['title'] = 'Classes'
@@ -880,7 +880,6 @@ class PeriodeAcademiqueListView(LoginRequiredMixin, ListView):
         return queryset.order_by('-annee_academique__nom', 'ordre')
 
     def get_context_data(self, **kwargs):
-        from apps.establishments.models import Etablissement, AnneeAcademique
 
         context = super().get_context_data(**kwargs)
         context['title'] = 'Périodes académiques'
@@ -942,7 +941,6 @@ class ProgrammeListView(LoginRequiredMixin, ListView):
         return queryset.order_by('filiere__nom')
 
     def get_context_data(self, **kwargs):
-        from apps.establishments.models import Etablissement
 
         context = super().get_context_data(**kwargs)
         context['title'] = 'Programmes'
@@ -1005,17 +1003,16 @@ def api_departements_by_etablissementId_publics(request, etablissement_id):
     """API pour récupérer les départements d'un établissement public"""
     try:
         # Vérifier que l'établissement existe
-        from apps.establishments.models import Etablissement
         etablissement = Etablissement.objects.get(id=etablissement_id)
 
-        # Vérifications optionnelles (adaptez à vos champs)
-        if hasattr(etablissement, 'actif') and not etablissement.actif:
+        # Vérifications optionnelles
+        if not etablissement.actif:
             return JsonResponse({
                 'success': False,
                 'error': 'Établissement non actif'
             }, status=404)
 
-        if hasattr(etablissement, 'public') and not etablissement.public:
+        if not etablissement.public:
             return JsonResponse({
                 'success': False,
                 'error': 'Établissement non public'
@@ -1025,7 +1022,7 @@ def api_departements_by_etablissementId_publics(request, etablissement_id):
             etablissement_id=etablissement_id,
             est_actif=True
         ).select_related('chef').annotate(
-            nombre_filieres=Count('filiere')
+            nombre_filieres=Count('filieres')
         ).order_by('nom')
 
         data = [{
@@ -1040,6 +1037,7 @@ def api_departements_by_etablissementId_publics(request, etablissement_id):
             } if dept.chef else None,
             'email': dept.email,
             'telephone': dept.telephone,
+            'bureau': dept.bureau,
             'nombre_filieres': dept.nombre_filieres,
         } for dept in departements]
 
@@ -1093,15 +1091,14 @@ def api_filieres_by_departementId_publics(request, departement_id):
             est_active=True
         ).annotate(
             nombre_niveaux=Count('niveaux'),
-            nombre_classes=Count('niveaux__classe')
+            nombre_classes=Count('niveaux__classes')
         ).order_by('nom')
 
         data = [{
             'id': str(filiere.id),
             'nom': filiere.nom,
             'code': filiere.code,
-            'type_filiere': filiere.get_type_filiere_display() if hasattr(filiere,
-                                                                          'get_type_filiere_display') else filiere.type_filiere,
+            'type_filiere': filiere.get_type_filiere_display(),
             'nom_diplome': filiere.nom_diplome,
             'duree_annees': filiere.duree_annees,
             'description': filiere.description,
@@ -1166,7 +1163,7 @@ def api_niveaux_by_filiereId_publics(request, filiere_id):
             filiere_id=filiere_id,
             est_actif=True
         ).annotate(
-            nombre_classes=Count('classe')
+            nombre_classes=Count('classes')
         ).order_by('ordre')
 
         data = [{

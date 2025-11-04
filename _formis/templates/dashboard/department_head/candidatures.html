@@ -1,44 +1,48 @@
 {% extends 'base/dashboard_base.html' %}
 {% load static %}
 
-{% block page_title %}Gestion des Candidatures - Admin{% endblock %}
+{% block page_title %}Gestion des Candidatures - Chef de Département{% endblock %}
 
 {% block content %}
-<div class="admin-candidatures">
+<div class="dept-head-candidatures">
     <!-- Header compact -->
     <div class="page-header-compact">
         <div class="header-content">
             <div class="breadcrumb-nav">
                 <span>Dashboard</span>
                 <i class="fas fa-chevron-right"></i>
-                <span>Administration</span>
+                <span>{{ departement.nom }}</span>
                 <i class="fas fa-chevron-right"></i>
                 <span class="current">Candidatures</span>
             </div>
-            <h1>Gestion des Candidatures</h1>
+            <h1>Candidatures - {{ departement.nom }}</h1>
             <div class="header-stats">
                 <span class="stat-badge">{{ stats.total }} total</span>
-                <span class="stat-badge soumises">{{ stats.soumises }} soumises</span>
+                <span class="stat-badge soumises">{{ stats.en_attente }} en attente</span>
                 <span class="stat-badge en-cours">{{ stats.en_cours }} en cours</span>
                 <span class="stat-badge approuvees">{{ stats.approuvees }} approuvées</span>
+                <span class="stat-badge rejetees">{{ stats.rejetees }} rejetées</span>
             </div>
         </div>
         <div class="header-actions">
             <button class="btn-icon" onclick="exportCandidatures()" title="Exporter">
                 <i class="fas fa-download"></i>
             </button>
+            <button class="btn-icon" onclick="refreshPage()" title="Actualiser">
+                <i class="fas fa-sync-alt"></i>
+            </button>
         </div>
     </div>
 
     <!-- Filtres compacts -->
     <div class="filters-section">
-        <form method="GET" class="filters-form">
+        <form method="GET" class="filters-form" id="filtersForm">
             <div class="filter-group">
-                <input type="text" name="search" placeholder="Rechercher..."
+                <input type="text" name="search" placeholder="Rechercher par nom, email, numéro..."
                        value="{{ current_filters.search }}" class="form-input-sm">
             </div>
             <div class="filter-group">
-                <select name="statut" class="form-select-sm">
+                <select name="statut" class="form-select-sm" onchange="this.form.submit()">
                     <option value="">Tous statuts</option>
                     {% for key, label in statuts %}
                         <option value="{{ key }}" {% if current_filters.statut == key %}selected{% endif %}>
@@ -48,7 +52,7 @@
                 </select>
             </div>
             <div class="filter-group">
-                <select name="filiere" class="form-select-sm">
+                <select name="filiere" class="form-select-sm" onchange="this.form.submit()">
                     <option value="">Toutes filières</option>
                     {% for filiere in filieres %}
                         <option value="{{ filiere.id }}" {% if current_filters.filiere == filiere.id|stringformat:"s" %}selected{% endif %}>
@@ -58,7 +62,17 @@
                 </select>
             </div>
             <div class="filter-group">
-                <select name="annee_academique" class="form-select-sm">
+                <select name="niveau" class="form-select-sm" onchange="this.form.submit()">
+                    <option value="">Tous niveaux</option>
+                    {% for niveau in niveaux %}
+                        <option value="{{ niveau.id }}" {% if current_filters.niveau == niveau.id|stringformat:"s" %}selected{% endif %}>
+                            {{ niveau.nom }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <select name="annee_academique" class="form-select-sm" onchange="this.form.submit()">
                     <option value="">Toutes années</option>
                     {% for annee in annees_academiques %}
                         <option value="{{ annee.id }}" {% if current_filters.annee_academique == annee.id|stringformat:"s" %}selected{% endif %}>
@@ -71,7 +85,7 @@
                 <button type="submit" class="btn btn-sm btn-primary">
                     <i class="fas fa-search"></i>
                 </button>
-                <a href="{% url 'dashboard:admin_candidatures' %}" class="btn btn-sm btn-outline">
+                <a href="{% url 'dashboard:department_head_candidatures' %}" class="btn btn-sm btn-outline">
                     <i class="fas fa-undo"></i>
                 </a>
             </div>
@@ -85,14 +99,11 @@
             <span id="selectedCount">0</span> sélectionné(s)
         </div>
         <div class="bulk-buttons">
-            <button class="btn btn-sm btn-success" onclick="bulkApprove()">
-                <i class="fas fa-check"></i> Approuver
-            </button>
-            <button class="btn btn-sm btn-danger" onclick="bulkReject()">
-                <i class="fas fa-times"></i> Rejeter
+            <button class="btn btn-sm btn-success" onclick="bulkStartExam()">
+                <i class="fas fa-search"></i> Examiner
             </button>
             <button class="btn btn-sm btn-warning" onclick="bulkExport()">
-                <i class="fas fa-file-export"></i> Export
+                <i class="fas fa-file-export"></i> Exporter
             </button>
         </div>
     </div>
@@ -114,12 +125,12 @@
                         <th width="100">Date soumission</th>
                         <th width="60">Documents</th>
                         <th width="100">Statut</th>
-                        <th width="80">Actions</th>
+                        <th width="100">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for candidature in candidatures %}
-                    <tr class="candidature-row">
+                    <tr class="candidature-row" data-candidature-id="{{ candidature.id }}">
                         <td>
                             <input type="checkbox" class="candidature-checkbox" value="{{ candidature.id }}">
                         </td>
@@ -132,6 +143,7 @@
                                 <small class="candidat-details">
                                     <i class="fas fa-{% if candidature.genre == 'M' %}mars{% else %}venus{% endif %}"></i>
                                     {{ candidature.date_naissance|date:"d/m/Y" }}
+                                    <span class="ml-1">- {{ candidature.lieu_naissance|truncatechars:15 }}</span>
                                 </small>
                             </div>
                         </td>
@@ -145,7 +157,7 @@
                             <div class="contact-info">
                                 <div class="contact-item">
                                     <i class="fas fa-envelope"></i>
-                                    {{ candidature.email|truncatechars:25 }}
+                                    <span title="{{ candidature.email }}">{{ candidature.email|truncatechars:25 }}</span>
                                 </div>
                                 <div class="contact-item">
                                     <i class="fas fa-phone"></i>
@@ -161,7 +173,9 @@
                             {% endif %}
                         </td>
                         <td class="text-center">
-                            <span class="doc-badge">{{ candidature.nombre_documents }}</span>
+                            <button class="doc-badge" onclick="viewAllDocuments('{{ candidature.id }}')" title="Voir les documents">
+                                <i class="fas fa-file-alt"></i> {{ candidature.nombre_documents }}
+                            </button>
                         </td>
                         <td>
                             <span class="status-badge status-{{ candidature.statut|lower }}">
@@ -181,45 +195,21 @@
                         </td>
                         <td>
                             <div class="action-buttons-sm">
-                                <a href="{% url 'enrollment:candidature_detail' candidature.id %}" class="btn-icon-sm btn-primary" title="Voir">
+                                <button class="btn-icon-sm btn-primary" onclick="viewCandidatureDetails('{{ candidature.id }}')" title="Voir détails">
                                     <i class="fas fa-eye"></i>
-                                </a>
-                                <div class="dropdown-compact">
-                                    <button class="btn-icon-sm btn-outline dropdown-toggle">
-                                        <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <button class="btn-icon-sm btn-info" onclick="viewAllDocuments('{{ candidature.id }}')" title="Documents">
+                                    <i class="fas fa-folder-open"></i>
+                                </button>
+                                {% if candidature.statut == 'SOUMISE' %}
+                                    <button class="btn-icon-sm btn-warning" onclick="startExam('{{ candidature.id }}')" title="Commencer examen">
+                                        <i class="fas fa-search"></i>
                                     </button>
-                                    <div class="dropdown-menu-compact">
-                                        <a href="{% url 'enrollment:candidature_detail' candidature.id %}">
-                                            <i class="fas fa-eye"></i> Détails
-                                        </a>
-                                        <a href="#" onclick="viewDocuments('{{ candidature.id }}')">
-                                            <i class="fas fa-file-alt"></i> Documents
-                                        </a>
-                                        <div class="dropdown-divider"></div>
-                                        {% if candidature.statut == 'SOUMISE' %}
-                                            <a href="#" onclick="startExam('{{ candidature.id }}')" class="text-info">
-                                                <i class="fas fa-search"></i> Examiner
-                                            </a>
-                                        {% endif %}
-                                        {% if candidature.statut == 'EN_COURS_EXAMEN' %}
-                                            <a href="#" onclick="approveCandidature('{{ candidature.id }}')" class="text-success">
-                                                <i class="fas fa-check"></i> Approuver
-                                            </a>
-                                            <a href="#" onclick="rejectCandidature('{{ candidature.id }}')" class="text-danger">
-                                                <i class="fas fa-times"></i> Rejeter
-                                            </a>
-                                        {% endif %}
-                                        {% if candidature.statut == 'APPROUVEE' %}
-                                            <a href="#" onclick="createInscription('{{ candidature.id }}')" class="text-success">
-                                                <i class="fas fa-user-plus"></i> Créer inscription
-                                            </a>
-                                        {% endif %}
-                                        <div class="dropdown-divider"></div>
-                                        <a href="#" onclick="sendEmail('{{ candidature.id }}')">
-                                            <i class="fas fa-envelope"></i> Envoyer email
-                                        </a>
-                                    </div>
-                                </div>
+                                {% elif candidature.statut == 'EN_COURS_EXAMEN' %}
+                                    <button class="btn-icon-sm btn-success" onclick="showEvaluationModal('{{ candidature.id }}')" title="Évaluer">
+                                        <i class="fas fa-clipboard-check"></i>
+                                    </button>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -227,8 +217,9 @@
                     <tr>
                         <td colspan="10" class="empty-state">
                             <div class="empty-content">
-                                <i class="fas fa-user-graduate fa-2x text-muted"></i>
+                                <i class="fas fa-user-graduate fa-3x text-muted mb-3"></i>
                                 <p class="mt-2">Aucune candidature trouvée</p>
+                                <small class="text-muted">Les candidatures soumises apparaîtront ici</small>
                             </div>
                         </td>
                     </tr>
@@ -238,12 +229,118 @@
         </div>
 
         <!-- Pagination -->
-        {% include 'components/pagination.html' with page_obj=candidatures %}
+        {% if candidatures %}
+            {% include 'components/pagination.html' with page_obj=page_obj %}
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Détails Candidature -->
+<div class="modal-overlay" id="detailsModal">
+    <div class="modal-container modal-lg">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-graduate"></i> Détails de la candidature</h3>
+            <button class="modal-close" onclick="closeModal('detailsModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body" id="detailsModalBody">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p>Chargement...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Documents -->
+<div class="modal-overlay" id="documentsModal">
+    <div class="modal-container modal-xl">
+        <div class="modal-header">
+            <h3><i class="fas fa-folder-open"></i> Documents de candidature</h3>
+            <button class="modal-close" onclick="closeModal('documentsModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body" id="documentsModalBody">
+            <div class="documents-viewer">
+                <div class="documents-sidebar" id="documentsList">
+                    <div class="loading-spinner">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Chargement des documents...</p>
+                    </div>
+                </div>
+                <div class="documents-preview" id="documentPreview">
+                    <div class="preview-placeholder">
+                        <i class="fas fa-file-alt fa-3x text-muted"></i>
+                        <p class="mt-3">Sélectionnez un document pour le visualiser</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Évaluation -->
+<div class="modal-overlay" id="evaluationModal">
+    <div class="modal-container modal-md">
+        <div class="modal-header">
+            <h3><i class="fas fa-clipboard-check"></i> Évaluation de la candidature</h3>
+            <button class="modal-close" onclick="closeModal('evaluationModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="evaluationForm" onsubmit="submitEvaluation(event)">
+                <input type="hidden" id="evaluation_candidature_id" name="candidature_id">
+
+                <div class="form-group">
+                    <label class="form-label">Décision *</label>
+                    <div class="decision-buttons">
+                        <label class="decision-option">
+                            <input type="radio" name="decision" value="APPROUVEE" required>
+                            <div class="decision-card decision-approve">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Approuver</span>
+                            </div>
+                        </label>
+                        <label class="decision-option">
+                            <input type="radio" name="decision" value="REJETEE" required>
+                            <div class="decision-card decision-reject">
+                                <i class="fas fa-times-circle"></i>
+                                <span>Rejeter</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="rejectReasonGroup" style="display: none;">
+                    <label class="form-label required">Motif de rejet</label>
+                    <textarea name="motif_rejet" class="form-textarea" rows="4"
+                              placeholder="Expliquez les raisons du rejet..."></textarea>
+                </div>
+
+                <div class="form-group" id="approvalNotesGroup" style="display: none;">
+                    <label class="form-label">Notes d'approbation (optionnel)</label>
+                    <textarea name="notes_approbation" class="form-textarea" rows="3"
+                              placeholder="Remarques ou conditions d'approbation..."></textarea>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('evaluationModal')">
+                        <i class="fas fa-times"></i> Annuler
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="submitEvaluationBtn">
+                        <i class="fas fa-check"></i> Valider l'évaluation
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
 <style>
-.admin-candidatures {
+.dept-head-candidatures {
     padding: 15px;
 }
 
@@ -254,13 +351,13 @@
     margin-bottom: 15px;
     padding: 15px;
     background: white;
-    border-radius: 6px;
-    box-shadow: var(--shadow-sm);
+    border-radius: 8px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
 }
 
 .breadcrumb-nav {
     font-size: 11px;
-    color: var(--text-light);
+    color: #6c757d;
     margin-bottom: 5px;
     display: flex;
     align-items: center;
@@ -268,33 +365,33 @@
 }
 
 .breadcrumb-nav .current {
-    color: var(--primary-color);
-    font-weight: 500;
+    color: #4e73df;
+    font-weight: 600;
 }
 
 .header-content h1 {
-    margin: 0 0 8px 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-dark);
+    margin: 0 0 10px 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #2c3e50;
 }
 
 .header-stats {
     display: flex;
     gap: 8px;
-    margin-top: 5px;
+    margin-top: 8px;
     flex-wrap: wrap;
 }
 
 .stat-badge {
     display: inline-flex;
     align-items: center;
-    padding: 2px 8px;
-    background: var(--light-gray);
-    border-radius: 12px;
+    padding: 4px 10px;
+    background: #f8f9fc;
+    border-radius: 16px;
     font-size: 11px;
-    color: var(--text-dark);
-    font-weight: 500;
+    color: #2c3e50;
+    font-weight: 600;
 }
 
 .stat-badge.soumises {
@@ -308,38 +405,69 @@
 }
 
 .stat-badge.approuvees {
-    background: #d4edda;
-    color: #155724;
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.stat-badge.rejetees {
+    background: #ffebee;
+    color: #c62828;
 }
 
 .header-actions {
     display: flex;
     gap: 8px;
+}
+
+.btn-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    border: 1px solid #e3e6f0;
+    background: white;
+    color: #2c3e50;
+    display: flex;
     align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+
+.btn-icon:hover {
+    background: #f8f9fc;
+    transform: translateY(-2px);
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
 }
 
 .filters-section {
-    background: var(--white);
+    background: white;
     padding: 12px;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow-sm);
+    border-radius: 8px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
     margin-bottom: 15px;
-    border: 1px solid var(--border-color);
 }
 
 .filters-form {
     display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
-    gap: 12px;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr auto;
+    gap: 10px;
     align-items: end;
 }
 
 .form-input-sm, .form-select-sm {
-    padding: 6px 10px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    font-size: var(--font-size-sm);
-    height: 32px;
+    padding: 8px 12px;
+    border: 1px solid #e3e6f0;
+    border-radius: 6px;
+    font-size: 13px;
+    height: 36px;
+    width: 100%;
+}
+
+.form-input-sm:focus, .form-select-sm:focus {
+    outline: none;
+    border-color: #4e73df;
+    box-shadow: 0 0 0 3px rgba(78, 115, 223, 0.1);
 }
 
 .filter-actions {
@@ -347,24 +475,59 @@
     gap: 5px;
 }
 
+.btn-sm {
+    padding: 8px 12px;
+    font-size: 13px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background: #4e73df;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2e59d9;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #e3e6f0;
+    color: #2c3e50;
+}
+
+.btn-outline:hover {
+    background: #f8f9fc;
+}
+
 .bulk-actions-bar {
-    background: #e8f5e8;
-    border: 1px solid #c3e6c3;
-    border-radius: var(--border-radius);
-    padding: 10px 15px;
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border: 1px solid #a5d6a7;
+    border-radius: 8px;
+    padding: 12px 16px;
     margin-bottom: 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: var(--font-size-sm);
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
 }
 
 .bulk-info {
     display: flex;
     align-items: center;
-    gap: 8px;
-    color: #155724;
-    font-weight: 500;
+    gap: 10px;
+    color: #2e7d32;
+    font-weight: 600;
+    font-size: 14px;
 }
 
 .bulk-buttons {
@@ -372,11 +535,20 @@
     gap: 8px;
 }
 
+.btn-success {
+    background: #1cc88a;
+    color: white;
+}
+
+.btn-warning {
+    background: #f6c23e;
+    color: #856404;
+}
+
 .candidatures-table-container {
-    background: var(--white);
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--border-color);
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
     overflow: hidden;
 }
 
@@ -391,66 +563,74 @@
 }
 
 .candidatures-table th {
-    background: var(--light-gray);
-    padding: 8px 6px;
+    background: #f8f9fc;
+    padding: 12px 8px;
     text-align: left;
     font-weight: 600;
-    color: var(--text-dark);
-    border-bottom: 1px solid var(--border-color);
-    font-size: var(--font-size-xs);
+    color: #2c3e50;
+    border-bottom: 2px solid #e3e6f0;
+    font-size: 12px;
     white-space: nowrap;
 }
 
 .candidatures-table td {
-    padding: 8px 6px;
-    border-bottom: 1px solid var(--gray);
+    padding: 12px 8px;
+    border-bottom: 1px solid #e3e6f0;
     vertical-align: middle;
-    font-size: var(--font-size-xs);
+    font-size: 13px;
+}
+
+.candidatures-table tbody tr:hover {
+    background: #f8f9fc;
 }
 
 .numero-badge {
-    background: var(--light-gray);
-    padding: 3px 8px;
-    border-radius: 3px;
-    font-family: monospace;
-    font-size: 10px;
-    color: var(--text-dark);
-    font-weight: 600;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }
 
 .candidat-info {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
 }
 
 .candidat-name {
-    font-weight: 500;
-    color: var(--text-dark);
-    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 13px;
 }
 
 .candidat-details {
-    color: var(--text-light);
-    font-size: 10px;
+    color: #6c757d;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .filiere-badge {
-    background: var(--primary-color);
+    background: #4e73df;
     color: white;
-    padding: 3px 8px;
-    border-radius: 3px;
-    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
     font-weight: 600;
     display: inline-block;
 }
 
 .niveau-badge {
-    background: var(--info-color);
+    background: #36b9cc;
     color: white;
-    padding: 3px 8px;
-    border-radius: 3px;
-    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
     font-weight: 600;
     display: inline-block;
 }
@@ -458,179 +638,611 @@
 .contact-info {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
 }
 
 .contact-item {
     display: flex;
     align-items: center;
-    gap: 4px;
-    font-size: 10px;
-    color: var(--text-dark);
+    gap: 6px;
+    font-size: 11px;
+    color: #2c3e50;
 }
 
 .contact-item i {
-    color: var(--text-light);
-    font-size: 9px;
-    width: 12px;
+    color: #6c757d;
+    width: 14px;
+    text-align: center;
 }
 
 .date-text {
-    color: var(--text-light);
-    font-size: 10px;
+    color: #6c757d;
+    font-size: 11px;
 }
 
 .doc-badge {
-    background: var(--warning-color);
-    color: white;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 600;
-    display: inline-block;
-}
-
-.status-badge {
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 9px;
+    background: #f6c23e;
+    color: #856404;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 11px;
     font-weight: 600;
     display: inline-flex;
     align-items: center;
-    gap: 3px;
+    gap: 5px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.doc-badge:hover {
+    background: #f4b619;
+    transform: scale(1.05);
+}
+
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 16px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
 }
 
 .status-brouillon { background: #e0e0e0; color: #424242; }
 .status-soumise { background: #fff3e0; color: #e65100; }
 .status-en_cours_examen { background: #e3f2fd; color: #1565c0; }
-.status-approuvee { background: #d4edda; color: #155724; }
-.status-rejetee { background: #f8d7da; color: #721c24; }
+.status-approuvee { background: #e8f5e9; color: #2e7d32; }
+.status-rejetee { background: #ffebee; color: #c62828; }
 .status-annulee { background: #f5f5f5; color: #757575; }
 
 .action-buttons-sm {
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 4px;
 }
 
 .btn-icon-sm {
-    width: 24px;
-    height: 24px;
-    border-radius: 3px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
     border: none;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 10px;
-    transition: all 0.3s;
-    text-decoration: none;
+    font-size: 11px;
+    transition: all 0.2s;
 }
 
-.btn-icon-sm.btn-primary { background: var(--primary-color); color: white; }
-.btn-icon-sm.btn-outline {
-    background: white;
-    border: 1px solid var(--border-color);
-    color: var(--text-light);
+.btn-icon-sm.btn-primary {
+    background: #4e73df;
+    color: white;
+}
+
+.btn-icon-sm.btn-info {
+    background: #36b9cc;
+    color: white;
+}
+
+.btn-icon-sm.btn-success {
+    background: #1cc88a;
+    color: white;
+}
+
+.btn-icon-sm.btn-warning {
+    background: #f6c23e;
+    color: #856404;
 }
 
 .btn-icon-sm:hover {
-    transform: scale(1.05);
-    box-shadow: var(--shadow-sm);
-}
-
-.btn-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    background: var(--light-gray);
-    color: var(--text-dark);
-    transition: all 0.3s;
-}
-
-.btn-icon:hover {
-    background: var(--border-color);
-}
-
-.dropdown-compact {
-    position: relative;
-}
-
-.dropdown-menu-compact {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    z-index: 9999;
-    background: #fff;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    box-shadow: var(--shadow-lg);
-    display: none;
-    min-width: 180px;
-}
-
-.dropdown-menu-compact a {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    text-decoration: none;
-    color: var(--text-dark);
-    font-size: 11px;
-    transition: background 0.2s;
-}
-
-.dropdown-menu-compact a:hover {
-    background: var(--light-gray);
-}
-
-.dropdown-menu-compact a i {
-    width: 14px;
-    text-align: center;
-}
-
-.text-success { color: var(--success-color); }
-.text-danger { color: var(--danger-color); }
-.text-info { color: var(--info-color); }
-.text-muted { color: var(--text-light); }
-
-.dropdown-divider {
-    height: 1px;
-    background: var(--border-color);
-    margin: 4px 0;
+    transform: scale(1.1);
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
 }
 
 .empty-state {
     text-align: center;
-    padding: 40px 20px;
+    padding: 60px 20px;
 }
 
 .empty-content {
-    color: var(--text-light);
+    color: #6c757d;
 }
 
-.mt-2 { margin-top: 8px; }
+.text-muted {
+    color: #6c757d;
+}
+
+.ml-1 {
+    margin-left: 4px;
+}
+
+.mb-3 {
+    margin-bottom: 1rem;
+}
+
+.mt-2 {
+    margin-top: 0.5rem;
+}
+
+.mt-3 {
+    margin-top: 1rem;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-md {
+    width: 90%;
+    max-width: 600px;
+}
+
+.modal-lg {
+    width: 90%;
+    max-width: 900px;
+}
+
+.modal-xl {
+    width: 95%;
+    max-width: 1400px;
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e3e6f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: none;
+    background: #f8f9fc;
+    color: #2c3e50;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: #e74a3b;
+    color: white;
+}
+
+.modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e3e6f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+}
+
+.loading-spinner i {
+    color: #4e73df;
+}
+
+/* Documents Viewer */
+.documents-viewer {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+    height: 70vh;
+}
+
+.documents-sidebar {
+    background: #f8f9fc;
+    border-radius: 8px;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.document-item {
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.document-item:hover {
+    border-color: #4e73df;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+}
+
+.document-item.active {
+    border-color: #4e73df;
+    background: #e8f0fe;
+}
+
+.document-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.document-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.document-icon.pdf {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.document-icon.image {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.document-info {
+    flex: 1;
+}
+
+.document-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: #2c3e50;
+    margin-bottom: 2px;
+}
+
+.document-meta {
+    font-size: 11px;
+    color: #6c757d;
+}
+
+.document-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #e3e6f0;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.status-indicator.validated {
+    background: #1cc88a;
+}
+
+.status-indicator.pending {
+    background: #f6c23e;
+}
+
+.documents-preview {
+    background: white;
+    border: 1px solid #e3e6f0;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.preview-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e3e6f0;
+    background: #f8f9fc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.preview-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #2c3e50;
+}
+
+.preview-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.preview-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    padding: 20px;
+}
+
+.preview-placeholder {
+    text-align: center;
+    color: #6c757d;
+}
+
+#documentViewer {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.preview-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #2c3e50;
+}
+
+.form-label.required::after {
+    content: " *";
+    color: #e74a3b;
+}
+
+.form-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e3e6f0;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.form-textarea:focus {
+    outline: none;
+    border-color: #4e73df;
+    box-shadow: 0 0 0 3px rgba(78, 115, 223, 0.1);
+}
+
+.decision-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.decision-option input[type="radio"] {
+    display: none;
+}
+
+.decision-card {
+    padding: 20px;
+    border: 2px solid #e3e6f0;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.decision-card i {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.decision-card span {
+    display: block;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.decision-approve {
+    color: #1cc88a;
+}
+
+.decision-reject {
+    color: #e74a3b;
+}
+
+.decision-option input[type="radio"]:checked + .decision-card {
+    border-width: 3px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+}
+
+.decision-option input[type="radio"]:checked + .decision-approve {
+    border-color: #1cc88a;
+    background: #e8f5e9;
+}
+
+.decision-option input[type="radio"]:checked + .decision-reject {
+    border-color: #e74a3b;
+    background: #ffebee;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .documents-viewer {
+        grid-template-columns: 250px 1fr;
+    }
+}
+
+@media (max-width: 968px) {
+    .filters-form {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .documents-viewer {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .documents-sidebar {
+        max-height: 300px;
+    }
+
+    .documents-preview {
+        min-height: 400px;
+    }
+}
 
 @media (max-width: 768px) {
     .page-header-compact {
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: flex-end;
     }
 
     .filters-form {
         grid-template-columns: 1fr;
-        gap: 8px;
+    }
+
+    .bulk-actions-bar {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .bulk-buttons {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .modal-md, .modal-lg, .modal-xl {
+        width: 95%;
+        max-width: none;
+    }
+
+    .decision-buttons {
+        grid-template-columns: 1fr;
     }
 }
 </style>
 
 <script>
+// Utility functions
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function showModal(modalId) {
+    document.getElementById(modalId).classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+    document.body.style.overflow = 'auto';
+}
+
+function showLoading(message = 'Chargement...') {
+    return `
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p>${message}</p>
+        </div>
+    `;
+}
+
+function showError(message) {
+    return `
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-circle"></i> ${message}
+        </div>
+    `;
+}
+
+// Selection management
 document.addEventListener('DOMContentLoaded', function() {
     const selectAll = document.getElementById('selectAllCandidatures');
     const checkboxes = document.querySelectorAll('.candidature-checkbox');
@@ -656,145 +1268,427 @@ document.addEventListener('DOMContentLoaded', function() {
             selectAll.checked = selected === checkboxes.length;
         }
     }
-
-    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
-        toggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const dropdown = this.nextElementSibling;
-            document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
-                if (menu !== dropdown) menu.style.display = 'none';
-            });
-            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-        });
-    });
-
-    document.addEventListener('click', function() {
-        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
-            menu.style.display = 'none';
-        });
-    });
 });
 
+// Refresh page
+function refreshPage() {
+    location.reload();
+}
+
+// Export candidatures
 function exportCandidatures() {
     const params = new URLSearchParams(window.location.search);
-    window.location.href = `/enrollment/candidatures/export/?${params.toString()}`;
+    window.location.href = `/dashboard/department_head/candidatures/export/?${params.toString()}`;
 }
 
-function viewDocuments(candidatureId) {
-    window.location.href = `/enrollment/candidature/${candidatureId}/documents/`;
-}
+// View candidature details
+async function viewCandidatureDetails(candidatureId) {
+    showModal('detailsModal');
+    const modalBody = document.getElementById('detailsModalBody');
+    modalBody.innerHTML = showLoading('Chargement des détails...');
 
-function startExam(candidatureId) {
-    if (confirm('Commencer l\'examen de cette candidature ?')) {
-        fetch(`/enrollment/candidature/${candidatureId}/start-exam/`, {
-            method: 'POST',
+    try {
+        const response = await fetch(`/enrollment/candidature/${candidatureId}/details-ajax/`, {
             headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
+                'X-Requested-With': 'XMLHttpRequest'
             }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) location.reload();
-            else alert(data.message || 'Erreur');
         });
+
+        if (!response.ok) throw new Error('Erreur de chargement');
+
+        const data = await response.json();
+        modalBody.innerHTML = renderCandidatureDetails(data);
+    } catch (error) {
+        console.error('Error:', error);
+        modalBody.innerHTML = showError('Impossible de charger les détails');
     }
 }
 
-function approveCandidature(candidatureId) {
-    const notes = prompt('Notes d\'approbation (optionnel):');
-    if (notes !== null) {
-        fetch(`/enrollment/candidature/${candidatureId}/approve/`, {
+function renderCandidatureDetails(data) {
+    const candidature = data.candidature;
+    return `
+        <div class="candidature-details">
+            <div class="details-section">
+                <h4><i class="fas fa-user"></i> Informations personnelles</h4>
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <label>Nom complet</label>
+                        <div>${candidature.prenom} ${candidature.nom}</div>
+                    </div>
+                    <div class="detail-item">
+                        <label>Date de naissance</label>
+                        <div>${candidature.date_naissance}</div>
+                    </div>
+                    <div class="detail-item">
+                        <label>Lieu de naissance</label>
+                        <div>${candidature.lieu_naissance}</div>
+                    </div>
+                    <div class="detail-item">
+                        <label>Genre</label>
+                        <div>${candidature.genre === 'M' ? 'Masculin' : 'Féminin'}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="details-section">
+                <h4><i class="fas fa-phone"></i> Contact</h4>
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <label>Email</label>
+                        <div>${candidature.email}</div>
+                    </div>
+                    <div class="detail-item">
+                        <label>Téléphone</label>
+                        <div>${candidature.telephone}</div>
+                    </div>
+                    <div class="detail-item full-width">
+                        <label>Adresse</label>
+                        <div>${candidature.adresse}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="details-section">
+                <h4><i class="fas fa-graduation-cap"></i> Formation</h4>
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <label>Filière</label>
+                        <div>${candidature.filiere}</div>
+                    </div>
+                    <div class="detail-item">
+                        <label>Niveau</label>
+                        <div>${candidature.niveau}</div>
+                    </div>
+                    <div class="detail-item">
+                        <label>Année académique</label>
+                        <div>${candidature.annee_academique}</div>
+                    </div>
+                </div>
+            </div>
+
+            ${candidature.ecole_precedente ? `
+            <div class="details-section">
+                <h4><i class="fas fa-school"></i> Parcours académique</h4>
+                <div class="details-grid">
+                    ${candidature.ecole_precedente ? `
+                    <div class="detail-item">
+                        <label>École précédente</label>
+                        <div>${candidature.ecole_precedente}</div>
+                    </div>
+                    ` : ''}
+                    ${candidature.dernier_diplome ? `
+                    <div class="detail-item">
+                        <label>Dernier diplôme</label>
+                        <div>${candidature.dernier_diplome}</div>
+                    </div>
+                    ` : ''}
+                    ${candidature.annee_obtention ? `
+                    <div class="detail-item">
+                        <label>Année d'obtention</label>
+                        <div>${candidature.annee_obtention}</div>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+            ` : ''}
+
+            <div class="details-section">
+                <h4><i class="fas fa-info-circle"></i> Statut de la candidature</h4>
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <label>Numéro</label>
+                        <div><code>${candidature.numero_candidature}</code></div>
+                    </div>
+                    <div class="detail-item">
+                        <label>Statut</label>
+                        <div><span class="status-badge status-${candidature.statut.toLowerCase()}">${candidature.statut_display}</span></div>
+                    </div>
+                    ${candidature.date_soumission ? `
+                    <div class="detail-item">
+                        <label>Date de soumission</label>
+                        <div>${candidature.date_soumission}</div>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+
+        <style>
+        .candidature-details {
+            max-width: 100%;
+        }
+        .details-section {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: var(--light-gray);
+            border-radius: 8px;
+        }
+        .details-section h4 {
+            margin: 0 0 16px 0;
+            font-size: 16px;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .detail-item {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+        }
+        .detail-item.full-width {
+            grid-column: 1 / -1;
+        }
+        .detail-item label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-light);
+            font-weight: 600;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+        .detail-item div {
+            font-size: 14px;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+        </style>
+    `;
+}
+
+// View all documents
+async function viewAllDocuments(candidatureId) {
+    showModal('documentsModal');
+    const documentsList = document.getElementById('documentsList');
+    const documentPreview = document.getElementById('documentPreview');
+
+    documentsList.innerHTML = showLoading('Chargement des documents...');
+    documentPreview.innerHTML = `
+        <div class="preview-placeholder">
+            <i class="fas fa-file-alt fa-3x text-muted"></i>
+            <p class="mt-3">Sélectionnez un document pour le visualiser</p>
+        </div>
+    `;
+
+    try {
+        const response = await fetch(`/enrollment/candidature/${candidatureId}/documents-ajax/`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (!response.ok) throw new Error('Erreur de chargement');
+
+        const data = await response.json();
+        renderDocumentsList(data.documents, candidatureId);
+    } catch (error) {
+        console.error('Error:', error);
+        documentsList.innerHTML = showError('Impossible de charger les documents');
+    }
+}
+
+function renderDocumentsList(documents, candidatureId) {
+    const documentsList = document.getElementById('documentsList');
+
+    if (documents.length === 0) {
+        documentsList.innerHTML = `
+            <div class="empty-content">
+                <i class="fas fa-folder-open fa-2x text-muted"></i>
+                <p class="mt-2">Aucun document fourni</p>
+            </div>
+        `;
+        return;
+    }
+
+    documentsList.innerHTML = documents.map(doc => `
+        <div class="document-item" onclick="viewDocument('${doc.id}', '${doc.fichier}', '${doc.type}', '${doc.nom}')">
+            <div class="document-header">
+                <div class="document-icon ${doc.type.includes('pdf') ? 'pdf' : 'image'}">
+                    <i class="fas fa-${doc.type.includes('pdf') ? 'file-pdf' : 'file-image'}"></i>
+                </div>
+                <div class="document-info">
+                    <div class="document-name">${doc.nom}</div>
+                    <div class="document-meta">${doc.type_display}</div>
+                </div>
+            </div>
+            <div class="document-status">
+                <span class="status-indicator ${doc.est_valide ? 'validated' : 'pending'}"></span>
+                <span style="font-size: 11px; color: var(--text-light);">
+                    ${doc.est_valide ? 'Validé' : 'En attente'}
+                </span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function viewDocument(docId, fichierUrl, fileType, fileName) {
+    const documentPreview = document.getElementById('documentPreview');
+    const items = document.querySelectorAll('.document-item');
+    items.forEach(item => item.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+
+    const isPdf = fileType.includes('pdf');
+    const isImage = fileType.includes('image') || fileType.includes('jpg') || fileType.includes('jpeg') || fileType.includes('png');
+
+    documentPreview.innerHTML = `
+        <div class="preview-header">
+            <div class="preview-title">${fileName}</div>
+            <div class="preview-actions">
+                <a href="${fichierUrl}" download class="btn-icon" title="Télécharger">
+                    <i class="fas fa-download"></i>
+                </a>
+                <a href="${fichierUrl}" target="_blank" class="btn-icon" title="Ouvrir dans un nouvel onglet">
+                    <i class="fas fa-external-link-alt"></i>
+                </a>
+            </div>
+        </div>
+        <div class="preview-content">
+            ${isPdf ? `
+                <iframe id="documentViewer" src="${fichierUrl}"></iframe>
+            ` : isImage ? `
+                <img src="${fichierUrl}" alt="${fileName}" class="preview-image">
+            ` : `
+                <div class="preview-placeholder">
+                    <i class="fas fa-file-alt fa-3x text-muted"></i>
+                    <p class="mt-3">Prévisualisation non disponible</p>
+                    <a href="${fichierUrl}" target="_blank" class="btn btn-primary mt-2">
+                        <i class="fas fa-external-link-alt"></i> Ouvrir le fichier
+                    </a>
+                </div>
+            `}
+        </div>
+    `;
+}
+
+// Start examination
+async function startExam(candidatureId) {
+    if (!confirm('Commencer l\'examen de cette candidature ?')) return;
+
+    try {
+        const response = await fetch(`/enrollment/candidature/${candidatureId}/start-exam/`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({notes: notes})
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Candidature approuvée avec succès');
-                location.reload();
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Examen démarré avec succès');
+            location.reload();
+        } else {
+            alert(data.message || 'Une erreur est survenue');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Erreur lors du démarrage de l\'examen');
+    }
+}
+
+// Show evaluation modal
+function showEvaluationModal(candidatureId) {
+    document.getElementById('evaluation_candidature_id').value = candidatureId;
+    showModal('evaluationModal');
+
+    // Reset form
+    document.getElementById('evaluationForm').reset();
+    document.getElementById('rejectReasonGroup').style.display = 'none';
+    document.getElementById('approvalNotesGroup').style.display = 'none';
+
+    // Handle decision change
+    const decisionInputs = document.querySelectorAll('input[name="decision"]');
+    decisionInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const rejectGroup = document.getElementById('rejectReasonGroup');
+            const approvalGroup = document.getElementById('approvalNotesGroup');
+
+            if (this.value === 'REJETEE') {
+                rejectGroup.style.display = 'block';
+                approvalGroup.style.display = 'none';
+                rejectGroup.querySelector('textarea').required = true;
+                approvalGroup.querySelector('textarea').required = false;
             } else {
-                alert(data.message || 'Erreur');
+                rejectGroup.style.display = 'none';
+                approvalGroup.style.display = 'block';
+                rejectGroup.querySelector('textarea').required = false;
+                approvalGroup.querySelector('textarea').required = false;
             }
         });
-    }
+    });
 }
 
-function rejectCandidature(candidatureId) {
-    const motif = prompt('Motif de rejet:');
-    if (motif) {
-        fetch(`/enrollment/candidature/${candidatureId}/reject/`, {
+// Submit evaluation
+async function submitEvaluation(event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const submitBtn = document.getElementById('submitEvaluationBtn');
+    const formData = new FormData(form);
+    const candidatureId = formData.get('candidature_id');
+
+    const data = {
+        decision: formData.get('decision'),
+        motif_rejet: formData.get('motif_rejet') || '',
+        notes_approbation: formData.get('notes_approbation') || ''
+    };
+
+    // Validation
+    if (data.decision === 'REJETEE' && !data.motif_rejet.trim()) {
+        alert('Le motif de rejet est obligatoire');
+        return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Traitement...';
+
+    try {
+        const response = await fetch(`/enrollment/candidature/${candidatureId}/evaluer/`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
             },
-            body: JSON.stringify({motif: motif})
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) location.reload();
-            else alert(data.message || 'Erreur');
+            body: new URLSearchParams(data)
         });
+
+        const result = await response.json();
+
+        if (result.success) {
+            closeModal('evaluationModal');
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.message || 'Une erreur est survenue');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Erreur lors de l\'évaluation');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-check"></i> Valider l\'évaluation';
     }
 }
 
-function createInscription(candidatureId) {
-    window.location.href = `/enrollment/candidature/${candidatureId}/create-inscription/`;
-}
-
-function sendEmail(candidatureId) {
-    window.location.href = `/enrollment/candidature/${candidatureId}/send-email/`;
-}
-
-function bulkApprove() {
+// Bulk actions
+function bulkStartExam() {
     const selected = Array.from(document.querySelectorAll('.candidature-checkbox:checked')).map(cb => cb.value);
     if (selected.length === 0) {
         alert('Veuillez sélectionner au moins une candidature');
         return;
     }
-    if (confirm(`Approuver ${selected.length} candidature(s) ?`)) {
-        fetch(`/enrollment/candidatures/bulk-approve/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ids: selected})
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) location.reload();
-            else alert(data.message || 'Erreur');
-        });
-    }
-}
 
-function bulkReject() {
-    const selected = Array.from(document.querySelectorAll('.candidature-checkbox:checked')).map(cb => cb.value);
-    if (selected.length === 0) {
-        alert('Veuillez sélectionner au moins une candidature');
-        return;
-    }
-    const motif = prompt('Motif de rejet:');
-    if (motif) {
-        fetch(`/enrollment/candidatures/bulk-reject/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ids: selected, motif: motif})
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) location.reload();
-            else alert(data.message || 'Erreur');
-        });
+    if (confirm(`Démarrer l'examen de ${selected.length} candidature(s) ?`)) {
+        // Implementation for bulk exam start
+        alert('Fonctionnalité en cours de développement');
     }
 }
 
@@ -804,22 +1698,17 @@ function bulkExport() {
         alert('Veuillez sélectionner au moins une candidature');
         return;
     }
-    window.location.href = `/enrollment/candidatures/export/?ids=${selected.join(',')}`;
+    window.location.href = `/dashboard/department_head/candidatures/export/?ids=${selected.join(',')}`;
 }
 
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
+// Close modal on ESC key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+            modal.classList.remove('active');
+        });
+        document.body.style.overflow = 'auto';
     }
-    return cookieValue;
-}
+});
 </script>
 {% endblock %}

@@ -1,0 +1,784 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Tableau de bord - Apprenant{% endblock %}
+{% block breadcrumb %}Dashboard > Apprenant{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard/student.css' %}">
+<style>
+/* ==================== STYLES BLOCKER INSCRIPTION ==================== */
+.inscription-blocker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    padding: 40px 20px;
+}
+
+.blocker-content {
+    text-align: center;
+    max-width: 500px;
+    padding: 40px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.blocker-content i {
+    font-size: 64px;
+    color: #667eea;
+    margin-bottom: 20px;
+}
+
+.blocker-content h3 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 15px;
+}
+
+.blocker-content p {
+    font-size: 16px;
+    color: #718096;
+    margin-bottom: 30px;
+    line-height: 1.6;
+}
+
+.blocker-content .btn {
+    padding: 14px 32px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+}
+
+.blocker-content .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+}
+
+.blocker-content .btn i {
+    font-size: 20px;
+    margin: 0;
+}
+
+/* ==================== STYLES SECTIONS DASHBOARD ==================== */
+.student-dashboard {
+    padding: 20px 0;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.stat-card.primary .stat-icon {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.stat-card.success .stat-icon {
+    background: linear-gradient(135deg, #1cc88a 0%, #17a2b8 100%);
+}
+
+.stat-card.warning .stat-icon {
+    background: linear-gradient(135deg, #f6c23e 0%, #e65100 100%);
+}
+
+.stat-card.info .stat-icon {
+    background: linear-gradient(135deg, #36b9cc 0%, #258391 100%);
+}
+
+.stat-card.danger .stat-icon {
+    background: linear-gradient(135deg, #e74a3b 0%, #be2617 100%);
+}
+
+.stat-content h3 {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 5px 0;
+    color: #2d3748;
+}
+
+.stat-content p {
+    font-size: 14px;
+    color: #718096;
+    margin: 0 0 8px 0;
+}
+
+.stat-info, .stat-change {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.stat-change.positive {
+    color: #1cc88a;
+}
+
+.stat-change.negative {
+    color: #e74a3b;
+}
+
+/* Prochain cours */
+.next-course-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 24px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+}
+
+.course-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.course-header h4 {
+    margin: 0;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-today {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.course-body h5 {
+    font-size: 24px;
+    margin: 0 0 15px 0;
+}
+
+.course-details {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.course-details span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+/* Sections */
+.content-sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.section-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.section-header {
+    padding: 20px;
+    border-bottom: 2px solid #f8f9fa;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.section-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #2d3748;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.view-all {
+    font-size: 13px;
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.view-all:hover {
+    text-decoration: underline;
+}
+
+.section-body {
+    padding: 20px;
+}
+
+.item-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.item-row:last-child {
+    border-bottom: none;
+}
+
+.item-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.item-icon.primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.item-icon.warning {
+    background: linear-gradient(135deg, #f6c23e 0%, #e65100 100%);
+}
+
+.item-content {
+    flex: 1;
+}
+
+.item-content h5 {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.item-content p {
+    margin: 0;
+    font-size: 12px;
+    color: #718096;
+}
+
+.item-status {
+    text-align: right;
+}
+
+.badge-success {
+    background: #1cc88a;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-danger {
+    background: #e74a3b;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-warning {
+    background: #f6c23e;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #a0aec0;
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Paiement */
+.payment-summary {
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.progress-bar-container {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(135deg, #1cc88a 0%, #17a2b8 100%);
+    transition: width 0.3s ease;
+}
+
+.payment-amounts {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #718096;
+}
+
+.payment-total {
+    text-align: center;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid #e2e8f0;
+}
+
+.text-muted {
+    color: #718096;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mt-3 {
+    margin-top: 15px;
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .content-sections {
+        grid-template-columns: 1fr;
+    }
+
+    .course-details {
+        flex-direction: column;
+        gap: 12px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% if peut_acceder %}
+<!-- ==================== CONTENU PRINCIPAL DU DASHBOARD ==================== -->
+<div class="student-dashboard">
+
+    <!-- Statistiques générales -->
+    <div class="stats-grid">
+        <!-- Carte: Cours suivis -->
+        <div class="stat-card primary">
+            <div class="stat-icon">
+                <i class="fas fa-book"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ total_cours }}</h3>
+                <p>Cours suivis</p>
+                <span class="stat-info">
+                    {{ classe_assignee.nom|default:"N/A" }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Carte: Moyenne générale -->
+        <div class="stat-card success">
+            <div class="stat-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ moyenne_generale }}/20</h3>
+                <p>Moyenne générale</p>
+                <span class="stat-change {% if moyenne_generale >= 12 %}positive{% else %}negative{% endif %}">
+                    {% if moyenne_generale >= 12 %}
+                        <i class="fas fa-arrow-up"></i> Bon niveau
+                    {% else %}
+                        <i class="fas fa-arrow-down"></i> À améliorer
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- Carte: Taux de présence -->
+        <div class="stat-card warning">
+            <div class="stat-icon">
+                <i class="fas fa-user-check"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ taux_presence }}%</h3>
+                <p>Taux de présence</p>
+                <span class="stat-info">
+                    {% if taux_presence >= 75 %}Bon{% else %}À améliorer{% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- Carte: Scolarité -->
+        <div class="stat-card {% if statut_financier.est_en_retard %}danger{% else %}info{% endif %}">
+            <div class="stat-icon">
+                <i class="fas fa-credit-card"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ statut_financier.pourcentage|default:0 }}%</h3>
+                <p>Scolarité payée</p>
+                <span class="stat-info">
+                    {{ statut_financier.statut_display|default:"N/A" }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prochain cours -->
+    {% if prochain_cours %}
+    <div class="next-course-card">
+        <div class="course-header">
+            <h4>
+                <i class="fas fa-clock"></i>
+                Prochain cours
+            </h4>
+            <span class="badge badge-today">
+                {% if prochain_cours.date_prevue.date == today %}
+                    Aujourd'hui
+                {% else %}
+                    {{ prochain_cours.date_prevue|date:"d/m/Y" }}
+                {% endif %}
+            </span>
+        </div>
+        <div class="course-body">
+            <h5>{{ prochain_cours.cours.matiere.nom }}</h5>
+            <div class="course-details">
+                <span>
+                    <i class="fas fa-calendar"></i>
+                    {{ prochain_cours.date_prevue|time:"H:i" }}
+                </span>
+                <span>
+                    <i class="fas fa-door-open"></i>
+                    {{ prochain_cours.salle.nom }}
+                </span>
+                <span>
+                    <i class="fas fa-user"></i>
+                    {{ prochain_cours.cours.enseignant.get_full_name }}
+                </span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Sections principales -->
+    <div class="content-sections">
+
+        <!-- Section: Mes cours -->
+        <div class="section-card">
+            <div class="section-header">
+                <h4>
+                    <i class="fas fa-book-open"></i>
+                    Mes cours
+                </h4>
+                <a href="{% url 'dashboard:student_courses' %}" class="view-all">Voir tout</a>
+            </div>
+            <div class="section-body">
+                {% if mes_cours %}
+                    {% for cours in mes_cours|slice:":5" %}
+                    <div class="item-row">
+                        <div class="item-icon primary">
+                            <i class="fas fa-book"></i>
+                        </div>
+                        <div class="item-content">
+                            <h5>{{ cours.matiere.nom }}</h5>
+                            <p class="text-muted">{{ cours.enseignant.get_full_name }}</p>
+                        </div>
+                        <div class="item-status">
+                            <div class="progress-mini">
+                                <div class="progress-bar" style="width: 65%"></div>
+                            </div>
+                            <small>65%</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-book-open"></i>
+                    <p>Aucun cours assigné</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Section: Évaluations à venir -->
+        <div class="section-card">
+            <div class="section-header">
+                <h4>
+                    <i class="fas fa-edit"></i>
+                    Évaluations à venir
+                </h4>
+                <a href="{% url 'dashboard:student_evaluations' %}" class="view-all">Voir tout</a>
+            </div>
+            <div class="section-body">
+                {% if evaluations_a_venir %}
+                    {% for eval in evaluations_a_venir|slice:":5" %}
+                    <div class="item-row">
+                        <div class="item-icon warning">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                        <div class="item-content">
+                            <h5>{{ eval.titre }}</h5>
+                            <p class="text-muted">{{ eval.cours.matiere.nom }}</p>
+                            <small class="text-muted">
+                                <i class="fas fa-calendar"></i>
+                                {{ eval.date_evaluation|date:"d/m/Y H:i" }}
+                            </small>
+                        </div>
+                        <div class="item-status">
+                            <span class="badge badge-warning">À venir</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-edit"></i>
+                    <p>Aucune évaluation programmée</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Section: Dernières notes -->
+        <div class="section-card">
+            <div class="section-header">
+                <h4>
+                    <i class="fas fa-chart-bar"></i>
+                    Dernières notes
+                </h4>
+                <a href="{% url 'dashboard:student_resultats' %}" class="view-all">Voir tout</a>
+            </div>
+            <div class="section-body">
+                {% if dernieres_notes %}
+                    {% for note in dernieres_notes|slice:":5" %}
+                    <div class="item-row">
+                        <div class="item-content">
+                            <h5>{{ note.evaluation.cours.matiere.nom }}</h5>
+                            <p class="text-muted">{{ note.evaluation.titre }}</p>
+                        </div>
+                        <div class="item-status">
+                            <span class="badge {% if note.valeur >= 10 %}badge-success{% else %}badge-danger{% endif %}">
+                                {{ note.valeur }}/20
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-chart-bar"></i>
+                    <p>Aucune note publiée</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Section: Situation financière -->
+        <div class="section-card">
+            <div class="section-header">
+                <h4>
+                    <i class="fas fa-credit-card"></i>
+                    Situation financière
+                </h4>
+                <a href="{% url 'dashboard:student_paiements' %}" class="view-all">Détails</a>
+            </div>
+            <div class="section-body">
+                {% if inscription_paiement %}
+                <div class="payment-summary">
+                    <div class="payment-progress">
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: {{ statut_financier.pourcentage }}%"></div>
+                        </div>
+                        <div class="payment-amounts">
+                            <span>Payé: {{ statut_financier.total_paye|floatformat:0 }} XOF</span>
+                            <span>Reste: {{ statut_financier.solde|floatformat:0 }} XOF</span>
+                        </div>
+                    </div>
+                    <div class="payment-total">
+                        <strong>Total: {{ inscription_paiement.montant_total_du|floatformat:0 }} XOF</strong>
+                    </div>
+                </div>
+
+                {% if statut_financier.peut_payer_tranche %}
+                <div class="text-center mt-3">
+                    <form action="{% url 'payments:payer_prochaine_tranche' %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-credit-card"></i>
+                            Payer prochaine tranche
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-credit-card"></i>
+                    <p>Aucune information disponible</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% else %}
+<!-- ==================== BLOCKER: INSCRIPTION REQUISE ==================== -->
+<div class="inscription-blocker">
+    <div class="blocker-content">
+        <i class="fas fa-lock"></i>
+        <h3>Inscription requise</h3>
+        <p>Vous devez finaliser votre inscription avant d'accéder au tableau de bord.
+           Cliquez sur le bouton ci-dessous pour commencer le processus d'inscription.</p>
+        <button onclick="initInscriptionModal()" class="btn btn-primary">
+            <i class="fas fa-graduation-cap"></i>
+            Procéder à l'inscription
+        </button>
+    </div>
+</div>
+{% endif %}
+
+<!-- Inclure le modal d'inscription si nécessaire -->
+{% if afficher_modal %}
+    {% include 'enrollment/inscription/inscription_modal.html' %}
+{% endif %}
+{% endblock %}
+
+<!--{% block extra_js %}-->
+<!--<script src="{% static 'js/dashboard/inscription_modal.js' %}"></script>-->
+
+<script>
+// Configuration et initialisation du modal d'inscription
+(function() {
+    'use strict';
+
+    // Configuration passée depuis Django
+    const dashboardConfig = {
+        afficherModal: {{ afficher_modal|yesno:"true,false" }},
+        peutAcceder: {{ peut_acceder|yesno:"true,false" }},
+        statutModal: "{{ statut_modal|default:'' }}",
+        messageModal: "{{ message_modal|default:'' }}"
+    };
+
+    console.log('📊 Configuration dashboard étudiant:', dashboardConfig);
+
+    // Initialisation au chargement du DOM
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📄 DOM chargé - Vérification du modal...');
+
+        // Initialiser le modal si nécessaire
+        if (dashboardConfig.afficherModal && !dashboardConfig.peutAcceder) {
+            console.log('🎯 Modal requis - Initialisation dans 300ms...');
+
+            setTimeout(function() {
+                if (typeof window.initInscriptionModal === 'function') {
+                    console.log('✅ Appel de initInscriptionModal()');
+                    window.initInscriptionModal();
+                } else {
+                    console.error('❌ Fonction initInscriptionModal non trouvée !');
+                    console.error('Vérifiez que inscription_modal.js est bien chargé.');
+                }
+            }, 300);
+        } else {
+            console.log('✅ Accès autorisé - Aucun modal nécessaire');
+        }
+
+        // Auto-refresh si paiement en cours
+        {% if statut_modal == 'paiement_en_cours' %}
+        console.log('⏳ Paiement en cours détecté');
+        console.log('🔄 Auto-refresh programmé dans 30 secondes');
+
+        let countdown = 30;
+        const countdownInterval = setInterval(function() {
+            countdown--;
+            console.log(`⏰ Rechargement dans ${countdown} secondes...`);
+        }, 1000);
+
+        setTimeout(function() {
+            clearInterval(countdownInterval);
+            console.log('🔄 Rechargement de la page pour vérifier le statut du paiement...');
+            window.location.reload();
+        }, 30000);
+        {% endif %}
+    });
+
+    // Fonction de debug pour vérifier le statut
+    window.debugInscriptionStatus = function() {
+        console.log('🔍 État actuel:');
+        console.log('  - Modal affiché:', dashboardConfig.afficherModal);
+        console.log('  - Peut accéder:', dashboardConfig.peutAcceder);
+        console.log('  - Statut:', dashboardConfig.statutModal);
+        console.log('  - Message:', dashboardConfig.messageModal);
+
+        const modalElement = document.getElementById('inscriptionModal');
+        if (modalElement) {
+            console.log('  - Modal existe dans le DOM: OUI');
+            console.log('  - Modal visible:', modalElement.classList.contains('active'));
+        } else {
+            console.log('  - Modal existe dans le DOM: NON');
+        }
+    };
+
+})();
+</script>
+{% endblock %}

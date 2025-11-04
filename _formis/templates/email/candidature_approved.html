@@ -1,0 +1,89 @@
+<!-- templates/email/candidature_approved.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candidature approuvée</title>
+    <style>
+        /* Réutiliser les mêmes styles de base */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5; padding: 20px; }
+        .email-container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+        .header { background: linear-gradient(135deg, #1cc88a 0%, #17a2b8 100%); color: white; padding: 40px 30px; text-align: center; }
+        .header-icon { width: 80px; height: 80px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; font-size: 40px; }
+        .header h1 { font-size: 28px; margin-bottom: 10px; font-weight: 700; }
+        .content { padding: 40px 30px; }
+        .success-message { background: linear-gradient(135deg, #d1e7dd 0%, #a3cfbb 100%); padding: 25px; border-radius: 8px; border-left: 4px solid #1cc88a; margin: 20px 0; }
+        .success-message p { color: #0a3622; font-size: 15px; line-height: 1.8; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #dee2e6; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #6c757d; font-size: 13px; font-weight: 600; }
+        .info-value { color: #2c3e50; font-weight: 600; }
+        .cta-button { display: inline-block; background: linear-gradient(135deg, #1cc88a 0%, #17a2b8 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+        .footer { background: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #dee2e6; font-size: 13px; color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="header-icon">🎉</div>
+            <h1>Félicitations !</h1>
+            <p>Votre candidature a été approuvée</p>
+        </div>
+
+        <div class="content">
+            <div style="font-size: 18px; margin-bottom: 20px;">
+                Bonjour <strong>{{ candidature.prenom }} {{ candidature.nom }}</strong>,
+            </div>
+
+            <div class="success-message">
+                <p><strong>🎊 Excellente nouvelle !</strong></p>
+                <p>Nous avons le plaisir de vous informer que votre candidature a été <strong>APPROUVÉE</strong>.</p>
+            </div>
+
+            <div class="info-box">
+                <h3 style="margin-bottom: 15px; color: #2c3e50;">📋 Récapitulatif de votre candidature</h3>
+                <div class="info-row">
+                    <span class="info-label">N° de candidature</span>
+                    <span class="info-value">{{ candidature.numero_candidature }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Formation</span>
+                    <span class="info-value">{{ candidature.filiere.nom }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Niveau</span>
+                    <span class="info-value">{{ candidature.niveau.nom }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Année académique</span>
+                    <span class="info-value">{{ candidature.annee_academique.nom }}</span>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107; margin: 30px 0;">
+                <p style="color: #856404; font-size: 14px; line-height: 1.8;">
+                    <strong>⚠️ PROCHAINE ÉTAPE IMPORTANTE</strong><br><br>
+                    Un compte utilisateur va être créé pour vous. Vous recevrez sous peu vos <strong>identifiants de connexion</strong> dans un email séparé.<br><br>
+                    Lors de votre première connexion, vous devrez <strong>obligatoirement finaliser votre inscription</strong> en choisissant votre plan de paiement et en effectuant le premier paiement.
+                </p>
+            </div>
+
+            <div style="text-align: center;">
+                <a href="{{ login_url }}" class="cta-button">
+                    🚀 Accéder à la plateforme
+                </a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Bienvenue dans notre établissement !</p>
+            <p style="margin-top: 15px; font-size: 11px; color: #adb5bd;">
+                © {{ year }} {{ candidature.etablissement.nom }} - Tous droits réservés
+            </p>
+        </div>
+    </div>
+</body>
+</html>

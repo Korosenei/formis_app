@@ -1,74 +1,91 @@
 {% extends 'base/dashboard_base.html' %}
 {% load static %}
 
-{% block page_title %}Détails - {{ teacher.get_full_name }}{% endblock %}
+{% block page_title %}{{ teacher.get_full_name }} - Détails{% endblock %}
 
 {% block content %}
-<div class="teacher-detail-container">
+<div class="teacher-detail">
     <!-- Header -->
     <div class="detail-header">
-        <div class="breadcrumb-nav">
+        <div class="breadcrumb">
             <a href="{% url 'dashboard:admin' %}">Dashboard</a>
             <i class="fas fa-chevron-right"></i>
             <a href="{{ cancel_url }}">Enseignants</a>
             <i class="fas fa-chevron-right"></i>
-            <span class="current">{{ teacher.get_full_name }}</span>
+            <span class="active">{{ teacher.get_full_name }}</span>
         </div>
-        <div class="header-content">
-            <div class="user-title-info">
-                <div class="user-avatar-large">
+
+        <div class="header-main">
+            <div class="teacher-info">
+                <div class="teacher-avatar">
                     {% if teacher.photo_profil %}
-                        <img src="{{ teacher.photo_profil.url }}" alt="{{ teacher.get_full_name }}">
+                    <img src="{{ teacher.photo_profil.url }}" alt="">
                     {% else %}
-                        <i class="fas fa-chalkboard-teacher fa-3x"></i>
+                    <i class="fas fa-chalkboard-teacher"></i>
                     {% endif %}
                 </div>
-                <div>
+                <div class="teacher-meta">
                     <h1>{{ teacher.get_full_name }}</h1>
-                    <div class="user-meta">
-                        <span class="role-badge role-enseignant">
+                    <div class="badges">
+                        {% if teacher.role == 'CHEF_DEPARTEMENT' %}
+                        <span class="badge badge-chef">
+                            <i class="fas fa-crown"></i> Chef de département
+                        </span>
+                        {% else %}
+                        <span class="badge badge-teacher">
                             <i class="fas fa-chalkboard-teacher"></i> Enseignant
                         </span>
-                        <span class="matricule-badge">{{ teacher.matricule }}</span>
-                        {% if teacher.profil_enseignant.est_permanent %}
-                            <span class="status-badge permanent">
-                                <i class="fas fa-star"></i> Permanent
-                            </span>
-                        {% else %}
-                            <span class="status-badge vacataire">
-                                <i class="fas fa-user-clock"></i> Vacataire
-                            </span>
                         {% endif %}
-                        {% if teacher.est_actif %}
-                            <span class="status-badge active">Actif</span>
+
+                        <span class="badge badge-code">{{ teacher.matricule }}</span>
+
+                        {% if teacher.profil_enseignant.type_enseignant == 'PERMANENT' %}
+                        <span class="badge badge-permanent">
+                            <i class="fas fa-user-tie"></i> Permanent
+                        </span>
                         {% else %}
-                            <span class="status-badge inactive">Inactif</span>
+                        <span class="badge badge-vacataire">
+                            <i class="fas fa-user-clock"></i> Vacataire
+                        </span>
+                        {% endif %}
+
+                        {% if teacher.profil_enseignant.est_principal %}
+                        <span class="badge badge-principal">
+                            <i class="fas fa-star"></i> Principal
+                        </span>
+                        {% endif %}
+
+                        {% if teacher.est_actif %}
+                        <span class="badge badge-success">Actif</span>
+                        {% else %}
+                        <span class="badge badge-danger">Inactif</span>
                         {% endif %}
                     </div>
                 </div>
             </div>
+
             <div class="header-actions">
-                <a href="{% url 'accounts:teacher_edit' teacher.id %}" class="btn btn-primary btn-sm">
+                <a href="{% url 'accounts:teacher_edit' teacher.id %}" class="btn btn-primary">
                     <i class="fas fa-edit"></i> Modifier
                 </a>
-                <button onclick="resetPassword('{{ teacher.id }}')" class="btn btn-outline btn-sm">
-                    <i class="fas fa-key"></i> Réinitialiser
-                </button>
-                <div class="dropdown-compact">
-                    <button class="btn btn-outline btn-sm dropdown-toggle">
+                <div class="dropdown">
+                    <button class="btn btn-outline dropdown-toggle">
                         <i class="fas fa-ellipsis-v"></i>
                     </button>
-                    <div class="dropdown-menu-compact">
+                    <div class="dropdown-menu">
+                        <a href="#" onclick="event.preventDefault(); resetPassword('{{ teacher.id }}')">
+                            <i class="fas fa-key"></i> Réinitialiser mot de passe
+                        </a>
                         {% if teacher.est_actif %}
-                            <a href="#" onclick="event.preventDefault(); toggleStatus('{{ teacher.id }}')">
-                                <i class="fas fa-pause"></i> Désactiver
-                            </a>
+                        <a href="#" onclick="event.preventDefault(); toggleStatus('{{ teacher.id }}')">
+                            <i class="fas fa-pause"></i> Désactiver
+                        </a>
                         {% else %}
-                            <a href="#" onclick="event.preventDefault(); toggleStatus('{{ teacher.id }}')">
-                                <i class="fas fa-play"></i> Activer
-                            </a>
+                        <a href="#" onclick="event.preventDefault(); toggleStatus('{{ teacher.id }}')">
+                            <i class="fas fa-play"></i> Activer
+                        </a>
                         {% endif %}
-                        <a href="#" onclick="event.preventDefault(); exportTeacherData('{{ teacher.id }}')">
+                        <a href="#" onclick="event.preventDefault(); exportData('{{ teacher.id }}')">
                             <i class="fas fa-download"></i> Exporter données
                         </a>
                         <div class="dropdown-divider"></div>
@@ -81,238 +98,236 @@
         </div>
     </div>
 
-    <!-- Contenu principal -->
-    <div class="detail-content">
-        <div class="detail-grid">
-            <!-- Informations personnelles -->
-            <div class="info-card">
-                <div class="card-header">
-                    <h3><i class="fas fa-user"></i> Informations personnelles</h3>
+    <!-- Contenu -->
+    <div class="detail-grid">
+        <!-- Personnel -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-user"></i> Informations personnelles
+            </div>
+            <div class="card-body">
+                <div class="info-row">
+                    <span class="label">Prénom</span>
+                    <span class="value">{{ teacher.prenom }}</span>
                 </div>
-                <div class="card-body">
-                    <div class="info-row">
-                        <span class="label">Prénom</span>
-                        <span class="value">{{ teacher.prenom }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">Nom</span>
-                        <span class="value">{{ teacher.nom }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">Genre</span>
-                        <span class="value">{{ teacher.get_genre_display|default:"-" }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">Date de naissance</span>
-                        <span class="value">{{ teacher.date_naissance|date:"d/m/Y"|default:"-" }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">Lieu de naissance</span>
-                        <span class="value">{{ teacher.lieu_naissance|default:"-" }}</span>
-                    </div>
+                <div class="info-row">
+                    <span class="label">Nom</span>
+                    <span class="value">{{ teacher.nom }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Genre</span>
+                    <span class="value">{{ teacher.get_genre_display|default:"-" }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Date de naissance</span>
+                    <span class="value">{{ teacher.date_naissance|date:"d/m/Y"|default:"-" }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Lieu de naissance</span>
+                    <span class="value">{{ teacher.lieu_naissance|default:"-" }}</span>
                 </div>
             </div>
+        </div>
 
-            <!-- Informations de contact -->
-            <div class="info-card">
-                <div class="card-header">
-                    <h3><i class="fas fa-address-card"></i> Contact</h3>
+        <!-- Contact -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-address-card"></i> Contact
+            </div>
+            <div class="card-body">
+                <div class="info-row">
+                    <span class="label">Email</span>
+                    <span class="value">
+                        <a href="mailto:{{ teacher.email }}">{{ teacher.email }}</a>
+                    </span>
                 </div>
-                <div class="card-body">
-                    <div class="info-row">
-                        <span class="label">Email</span>
-                        <span class="value">
-                            <a href="mailto:{{ teacher.email }}">{{ teacher.email }}</a>
-                        </span>
+                <div class="info-row">
+                    <span class="label">Téléphone</span>
+                    <span class="value">
+                        {% if teacher.telephone %}
+                        <a href="tel:{{ teacher.telephone }}">{{ teacher.telephone }}</a>
+                        {% else %}-{% endif %}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Adresse</span>
+                    <span class="value">{{ teacher.adresse|default:"-" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Professionnel -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-briefcase"></i> Informations professionnelles
+            </div>
+            <div class="card-body">
+                <div class="info-row">
+                    <span class="label">Établissement</span>
+                    <span class="value">{{ teacher.etablissement.nom }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Département principal</span>
+                    <span class="value">{{ teacher.departement.nom|default:"-" }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Type</span>
+                    <span class="value">
+                        {% if teacher.profil_enseignant.type_enseignant == 'PERMANENT' %}
+                        <span class="badge badge-permanent">Permanent</span>
+                        {% else %}
+                        <span class="badge badge-vacataire">Vacataire</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="label">ID Employé</span>
+                    <span class="value">
+                        {% if teacher.profil_enseignant.id_employe %}
+                        <code>{{ teacher.profil_enseignant.id_employe }}</code>
+                        {% else %}-{% endif %}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Date d'embauche</span>
+                    <span class="value">{{ teacher.profil_enseignant.date_embauche|date:"d/m/Y"|default:"-" }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Spécialisation</span>
+                    <span class="value">{{ teacher.profil_enseignant.specialisation|default:"-" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chef de département -->
+        {% if teacher.role == 'CHEF_DEPARTEMENT' %}
+        <div class="card full-width highlight">
+            <div class="card-header">
+                <i class="fas fa-crown text-warning"></i> Fonction de chef de département
+            </div>
+            <div class="card-body">
+                {% with depts=teacher.departements_diriges.all %}
+                {% if depts %}
+                <div class="dept-list">
+                    {% for dept in depts %}
+                    <div class="dept-item">
+                        <div class="dept-icon">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <div class="dept-info">
+                            <h4>{{ dept.nom }}</h4>
+                            <p>Code: {{ dept.code }}</p>
+                            <div class="dept-stats">
+                                <span><i class="fas fa-users"></i> {{ dept.utilisateurs.count }} enseignants</span>
+                                <span><i class="fas fa-network-wired"></i> {{ dept.filieres.count }} filières</span>
+                            </div>
+                        </div>
                     </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">N'est actuellement chef d'aucun département</p>
+                {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Départements d'intervention -->
+        <div class="card full-width">
+            <div class="card-header">
+                <i class="fas fa-building"></i> Départements d'intervention
+                <span class="badge-count">{{ teacher.departements_intervention.count }}</span>
+            </div>
+            <div class="card-body">
+                {% if teacher.departements_intervention.all %}
+                <div class="tags-list">
+                    {% for dept in teacher.departements_intervention.all %}
+                    <span class="tag {% if dept == teacher.departement %}tag-primary{% endif %}">
+                        <i class="fas fa-building"></i> {{ dept.nom }}
+                        {% if dept == teacher.departement %}
+                        <span class="tag-badge">Principal</span>
+                        {% endif %}
+                    </span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">Aucun département d'intervention</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Qualifications -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-graduation-cap"></i> Qualifications
+            </div>
+            <div class="card-body">
+                {% if teacher.profil_enseignant.qualifications %}
+                <div class="text-content">{{ teacher.profil_enseignant.qualifications|linebreaks }}</div>
+                {% else %}
+                <p class="text-muted">Aucune qualification enregistrée</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Matières -->
+        <div class="card full-width">
+            <div class="card-header">
+                <i class="fas fa-book"></i> Matières enseignées
+                <span class="badge-count">{{ teacher.profil_enseignant.matieres.count }}</span>
+            </div>
+            <div class="card-body">
+                {% if teacher.profil_enseignant.matieres.all %}
+                <div class="matieres-grid">
+                    {% for matiere in teacher.profil_enseignant.matieres.all %}
+                    <div class="matiere-card">
+                        <i class="fas fa-book-open"></i>
+                        <div>
+                            <h4>{{ matiere.nom }}</h4>
+                            <p>{{ matiere.code }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">Aucune matière assignée</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Métadonnées -->
+        <div class="card full-width">
+            <div class="card-header">
+                <i class="fas fa-info-circle"></i> Métadonnées
+            </div>
+            <div class="card-body">
+                <div class="meta-grid">
                     <div class="info-row">
-                        <span class="label">Téléphone</span>
+                        <span class="label">Statut</span>
                         <span class="value">
-                            {% if teacher.telephone %}
-                                <a href="tel:{{ teacher.telephone }}">{{ teacher.telephone }}</a>
+                            {% if teacher.est_actif %}
+                            <span class="badge badge-success">Actif</span>
                             {% else %}
-                                -
+                            <span class="badge badge-danger">Inactif</span>
                             {% endif %}
                         </span>
                     </div>
                     <div class="info-row">
-                        <span class="label">Adresse</span>
-                        <span class="value">{{ teacher.adresse|default:"-" }}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Informations professionnelles -->
-            <div class="info-card">
-                <div class="card-header">
-                    <h3><i class="fas fa-briefcase"></i> Informations professionnelles</h3>
-                </div>
-                <div class="card-body">
-                    <div class="info-row">
-                        <span class="label">Établissement</span>
-                        <span class="value">{{ teacher.etablissement.nom|default:"-" }}</span>
+                        <span class="label">Matricule</span>
+                        <span class="value"><code>{{ teacher.matricule }}</code></span>
                     </div>
                     <div class="info-row">
-                        <span class="label">Département</span>
-                        <span class="value">{{ teacher.departement.nom|default:"-" }}</span>
+                        <span class="label">Date de création</span>
+                        <span class="value">{{ teacher.date_creation|date:"d/m/Y à H:i" }}</span>
                     </div>
                     <div class="info-row">
-                        <span class="label">ID Employé</span>
-                        <span class="value">
-                            {% if teacher.profil_enseignant.id_employe %}
-                                <code>{{ teacher.profil_enseignant.id_employe }}</code>
-                            {% else %}
-                                -
-                            {% endif %}
-                        </span>
+                        <span class="label">Dernière modification</span>
+                        <span class="value">{{ teacher.date_mise_a_jour|date:"d/m/Y à H:i" }}</span>
                     </div>
                     <div class="info-row">
-                        <span class="label">Date d'embauche</span>
-                        <span class="value">{{ teacher.profil_enseignant.date_embauche|date:"d/m/Y"|default:"-" }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">Spécialisation</span>
-                        <span class="value">{{ teacher.profil_enseignant.specialisation|default:"-" }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">Type</span>
-                        <span class="value">
-                            {% if teacher.profil_enseignant.est_permanent %}
-                                <span class="badge-success">Permanent</span>
-                            {% else %}
-                                <span class="badge-warning">Vacataire</span>
-                            {% endif %}
-                        </span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">Principal</span>
-                        <span class="value">
-                            {% if teacher.profil_enseignant.est_principal %}
-                                <span class="badge-info">Oui</span>
-                            {% else %}
-                                Non
-                            {% endif %}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Qualifications -->
-            <div class="info-card">
-                <div class="card-header">
-                    <h3><i class="fas fa-graduation-cap"></i> Qualifications</h3>
-                </div>
-                <div class="card-body">
-                    {% if teacher.profil_enseignant.qualifications %}
-                        <div class="qualifications-text">
-                            {{ teacher.profil_enseignant.qualifications|linebreaks }}
-                        </div>
-                    {% else %}
-                        <p class="text-muted">Aucune qualification enregistrée</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Matières enseignées -->
-            <div class="info-card full-width">
-                <div class="card-header">
-                    <h3><i class="fas fa-book"></i> Matières enseignées</h3>
-                    <span class="badge-count">{{ teacher.profil_enseignant.matieres.count }}</span>
-                </div>
-                <div class="card-body">
-                    {% if teacher.profil_enseignant.matieres.all %}
-                        <div class="matieres-grid">
-                            {% for matiere in teacher.profil_enseignant.matieres.all %}
-                                <div class="matiere-card">
-                                    <div class="matiere-icon">
-                                        <i class="fas fa-book-open"></i>
-                                    </div>
-                                    <div class="matiere-info">
-                                        <h4>{{ matiere.nom }}</h4>
-                                        <p>{{ matiere.code }}</p>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <p class="text-muted">Aucune matière assignée</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Cours actuels -->
-            {% if cours_enseignes %}
-            <div class="info-card full-width">
-                <div class="card-header">
-                    <h3><i class="fas fa-chalkboard"></i> Cours en cours</h3>
-                    <span class="badge-count">{{ cours_enseignes.count }}</span>
-                </div>
-                <div class="card-body">
-                    <div class="cours-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Matière</th>
-                                    <th>Classe</th>
-                                    <th>Horaire</th>
-                                    <th>Salle</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for cours in cours_enseignes %}
-                                <tr>
-                                    <td>{{ cours.matiere.nom }}</td>
-                                    <td>{{ cours.classe.nom }}</td>
-                                    <td>{{ cours.horaire|default:"-" }}</td>
-                                    <td>{{ cours.salle|default:"-" }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Métadonnées -->
-            <div class="info-card full-width">
-                <div class="card-header">
-                    <h3><i class="fas fa-info-circle"></i> Métadonnées</h3>
-                </div>
-                <div class="card-body">
-                    <div class="info-grid">
-                        <div class="info-row">
-                            <span class="label">Statut</span>
-                            <span class="value">
-                                {% if teacher.est_actif %}
-                                    <span class="badge-success">Actif</span>
-                                {% else %}
-                                    <span class="badge-danger">Inactif</span>
-                                {% endif %}
-                            </span>
-                        </div>
-                        <div class="info-row">
-                            <span class="label">Matricule</span>
-                            <span class="value"><code>{{ teacher.matricule }}</code></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="label">Date de création</span>
-                            <span class="value">{{ teacher.date_creation|date:"d/m/Y à H:i" }}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="label">Dernière modification</span>
-                            <span class="value">{{ teacher.date_mise_a_jour|date:"d/m/Y à H:i" }}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="label">Créé par</span>
-                            <span class="value">
-                                {% if teacher.cree_par %}
-                                    {{ teacher.cree_par.get_full_name }}
-                                {% else %}
-                                    Système
-                                {% endif %}
-                            </span>
-                        </div>
+                        <span class="label">Créé par</span>
+                        <span class="value">{{ teacher.cree_par.get_full_name|default:"Système" }}</span>
                     </div>
                 </div>
             </div>
@@ -321,160 +336,161 @@
 </div>
 
 <style>
-:root {
-    --primary-color: #2563eb;
-    --success-color: #10b981;
-    --danger-color: #ef4444;
-    --warning-color: #f59e0b;
-    --info-color: #3b82f6;
-    --text-dark: #1f2937;
-    --text-light: #6b7280;
-    --border-color: #e5e7eb;
-    --light-gray: #f3f4f6;
-}
-
-.teacher-detail-container {
-    padding: 20px;
-    max-width: 1400px;
-    margin: 0 auto;
-}
+.teacher-detail { padding: 20px; background: #f5f7fa; min-height: 100vh; }
 
 .detail-header {
-    margin-bottom: 25px;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
 }
 
-.breadcrumb-nav {
+.breadcrumb {
     font-size: 12px;
-    color: var(--text-light);
+    color: #6b7280;
     margin-bottom: 15px;
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.breadcrumb-nav a {
-    color: var(--text-light);
-    text-decoration: none;
-}
+.breadcrumb a { color: #6b7280; text-decoration: none; }
+.breadcrumb a:hover { color: #2563eb; }
+.breadcrumb .active { color: #2563eb; font-weight: 500; }
 
-.breadcrumb-nav a:hover {
-    color: var(--primary-color);
-}
-
-.breadcrumb-nav .current {
-    color: var(--primary-color);
-    font-weight: 500;
-}
-
-.header-content {
+.header-main {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    gap: 20px;
 }
 
-.user-title-info {
+.teacher-info {
     display: flex;
     gap: 20px;
     align-items: center;
 }
 
-.user-avatar-large {
-    width: 80px;
-    height: 80px;
+.teacher-avatar {
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
-    overflow: hidden;
-    background: var(--light-gray);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-light);
-    border: 3px solid var(--border-color);
+    color: white;
+    font-size: 36px;
+    overflow: hidden;
+    border: 4px solid #e5e7eb;
 }
 
-.user-avatar-large img {
+.teacher-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.user-title-info h1 {
+.teacher-meta h1 {
     margin: 0 0 10px 0;
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 600;
-    color: var(--text-dark);
+    color: #1f2937;
 }
 
-.user-meta {
+.badges {
     display: flex;
-    gap: 10px;
     flex-wrap: wrap;
-}
-
-.role-badge {
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.role-enseignant {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.matricule-badge {
-    padding: 4px 10px;
-    background: var(--light-gray);
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 12px;
-    color: var(--text-dark);
-}
-
-.status-badge {
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.status-badge.active {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.status-badge.inactive {
-    background: #fee2e2;
-    color: #991b1b;
-}
-
-.status-badge.permanent {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.status-badge.vacataire {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.header-actions {
-    display: flex;
     gap: 8px;
 }
 
-.detail-content {
-    margin-top: 20px;
+.badge {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.badge-chef { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+.badge-teacher { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+.badge-code { background: #f3f4f6; color: #1f2937; font-family: monospace; }
+.badge-permanent { background: #10b981; color: white; }
+.badge-vacataire { background: #f59e0b; color: white; }
+.badge-principal { background: #8b5cf6; color: white; }
+.badge-success { background: #d1fae5; color: #065f46; }
+.badge-danger { background: #fee2e2; color: #991b1b; }
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; transform: translateY(-2px); }
+
+.btn-outline {
+    background: white;
+    border: 2px solid #e5e7eb;
+    color: #1f2937;
+}
+
+.btn-outline:hover { background: #f9fafb; }
+
+.dropdown { position: relative; }
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    min-width: 200px;
+    z-index: 1000;
+    display: none;
+    margin-top: 5px;
+}
+
+.dropdown:hover .dropdown-menu { display: block; }
+
+.dropdown-menu a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    color: #1f2937;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.dropdown-menu a:hover { background: #f9fafb; }
+
+.dropdown-menu .text-danger { color: #ef4444; }
+
+.dropdown-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 5px 0;
 }
 
 .detail-grid {
@@ -483,324 +499,223 @@
     gap: 20px;
 }
 
-.info-card {
+.card {
     background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     overflow: hidden;
 }
 
-.info-card.full-width {
-    grid-column: 1 / -1;
+.card.full-width { grid-column: 1 / -1; }
+
+.card.highlight {
+    border: 2px solid #fbbf24;
+    background: linear-gradient(to bottom, #fffbeb, white);
 }
 
 .card-header {
+    background: #f9fafb;
     padding: 15px 20px;
-    background: var(--light-gray);
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.card-header h3 {
-    margin: 0;
-    font-size: 15px;
+    border-bottom: 1px solid #e5e7eb;
     font-weight: 600;
-    color: var(--text-dark);
+    color: #1f2937;
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: space-between;
 }
 
-.card-header i {
-    color: var(--primary-color);
-}
+.card-header i { color: #2563eb; margin-right: 8px; }
 
 .badge-count {
-    background: var(--primary-color);
+    background: #2563eb;
     color: white;
     padding: 2px 8px;
     border-radius: 12px;
     font-size: 11px;
-    font-weight: 600;
 }
 
-.card-body {
-    padding: 20px;
-}
+.card-body { padding: 20px; }
 
 .info-row {
     display: flex;
     justify-content: space-between;
     padding: 10px 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid #f3f4f6;
 }
 
-.info-row:last-child {
-    border-bottom: none;
-}
+.info-row:last-child { border-bottom: none; }
 
 .info-row .label {
-    font-size: 13px;
-    color: var(--text-light);
+    color: #6b7280;
+    font-size: 14px;
     font-weight: 500;
 }
 
 .info-row .value {
-    font-size: 13px;
-    color: var(--text-dark);
+    color: #1f2937;
+    font-size: 14px;
+    font-weight: 600;
     text-align: right;
-    max-width: 60%;
 }
 
 .info-row .value a {
-    color: var(--primary-color);
+    color: #2563eb;
     text-decoration: none;
 }
 
-.info-row .value code {
-    background: var(--light-gray);
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 11px;
+.dept-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
 
-.info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 0;
+.dept-item {
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    gap: 15px;
 }
 
-.badge-success, .badge-danger, .badge-warning, .badge-info {
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 11px;
+.dept-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 22px;
+}
+
+.dept-info h4 {
+    margin: 0 0 5px 0;
+    font-size: 16px;
     font-weight: 600;
+    color: #1f2937;
 }
 
-.badge-success {
-    background: #d1fae5;
-    color: #065f46;
+.dept-info p {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    color: #6b7280;
 }
 
-.badge-danger {
-    background: #fee2e2;
-    color: #991b1b;
+.dept-stats {
+    display: flex;
+    gap: 15px;
+    font-size: 12px;
+    color: #6b7280;
 }
 
-.badge-warning {
-    background: #fef3c7;
-    color: #92400e;
+.dept-stats span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
-.badge-info {
-    background: #dbeafe;
-    color: #1e40af;
+.tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
-.qualifications-text {
-    font-size: 14px;
+.tag {
+    background: #e5e7eb;
+    color: #1f2937;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tag-primary {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+}
+
+.tag-badge {
+    background: rgba(255,255,255,0.3);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+}
+
+.text-content {
     line-height: 1.6;
-    color: var(--text-dark);
-}
-
-.text-muted {
-    color: var(--text-light);
-    font-style: italic;
+    color: #4b5563;
 }
 
 .matieres-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 15px;
+    gap: 12px;
 }
 
 .matiere-card {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    padding: 15px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    transition: all 0.3s;
 }
 
-.matiere-card:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border-color: var(--primary-color);
+.matiere-card i {
+    font-size: 24px;
+    color: #2563eb;
 }
 
-.matiere-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    background: var(--light-gray);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--primary-color);
-    font-size: 18px;
-}
-
-.matiere-info h4 {
+.matiere-card h4 {
     margin: 0;
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-dark);
+    color: #1f2937;
 }
 
-.matiere-info p {
-    margin: 2px 0 0 0;
-    font-size: 11px;
-    color: var(--text-light);
-}
-
-.cours-table {
-    overflow-x: auto;
-}
-
-.cours-table table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.cours-table th {
-    background: var(--light-gray);
-    padding: 10px;
-    text-align: left;
+.matiere-card p {
+    margin: 0;
     font-size: 12px;
-    font-weight: 600;
-    color: var(--text-dark);
-    border-bottom: 2px solid var(--border-color);
+    color: #6b7280;
 }
 
-.cours-table td {
-    padding: 10px;
-    font-size: 13px;
-    color: var(--text-dark);
-    border-bottom: 1px solid var(--border-color);
+.meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
 }
 
-.cours-table tbody tr:hover {
-    background: var(--light-gray);
-}
-
-.btn {
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    text-decoration: none;
-    border: none;
-}
-
-.btn-primary {
-    background: var(--primary-color);
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #1d4ed8;
-}
-
-.btn-outline {
-    background: white;
-    border: 1px solid var(--border-color);
-    color: var(--text-dark);
-}
-
-.btn-outline:hover {
-    background: var(--light-gray);
-}
-
-.btn-sm {
-    padding: 6px 12px;
-    font-size: 12px;
-}
-
-.dropdown-compact {
-    position: relative;
-}
-
-.dropdown-menu-compact {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    min-width: 180px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    z-index: 1000;
-    display: none;
-    margin-top: 5px;
-}
-
-.dropdown-menu-compact.show {
-    display: block;
-}
-
-.dropdown-menu-compact a {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 15px;
-    text-decoration: none;
-    color: var(--text-dark);
-    font-size: 13px;
-    transition: background 0.2s;
-}
-
-.dropdown-menu-compact a:hover {
-    background: var(--light-gray);
-}
-
-.dropdown-divider {
-    height: 1px;
-    background: var(--border-color);
-    margin: 5px 0;
-}
-
-.text-danger {
-    color: var(--danger-color) !important;
+.text-muted {
+    color: #9ca3af;
+    font-style: italic;
 }
 
 @media (max-width: 768px) {
-    .header-content {
+    .header-main {
         flex-direction: column;
-        gap: 15px;
+    }
+
+    .teacher-info {
+        flex-direction: column;
+        text-align: center;
     }
 
     .header-actions {
         width: 100%;
-        justify-content: stretch;
-    }
-
-    .header-actions .btn {
-        flex: 1;
+        justify-content: center;
     }
 
     .detail-grid {
         grid-template-columns: 1fr;
     }
 
-    .info-row {
-        flex-direction: column;
-        gap: 5px;
-    }
-
-    .info-row .value {
-        text-align: left;
-        max-width: 100%;
-    }
-
-    .matieres-grid {
+    .meta-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -825,7 +740,7 @@ function getCookie(name) {
 const csrftoken = getCookie('csrftoken');
 
 function toggleStatus(teacherId) {
-    if (confirm('Voulez-vous vraiment changer le statut de cet enseignant ?')) {
+    if (confirm('Changer le statut de cet enseignant ?')) {
         fetch(`/accounts/teachers/${teacherId}/toggle-status/`, {
             method: 'POST',
             headers: {
@@ -838,14 +753,14 @@ function toggleStatus(teacherId) {
             if (data.success) {
                 location.reload();
             } else {
-                alert(data.error || 'Une erreur est survenue');
+                alert(data.error || 'Erreur');
             }
         });
     }
 }
 
 function resetPassword(teacherId) {
-    if (confirm('Voulez-vous vraiment réinitialiser le mot de passe de cet enseignant ?')) {
+    if (confirm('Réinitialiser le mot de passe de cet enseignant ?')) {
         fetch(`/accounts/teachers/${teacherId}/reset-password/`, {
             method: 'POST',
             headers: {
@@ -858,14 +773,14 @@ function resetPassword(teacherId) {
             if (data.success) {
                 alert(data.message);
             } else {
-                alert(data.error || 'Une erreur est survenue');
+                alert(data.error || 'Erreur');
             }
         });
     }
 }
 
 function deleteTeacher(teacherId) {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cet enseignant ? Cette action est irréversible.')) {
+    if (confirm('Supprimer définitivement cet enseignant ? Cette action est irréversible.')) {
         fetch(`/accounts/teachers/${teacherId}/delete/`, {
             method: 'DELETE',
             headers: {
@@ -876,33 +791,16 @@ function deleteTeacher(teacherId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                window.location.href = '/accounts/teachers/';
+                window.location.href = '{{ cancel_url }}';
             } else {
-                alert(data.error || 'Une erreur est survenue');
+                alert(data.error || 'Erreur');
             }
         });
     }
 }
 
-function exportTeacherData(teacherId) {
+function exportData(teacherId) {
     window.location.href = `/accounts/teachers/${teacherId}/export/`;
 }
-
-// Dropdown toggle
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
-        toggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const dropdown = this.nextElementSibling;
-            dropdown.classList.toggle('show');
-        });
-    });
-
-    document.addEventListener('click', function() {
-        document.querySelectorAll('.dropdown-menu-compact').forEach(menu => {
-            menu.classList.remove('show');
-        });
-    });
-});
 </script>
 {% endblock %}

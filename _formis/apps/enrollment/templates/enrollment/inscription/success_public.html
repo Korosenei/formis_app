@@ -1,0 +1,196 @@
+<!-- templates/enrollment/inscription/success_public.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Inscription réussie{% endblock %}
+
+{% block extra_css %}
+<style>
+    .success-container {
+        max-width: 800px;
+        margin: 50px auto;
+    }
+
+    .success-icon {
+        font-size: 80px;
+        color: #28a745;
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+
+    .info-card {
+        background: #f8f9fa;
+        border-left: 4px solid #28a745;
+        padding: 20px;
+        margin: 20px 0;
+    }
+
+    .credentials-box {
+        background: #fff3cd;
+        border: 2px dashed #ffc107;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 10px;
+    }
+
+    .btn-dashboard {
+        padding: 15px 40px;
+        font-size: 18px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container success-container">
+    <div class="text-center">
+        <div class="success-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+
+        <h1 class="display-4 text-success mb-4">
+            🎉 Félicitations !
+        </h1>
+
+        <p class="lead">
+            Votre inscription a été confirmée avec succès.
+        </p>
+    </div>
+
+    <!-- Informations de l'inscription -->
+    <div class="info-card">
+        <h4>📋 Informations de votre inscription</h4>
+        <hr>
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Nom complet:</strong> {{ candidature.prenom }} {{ candidature.nom }}</p>
+                <p><strong>Email:</strong> {{ candidature.email }}</p>
+                <p><strong>Numéro d'inscription:</strong> {{ inscription.numero_inscription }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Formation:</strong> {{ candidature.filiere.nom }}</p>
+                <p><strong>Niveau:</strong> {{ candidature.niveau.nom }}</p>
+                <p><strong>Établissement:</strong> {{ candidature.etablissement.nom }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paiement confirmé -->
+    <div class="info-card">
+        <h4>💳 Paiement confirmé</h4>
+        <hr>
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Numéro de transaction:</strong> {{ paiement.numero_transaction }}</p>
+                <p><strong>Montant payé:</strong> {{ paiement.montant }} FCFA</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Date:</strong> {{ paiement.date_confirmation|date:"d/m/Y H:i" }}</p>
+                <p><strong>Statut:</strong> <span class="badge bg-success">Confirmé</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Identifiants de connexion -->
+    {% if user %}
+    <div class="credentials-box">
+        <h4 class="text-warning">
+            <i class="fas fa-key"></i> Vos identifiants de connexion
+        </h4>
+        <hr>
+        <div class="alert alert-warning">
+            <strong>⚠️ IMPORTANT:</strong> Un email contenant vos identifiants de connexion
+            a été envoyé à <strong>{{ user.email }}</strong>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>📧 Email de connexion:</strong><br>
+                   <code class="fs-5">{{ user.email }}</code>
+                </p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>🎫 Matricule:</strong><br>
+                   <code class="fs-5">{{ user.matricule }}</code>
+                </p>
+            </div>
+        </div>
+
+        <p class="mb-0 text-muted">
+            <i class="fas fa-info-circle"></i>
+            Vérifiez votre boîte email (et les spams) pour récupérer votre mot de passe temporaire.
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- Prochaines étapes -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="fas fa-list-check"></i> Prochaines étapes
+            </h5>
+            <ol class="mt-3">
+                <li class="mb-2">
+                    <strong>Vérifiez votre email</strong> pour récupérer vos identifiants de connexion
+                </li>
+                <li class="mb-2">
+                    <strong>Connectez-vous</strong> à votre espace étudiant avec vos identifiants
+                </li>
+                <li class="mb-2">
+                    <strong>Changez votre mot de passe</strong> temporaire lors de votre première connexion
+                </li>
+                <li class="mb-2">
+                    <strong>Complétez votre profil</strong> avec vos informations personnelles
+                </li>
+                <li class="mb-2">
+                    <strong>Consultez votre emploi du temps</strong> et vos cours
+                </li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Boutons d'action -->
+    <div class="text-center mt-4 mb-5">
+        <a href="{% url 'accounts:login' %}" class="btn btn-success btn-dashboard">
+            <i class="fas fa-sign-in-alt"></i> Accéder à mon espace étudiant
+        </a>
+
+        <p class="mt-3 text-muted">
+            <i class="fas fa-envelope"></i>
+            Un email de confirmation a été envoyé à {{ candidature.email }}
+        </p>
+    </div>
+
+    <!-- Support -->
+    <div class="alert alert-info">
+        <h6><i class="fas fa-question-circle"></i> Besoin d'aide ?</h6>
+        <p class="mb-0">
+            Si vous rencontrez des difficultés pour vous connecter ou si vous n'avez pas reçu
+            l'email avec vos identifiants, contactez le support de votre établissement.
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-scroll vers le haut
+window.scrollTo(0, 0);
+
+// Confetti animation (optionnel)
+document.addEventListener('DOMContentLoaded', function() {
+    // Ajouter une petite animation de célébration
+    const successIcon = document.querySelector('.success-icon');
+
+    setTimeout(() => {
+        successIcon.style.transform = 'scale(1.2)';
+        setTimeout(() => {
+            successIcon.style.transform = 'scale(1)';
+        }, 300);
+    }, 500);
+});
+</script>
+{% endblock %}

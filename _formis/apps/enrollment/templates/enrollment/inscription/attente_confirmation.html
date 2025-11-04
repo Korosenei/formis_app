@@ -1,0 +1,85 @@
+<!-- templates/enrollment/inscription/attente_confirmation.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Paiement en cours{% endblock %}
+
+{% block extra_css %}
+<style>
+    .waiting-container {
+        max-width: 700px;
+        margin: 80px auto;
+        text-align: center;
+    }
+
+    .spinner-custom {
+        width: 80px;
+        height: 80px;
+        border: 8px solid #f3f3f3;
+        border-top: 8px solid #ffc107;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 30px auto;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .pulse-text {
+        animation: pulse-opacity 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-opacity {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container waiting-container">
+    <div class="spinner-custom"></div>
+
+    <h2 class="text-warning mb-4">
+        <i class="fas fa-hourglass-half"></i> Paiement en cours de traitement
+    </h2>
+
+    <p class="lead pulse-text">
+        Veuillez patienter pendant que nous confirmons votre paiement...
+    </p>
+
+    <div class="card mt-5">
+        <div class="card-body">
+            <h5>Informations du paiement</h5>
+            <hr>
+            <p><strong>Numéro de transaction:</strong> {{ paiement.numero_transaction }}</p>
+            <p><strong>Montant:</strong> {{ paiement.montant }} FCFA</p>
+            <p><strong>Candidature:</strong> {{ candidature.numero_candidature }}</p>
+        </div>
+    </div>
+
+    <div class="alert alert-info mt-4">
+        <h6><i class="fas fa-info-circle"></i> Que se passe-t-il ?</h6>
+        <p class="mb-0">
+            Votre paiement est en cours de vérification auprès de LigdiCash.
+            Cela peut prendre quelques instants. Vous recevrez un email de confirmation
+            dès que votre paiement sera validé et que votre compte sera créé.
+        </p>
+    </div>
+
+    <button onclick="window.location.reload()" class="btn btn-warning mt-4">
+        <i class="fas fa-sync-alt"></i> Actualiser la page
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh toutes les 10 secondes
+setTimeout(() => {
+    window.location.reload();
+}, 10000);
+</script>
+{% endblock %}

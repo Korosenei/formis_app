@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #1cc88a 0%, #17a2b8 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            background: white;
+            padding: 30px;
+            border: 1px solid #e2e8f0;
+        }
+        .info-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #718096;
+        }
+        .info-value {
+            color: #2d3748;
+        }
+        .button {
+            display: inline-block;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 20px 0;
+        }
+        .steps {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .steps ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .steps li {
+            margin: 8px 0;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #718096;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Inscription confirmée !</h1>
+            <p>Bienvenue dans votre parcours de formation</p>
+        </div>
+
+        <div class="content">
+            <p>Bonjour <strong>{{ apprenant.prenom }} {{ apprenant.nom }}</strong>,</p>
+
+            <p>Nous avons le plaisir de vous confirmer que votre inscription est maintenant <strong>active</strong>.</p>
+
+            <div class="info-box">
+                <h3 style="margin-top: 0;">📋 Informations de votre inscription</h3>
+
+                <div class="info-row">
+                    <span class="info-label">Numéro d'inscription</span>
+                    <span class="info-value">{{ inscription.numero_inscription }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Formation</span>
+                    <span class="info-value">{{ filiere.nom }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Niveau</span>
+                    <span class="info-value">{{ niveau.nom }}</span>
+                </div>
+                {% if classe %}
+                <div class="info-row">
+                    <span class="info-label">Classe</span>
+                    <span class="info-value">{{ classe.nom }}</span>
+                </div>
+                {% endif %}
+                <div class="info-row">
+                    <span class="info-label">Année académique</span>
+                    <span class="info-value">{{ annee_academique.nom }}</span>
+                </div>
+            </div>
+
+            <div class="steps">
+                <h3 style="margin-top: 0;">🚀 Prochaines étapes</h3>
+                <ol>
+                    <li>Connectez-vous à votre espace apprenant</li>
+                    <li>Consultez votre emploi du temps</li>
+                    <li>Accédez à vos cours et ressources pédagogiques</li>
+                    <li>Rejoignez vos classes virtuelles</li>
+                </ol>
+            </div>
+
+            <div style="text-align: center;">
+                <a href="{{ SITE_URL }}/accounts/login/" class="button">
+                    Accéder à mon espace
+                </a>
+            </div>
+
+            <p><strong>Vos identifiants de connexion :</strong></p>
+            <ul>
+                <li>Email : <strong>{{ apprenant.email }}</strong></li>
+                <li>Mot de passe : celui qui vous a été envoyé précédemment</li>
+            </ul>
+
+            <p>Si vous avez oublié votre mot de passe, vous pouvez le réinitialiser via le lien "Mot de passe oublié" sur la page de connexion.</p>
+        </div>
+
+        <div class="footer">
+            <p>Cet email a été envoyé par <strong>{{ etablissement.nom }}</strong></p>
+            <p>Pour toute question, contactez-nous à {{ etablissement.email }}</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -181,7 +181,7 @@
                         </td>
                         <td>
                             <div class="action-buttons-sm">
-                                <a href="{% url 'enrollment:candidature_detail' candidature.id %}" class="btn-icon-sm btn-primary" title="Voir">
+                                <a href="{% url 'enrollment:candidature_details_ajax' candidature.id %}" class="btn-icon-sm btn-primary" title="Voir">
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 <div class="dropdown-compact">
@@ -189,7 +189,7 @@
                                         <i class="fas fa-ellipsis-v"></i>
                                     </button>
                                     <div class="dropdown-menu-compact">
-                                        <a href="{% url 'enrollment:candidature_detail' candidature.id %}">
+                                        <a href="{% url 'enrollment:candidature_details_ajax' candidature.id %}">
                                             <i class="fas fa-eye"></i> Détails
                                         </a>
                                         <a href="#" onclick="viewDocuments('{{ candidature.id }}')">
