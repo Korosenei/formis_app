@@ -5,26 +5,30 @@
 
 {% block content %}
 <div class="dept-heads-page">
-    <!-- Header -->
-    <div class="page-header">
-        <div class="header-left">
-            <div class="breadcrumb">
+    <!-- Header compact -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
                 <span>Dashboard</span>
                 <i class="fas fa-chevron-right"></i>
                 <span>Administration</span>
                 <i class="fas fa-chevron-right"></i>
-                <span class="active">Chefs de département</span>
+                <span class="current">Chefs de département</span>
             </div>
-            <h1><i class="fas fa-crown"></i> Gestion des Chefs de Département</h1>
+            <h1>Gestion des Chefs de Département</h1>
         </div>
         <div class="header-actions">
+            <!-- MODIFIÉ: Nouveau bouton d'export avec modal -->
+            <button onclick="openExportModal('department_heads')" class="btn-icon" title="Exporter">
+                <i class="fas fa-download"></i>
+            </button>
             {% if can_nominate %}
-            <a href="{% url 'accounts:nominate_department_head' %}" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Nommer un chef
+            <a href="{% url 'accounts:nominate_department_head' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Nommer
             </a>
             {% else %}
-            <button class="btn btn-secondary" disabled title="Tous les départements ont un chef">
-                <i class="fas fa-check"></i> Tous nommés
+            <button class="btn btn-secondary btn-sm" disabled title="Tous les départements ont un chef">
+                <i class="fas fa-check"></i> Complet
             </button>
             {% endif %}
         </div>
@@ -32,192 +36,299 @@
 
     <!-- Messages -->
     {% if messages %}
-    <div class="messages">
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags }}" id="msg-{{ forloop.counter }}">
-            <i class="fas fa-{% if message.tags == 'success' %}check-circle{% else %}exclamation-circle{% endif %}"></i>
-            {{ message }}
-            <button onclick="closeAlert('msg-{{ forloop.counter }}')">&times;</button>
+        <div class="messages-container">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}" id="message-{{ forloop.counter }}">
+                    {% if message.tags == 'success' %}
+                        <i class="fas fa-check-circle"></i>
+                    {% else %}
+                        <i class="fas fa-exclamation-circle"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button class="close-alert" onclick="closeAlert('message-{{ forloop.counter }}')">&times;</button>
+                </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
     {% endif %}
 
-    <!-- Stats -->
-    <div class="stats-grid">
-        <div class="stat-card blue">
-            <div class="stat-icon">
-                <i class="fas fa-building"></i>
+    <!-- Filtres -->
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <input type="text" id="searchInput" placeholder="Rechercher un département ou chef..."
+                       class="form-input-sm" onkeyup="filterDepartments()">
             </div>
-            <div class="stat-info">
-                <div class="stat-value">{{ total_departements }}</div>
-                <div class="stat-label">Départements</div>
+            <div class="filter-group">
+                <select id="statusFilter" class="form-select-sm" onchange="filterDepartments()">
+                    <option value="">Tous les statuts</option>
+                    <option value="with-chef">Avec chef</option>
+                    <option value="without-chef">Sans chef</option>
+                </select>
             </div>
-        </div>
-        <div class="stat-card green">
-            <div class="stat-icon">
-                <i class="fas fa-user-check"></i>
+            <div class="filter-actions">
+                <button type="button" class="btn btn-sm btn-outline" onclick="resetFilters()">
+                    <i class="fas fa-undo"></i> Réinitialiser
+                </button>
             </div>
-            <div class="stat-info">
-                <div class="stat-value">{{ total_departements|add:"-"|add:departements_sans_chef }}</div>
-                <div class="stat-label">Avec chef</div>
-            </div>
-        </div>
-        <div class="stat-card orange">
-            <div class="stat-icon">
-                <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <div class="stat-info">
-                <div class="stat-value">{{ departements_sans_chef }}</div>
-                <div class="stat-label">Sans chef</div>
-            </div>
-        </div>
+        </form>
     </div>
 
-    <!-- Liste départements -->
-    <div class="depts-grid">
-        {% for dept in chefs_departement %}
-        <div class="dept-card {% if not dept.chef %}no-chef{% endif %}" id="dept-{{ dept.id }}">
-            <div class="dept-header">
-                <div class="dept-title">
-                    <i class="fas fa-building"></i>
-                    <h3>{{ dept.nom }}</h3>
-                </div>
-                <code class="dept-code">{{ dept.code }}</code>
-            </div>
-
-            <div class="dept-body">
-                {% if dept.chef %}
-                <div class="chef-info">
-                    <div class="chef-avatar">
-                        {% if dept.chef.photo_profil %}
-                        <img src="{{ dept.chef.photo_profil.url }}" alt="">
-                        {% else %}
-                        <i class="fas fa-user-tie"></i>
-                        {% endif %}
-                    </div>
-                    <div class="chef-details">
-                        <div class="chef-name">
-                            <i class="fas fa-crown"></i>
-                            {{ dept.chef.get_full_name }}
-                        </div>
-                        <div class="chef-meta">
-                            <span><i class="fas fa-id-badge"></i> {{ dept.chef.matricule }}</span>
-                        </div>
-                        <div class="chef-meta">
-                            <span><i class="fas fa-envelope"></i> {{ dept.chef.email }}</span>
-                        </div>
-                        {% if dept.chef.telephone %}
-                        <div class="chef-meta">
-                            <span><i class="fas fa-phone"></i> {{ dept.chef.telephone }}</span>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="dept-actions">
-                    <a href="{% url 'accounts:teacher_detail' dept.chef.id %}" class="btn-sm btn-outline">
-                        <i class="fas fa-eye"></i> Profil
-                    </a>
-                    <button onclick="revoquerChef('{{ dept.id }}', '{{ dept.chef.get_full_name }}', '{{ dept.nom }}')"
-                            class="btn-sm btn-danger">
-                        <i class="fas fa-user-times"></i> Révoquer
-                    </button>
-                </div>
-                {% else %}
-                <div class="no-chef">
-                    <div class="no-chef-icon">
-                        <i class="fas fa-user-slash"></i>
-                    </div>
-                    <p>Aucun chef nommé</p>
-                    <a href="{% url 'accounts:nominate_department_head' %}?dept={{ dept.id }}" class="btn-sm btn-primary">
-                        <i class="fas fa-plus"></i> Nommer
-                    </a>
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="dept-footer">
-                <span><i class="fas fa-chalkboard-teacher"></i> {{ dept.utilisateurs.count }} enseignants</span>
-                <span><i class="fas fa-network-wired"></i> {{ dept.filieres.count }} filières</span>
-            </div>
+    <!-- Tableau des départements -->
+    <div class="dept-table-container">
+        <div class="table-wrapper">
+            <table class="dept-table">
+                <thead>
+                    <tr>
+                        <th width="40">#</th>
+                        <th>Département</th>
+                        <th width="80">Code</th>
+                        <th width="50">Photo</th>
+                        <th>Chef de Département</th>
+                        <th>Contact</th>
+                        <th width="80">Enseignants</th>
+                        <th width="80">Filières</th>
+                        <th width="70">Statut</th>
+                        <th width="100">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dept in chefs_departement %}
+                    <tr class="dept-row {% if not dept.chef %}no-chef-row{% endif %}"
+                        id="dept-row-{{ dept.id }}"
+                        data-dept-name="{{ dept.nom|lower }}"
+                        data-chef-name="{% if dept.chef %}{{ dept.chef.get_full_name|lower }}{% endif %}"
+                        data-has-chef="{% if dept.chef %}with-chef{% else %}without-chef{% endif %}">
+                        <td>{{ forloop.counter }}</td>
+                        <td>
+                            <div class="dept-name-cell">
+                                <i class="fas fa-building"></i>
+                                <span class="dept-name">{{ dept.nom }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <code class="dept-code-badge">{{ dept.code }}</code>
+                        </td>
+                        <td>
+                            {% if dept.chef %}
+                            <div class="chef-avatar-sm">
+                                {% if dept.chef.photo_profil %}
+                                <img src="{{ dept.chef.photo_profil.url }}" alt="">
+                                {% else %}
+                                <i class="fas fa-user-tie"></i>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <div class="chef-avatar-sm empty">
+                                <i class="fas fa-user-slash"></i>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if dept.chef %}
+                            <div class="chef-info-cell">
+                                <div class="chef-name-badge">
+                                    <i class="fas fa-crown"></i>
+                                    {{ dept.chef.get_full_name|truncatechars:30 }}
+                                </div>
+                                <code class="matricule-sm">{{ dept.chef.matricule }}</code>
+                            </div>
+                            {% else %}
+                            <span class="no-chef-label">
+                                <i class="fas fa-exclamation-circle"></i> Non assigné
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if dept.chef %}
+                            <div class="contact-cell">
+                                <div class="contact-item">
+                                    <i class="fas fa-envelope"></i>
+                                    <span title="{{ dept.chef.email }}">{{ dept.chef.email|truncatechars:25 }}</span>
+                                </div>
+                                {% if dept.chef.telephone %}
+                                <div class="contact-item">
+                                    <i class="fas fa-phone"></i>
+                                    <span>{{ dept.chef.telephone }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <span class="count-badge blue">
+                                <i class="fas fa-chalkboard-teacher"></i>
+                                {{ dept.utilisateurs.count }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="count-badge green">
+                                <i class="fas fa-network-wired"></i>
+                                {{ dept.filieres.count }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if dept.chef %}
+                            <span class="status-badge active">
+                                <i class="fas fa-check-circle"></i> Assigné
+                            </span>
+                            {% else %}
+                            <span class="status-badge pending">
+                                <i class="fas fa-clock"></i> Vacant
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons-sm">
+                                {% if dept.chef %}
+                                <button class="btn-icon-sm btn-primary"
+                                        onclick="viewChef('{{ dept.chef.id }}')"
+                                        title="Voir le profil">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn-icon-sm btn-danger"
+                                        onclick="revoquerChef('{{ dept.id }}', '{{ dept.chef.get_full_name }}', '{{ dept.nom }}')"
+                                        title="Révoquer">
+                                    <i class="fas fa-user-times"></i>
+                                </button>
+                                {% else %}
+                                <a href="{% url 'accounts:nominate_department_head' %}?dept={{ dept.id }}"
+                                   class="btn-icon-sm btn-success"
+                                   title="Nommer un chef">
+                                    <i class="fas fa-user-plus"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <div class="empty-content">
+                                <i class="fas fa-building fa-2x text-muted"></i>
+                                <p class="mt-2">Aucun département trouvé</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-        {% empty %}
-        <div class="empty-state">
-            <i class="fas fa-building fa-3x"></i>
-            <p>Aucun département trouvé</p>
-        </div>
-        {% endfor %}
+
+        <!-- Pagination -->
+        {% if chefs_departement %}
+            {% include 'components/pagination.html' with page_obj=page_obj %}
+        {% endif %}
     </div>
 </div>
 
-<!-- Modal -->
-<div id="modal" class="modal">
-    <div class="modal-content">
+<!-- Modal de confirmation -->
+<div id="confirmModal" class="modal">
+    <div class="modal-content modal-sm">
         <div class="modal-header">
-            <h4 id="modalTitle"></h4>
-            <button onclick="closeModal()">&times;</button>
+            <h4 id="confirmTitle">Confirmation</h4>
+            <button class="modal-close" onclick="closeConfirmModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <p id="modalMessage"></p>
-            <div id="modalDetails" class="modal-details"></div>
+            <p id="confirmMessage"></p>
+            <div id="confirmDetails" class="confirm-details"></div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-outline" onclick="closeModal()">Annuler</button>
-            <button id="modalConfirm" class="btn btn-danger">Confirmer</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="closeConfirmModal()">Annuler</button>
+            <button type="button" id="confirmBtn" class="btn btn-sm btn-danger">Confirmer</button>
         </div>
     </div>
 </div>
 
-<style>
-.dept-heads-page { padding: 20px; background: #f5f7fa; min-height: 100vh; }
+<!-- NOUVEAU: Inclusion du modal d'exportation -->
+{% include 'components/export_modal.html' %}
 
-.page-header {
+<style>
+.dept-heads-page {
+    padding: 15px;
+}
+
+.page-header-compact {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
     background: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    margin-bottom: 20px;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.breadcrumb {
-    font-size: 12px;
+
+
+.filters-section {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    margin-bottom: 15px;
+    border: 1px solid #e5e7eb;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.form-input-sm,
+.form-select-sm {
+    padding: 6px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    height: 32px;
+    width: 100%;
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
     color: #6b7280;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
 }
 
-.breadcrumb .active { color: #2563eb; font-weight: 500; }
+.breadcrumb-nav .current {
+    color: #2563eb;
+    font-weight: 500;
+}
 
-.page-header h1 {
+.header-content h1 {
     margin: 0;
-    font-size: 24px;
+    font-size: 18px;
     font-weight: 600;
     color: #1f2937;
-    display: flex;
-    align-items: center;
-    gap: 12px;
 }
 
-.page-header h1 i { color: #f59e0b; }
+.header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
 
-.messages { margin-bottom: 20px; }
+.messages-container {
+    margin-bottom: 15px;
+}
 
 .alert {
-    background: white;
-    padding: 14px 18px;
-    border-radius: 8px;
+    padding: 10px 15px;
+    border-radius: 6px;
     margin-bottom: 10px;
     display: flex;
     align-items: center;
-    gap: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-    animation: slideIn 0.3s;
+    gap: 10px;
+    font-size: 13px;
+    position: relative;
+    animation: slideIn 0.3s ease-out;
 }
 
 @keyframes slideIn {
@@ -226,256 +337,378 @@
 }
 
 .alert-success {
-    border-left: 4px solid #10b981;
+    background: #d1fae5;
     color: #065f46;
+    border: 1px solid #6ee7b7;
 }
 
 .alert-error {
-    border-left: 4px solid #ef4444;
+    background: #fee2e2;
     color: #991b1b;
+    border: 1px solid #fca5a5;
 }
 
-.alert button {
-    margin-left: auto;
+.close-alert {
+    position: absolute;
+    right: 10px;
     background: none;
     border: none;
-    font-size: 20px;
+    font-size: 18px;
     cursor: pointer;
-    opacity: 0.6;
+    color: inherit;
+    opacity: 0.7;
 }
 
-.alert button:hover { opacity: 1; }
+.close-alert:hover {
+    opacity: 1;
+}
 
-.stats-grid {
+.stats-compact {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 25px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 15px;
 }
 
-.stat-card {
+.stat-item {
     background: white;
-    padding: 20px;
-    border-radius: 10px;
+    padding: 12px 15px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
-    gap: 15px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    transition: transform 0.3s;
+    gap: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border-left: 3px solid;
 }
 
-.stat-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+.stat-item.blue {
+    border-color: #2563eb;
 }
 
-.stat-icon {
-    width: 55px;
-    height: 55px;
-    border-radius: 12px;
+.stat-item.green {
+    border-color: #10b981;
+}
+
+.stat-item.orange {
+    border-color: #f59e0b;
+}
+
+.stat-item.purple {
+    border-color: #8b5cf6;
+}
+
+.stat-item > i {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 26px;
+    border-radius: 8px;
     color: white;
 }
 
-.stat-card.blue .stat-icon { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
-.stat-card.green .stat-icon { background: linear-gradient(135deg, #10b981, #059669); }
-.stat-card.orange .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.stat-item.blue > i {
+    background: #2563eb;
+}
+
+.stat-item.green > i {
+    background: #10b981;
+}
+
+.stat-item.orange > i {
+    background: #f59e0b;
+}
+
+.stat-item.purple > i {
+    background: #8b5cf6;
+}
+
+.stat-data {
+    display: flex;
+    flex-direction: column;
+}
 
 .stat-value {
-    font-size: 32px;
+    font-size: 22px;
     font-weight: 700;
     color: #1f2937;
     line-height: 1;
 }
 
 .stat-label {
-    font-size: 13px;
+    font-size: 11px;
     color: #6b7280;
-    margin-top: 4px;
+    margin-top: 3px;
 }
 
-.depts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-    gap: 20px;
-}
-
-.dept-card {
+.dept-table-container {
     background: white;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-    transition: all 0.3s;
-    border: 2px solid transparent;
-}
-
-.dept-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.12);
-}
-
-.dept-card.no-chef {
-    border-color: #fbbf24;
-    background: #fffbeb;
-}
-
-.dept-header {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    color: white;
-    padding: 16px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.dept-card.no-chef .dept-header {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-}
-
-.dept-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.dept-title h3 {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 600;
-}
-
-.dept-code {
-    background: rgba(255,255,255,0.2);
-    padding: 4px 10px;
     border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+}
+
+.table-wrapper {
+    position: relative;
+    overflow-x: auto;
+}
+
+.dept-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1000px;
+}
+
+.dept-table th {
+    background: #f3f4f6;
+    padding: 10px 8px;
+    text-align: left;
+    font-weight: 600;
+    color: #1f2937;
+    border-bottom: 2px solid #e5e7eb;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.dept-table td {
+    padding: 12px 8px;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
     font-size: 12px;
 }
 
-.dept-body {
-    padding: 20px;
-    min-height: 200px;
-    display: flex;
-    flex-direction: column;
+.dept-row:hover {
+    background: #f9fafb;
 }
 
-.chef-info {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 15px;
-    flex: 1;
+.no-chef-row {
+    background: #fffbeb;
 }
 
-.chef-avatar {
-    width: 65px;
-    height: 65px;
+.no-chef-row:hover {
+    background: #fef3c7;
+}
+
+.dept-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.dept-name-cell i {
+    color: #2563eb;
+}
+
+.dept-code-badge {
+    background: #e0e7ff;
+    color: #3730a3;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.chef-avatar-sm {
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background: #f3f4f6;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: #f3f4f6;
     color: #6b7280;
-    font-size: 26px;
-    border: 3px solid #e5e7eb;
-    overflow: hidden;
-    flex-shrink: 0;
+    font-size: 14px;
+    border: 2px solid #e5e7eb;
 }
 
-.chef-avatar img {
+.chef-avatar-sm.empty {
+    background: #fee2e2;
+    color: #ef4444;
+    border-color: #fca5a5;
+}
+
+.chef-avatar-sm img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.chef-details {
-    flex: 1;
-}
-
-.chef-name {
-    font-size: 16px;
-    font-weight: 600;
-    color: #1f2937;
-    margin-bottom: 8px;
+.chef-info-cell {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 4px;
 }
 
-.chef-name i {
-    color: #f59e0b;
-}
-
-.chef-meta {
-    font-size: 12px;
-    color: #6b7280;
-    margin-bottom: 4px;
-}
-
-.chef-meta i {
-    width: 16px;
-}
-
-.dept-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.no-chef {
-    text-align: center;
-    padding: 40px 20px;
-    color: #6b7280;
-}
-
-.no-chef-icon {
-    font-size: 52px;
-    color: #f59e0b;
-    margin-bottom: 15px;
-}
-
-.no-chef p {
-    margin: 0 0 15px 0;
-    font-size: 15px;
-}
-
-.dept-footer {
-    background: #f9fafb;
-    padding: 12px 20px;
-    display: flex;
-    justify-content: space-around;
-    border-top: 1px solid #e5e7eb;
-    font-size: 12px;
-    color: #6b7280;
-}
-
-.dept-footer span {
+.chef-name-badge {
     display: flex;
     align-items: center;
     gap: 6px;
+    font-weight: 500;
+    color: #1f2937;
 }
 
-.dept-footer i {
+.chef-name-badge i {
+    color: #f59e0b;
+    font-size: 12px;
+}
+
+.matricule-sm {
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 10px;
+    color: #6b7280;
+}
+
+.no-chef-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #f59e0b;
+    font-weight: 500;
+    font-size: 11px;
+}
+
+.contact-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.contact-item i {
+    width: 14px;
     color: #2563eb;
 }
 
-.btn, .btn-sm {
-    padding: 10px 18px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    border: none;
+.text-center {
+    text-align: center;
+}
+
+.count-badge {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    text-decoration: none;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.count-badge.blue {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.count-badge.green {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.count-badge i {
+    font-size: 10px;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.status-badge.active {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.action-buttons-sm {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: center;
+}
+
+.btn-icon-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 11px;
     transition: all 0.3s;
 }
 
+.btn-icon-sm.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-icon-sm.btn-primary:hover {
+    background: #1d4ed8;
+    transform: scale(1.1);
+}
+
+.btn-icon-sm.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-icon-sm.btn-success:hover {
+    background: #059669;
+    transform: scale(1.1);
+}
+
+.btn-icon-sm.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-icon-sm.btn-danger:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+}
+
+.btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-decoration: none;
+}
+
 .btn-sm {
-    padding: 7px 14px;
-    font-size: 12px;
+    padding: 6px 12px;
+    font-size: 11px;
 }
 
 .btn-primary {
@@ -485,7 +718,6 @@
 
 .btn-primary:hover {
     background: #1d4ed8;
-    transform: translateY(-2px);
 }
 
 .btn-secondary {
@@ -495,12 +727,12 @@
 
 .btn-outline {
     background: white;
-    color: #1f2937;
     border: 1px solid #e5e7eb;
+    color: #1f2937;
 }
 
 .btn-outline:hover {
-    background: #f9fafb;
+    background: #f3f4f6;
 }
 
 .btn-danger {
@@ -512,6 +744,42 @@
     background: #dc2626;
 }
 
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: #f3f4f6;
+    color: #1f2937;
+    transition: all 0.3s;
+}
+
+.btn-icon:hover {
+    background: #d1d5db;
+}
+
+.text-muted {
+    color: #6b7280;
+}
+
+.mt-2 {
+    margin-top: 8px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-content {
+    color: #6b7280;
+}
+
 .modal {
     display: none;
     position: fixed;
@@ -519,29 +787,30 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.6);
-    z-index: 9999;
+    background: rgba(0,0,0,0.5);
+    z-index: 2000;
     align-items: center;
     justify-content: center;
 }
 
-.modal.show { display: flex; }
+.modal.show {
+    display: flex;
+}
 
 .modal-content {
     background: white;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 500px;
-    animation: modalSlide 0.3s;
+    border-radius: 6px;
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
-@keyframes modalSlide {
-    from { transform: scale(0.8); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+.modal-sm {
+    width: 500px;
 }
 
 .modal-header {
-    padding: 20px;
+    padding: 15px;
     border-bottom: 1px solid #e5e7eb;
     display: flex;
     justify-content: space-between;
@@ -550,62 +819,70 @@
 
 .modal-header h4 {
     margin: 0;
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 600;
     color: #1f2937;
 }
 
-.modal-header button {
+.modal-close {
     background: none;
     border: none;
-    font-size: 26px;
+    font-size: 20px;
     cursor: pointer;
     color: #6b7280;
+    transition: color 0.2s;
+}
+
+.modal-close:hover {
+    color: #1f2937;
 }
 
 .modal-body {
-    padding: 20px;
-    color: #4b5563;
-}
-
-.modal-details {
-    background: #fef3c7;
     padding: 15px;
-    border-radius: 8px;
-    margin-top: 15px;
-    border: 1px solid #fbbf24;
-    color: #78350f;
+    color: #4b5563;
     font-size: 14px;
 }
 
 .modal-footer {
-    padding: 20px;
+    padding: 15px;
     border-top: 1px solid #e5e7eb;
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 8px;
 }
 
-.empty-state {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 60px 20px;
-    color: #6b7280;
+.confirm-details {
+    background: #fef3c7;
+    padding: 12px;
+    border-radius: 6px;
+    margin-top: 12px;
+    border-left: 3px solid #f59e0b;
+    font-size: 12px;
+    color: #78350f;
 }
 
 @media (max-width: 768px) {
-    .page-header {
+    .page-header-compact {
         flex-direction: column;
-        gap: 15px;
+        gap: 10px;
     }
 
-    .stats-grid, .depts-grid {
+    .stats-compact {
         grid-template-columns: 1fr;
     }
 
-    .modal-content {
+    .dept-table {
+        min-width: 800px;
+    }
+
+    .modal-sm {
         width: 95%;
     }
+}
+
+@keyframes slideOut {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(-20px); opacity: 0; }
 }
 </style>
 
@@ -630,42 +907,68 @@ const csrftoken = getCookie('csrftoken');
 function closeAlert(id) {
     const alert = document.getElementById(id);
     if (alert) {
-        alert.style.animation = 'slideOut 0.3s';
+        alert.style.animation = 'slideOut 0.3s ease-out';
         setTimeout(() => alert.remove(), 300);
     }
+}
+
+function filterDepartments() {
+    const searchValue = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const rows = document.querySelectorAll('.dept-row');
+
+    rows.forEach(row => {
+        const deptName = row.getAttribute('data-dept-name') || '';
+        const chefName = row.getAttribute('data-chef-name') || '';
+        const hasChef = row.getAttribute('data-has-chef');
+
+        const matchesSearch = deptName.includes(searchValue) || chefName.includes(searchValue);
+        const matchesStatus = !statusFilter || hasChef === statusFilter;
+
+        row.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+    });
+}
+
+function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = '';
+    filterDepartments();
 }
 
 document.addEventListener('DOMContentLoaded', function() {
     const alerts = document.querySelectorAll('.alert');
     alerts.forEach(alert => {
         setTimeout(() => {
-            if (alert.parentElement) {
-                alert.style.animation = 'slideOut 0.3s';
-                setTimeout(() => alert.remove(), 300);
-            }
+            alert.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => alert.remove(), 300);
         }, 5000);
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeConfirmModal();
+        }
     });
 });
 
+function viewChef(chefId) {
+    window.location.href = `/accounts/teachers/${chefId}/`;
+}
+
 function revoquerChef(deptId, chefNom, deptNom) {
-    const modal = document.getElementById('modal');
-    document.getElementById('modalTitle').textContent = 'Révoquer le chef de département';
-    document.getElementById('modalMessage').textContent =
-        `Êtes-vous sûr de vouloir révoquer ${chefNom} de son poste de chef du département ${deptNom} ?`;
-    document.getElementById('modalDetails').innerHTML = `
-        <strong>Conséquences :</strong>
+    showConfirmModal(
+        'Révoquer le chef de département',
+        `Êtes-vous sûr de vouloir révoquer ${chefNom} de son poste de chef du département ${deptNom} ?`,
+        `<strong>Conséquences :</strong>
         <ul style="margin: 10px 0 0 20px; padding: 0;">
             <li>Le département n'aura plus de chef</li>
             <li>L'enseignant reviendra au rôle "Enseignant"</li>
             <li>Vous devrez nommer un nouveau chef</li>
-        </ul>
-    `;
-
-    document.getElementById('modalConfirm').onclick = function() {
-        executeRevocation(deptId);
-    };
-
-    modal.classList.add('show');
+        </ul>`,
+        function() {
+            executeRevocation(deptId);
+        }
+    );
 }
 
 function executeRevocation(deptId) {
@@ -678,7 +981,7 @@ function executeRevocation(deptId) {
     })
     .then(response => response.json())
     .then(data => {
-        closeModal();
+        closeConfirmModal();
         if (data.success) {
             showMessage(data.message, 'success');
             setTimeout(() => location.reload(), 1500);
@@ -687,43 +990,52 @@ function executeRevocation(deptId) {
         }
     })
     .catch(error => {
-        closeModal();
+        closeConfirmModal();
         console.error('Error:', error);
         showMessage('Erreur de connexion', 'error');
     });
 }
 
-function closeModal() {
-    document.getElementById('modal').classList.remove('show');
+function showConfirmModal(title, message, details, callback) {
+    const modal = document.getElementById('confirmModal');
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+    document.getElementById('confirmDetails').innerHTML = details;
+
+    const confirmBtn = document.getElementById('confirmBtn');
+    confirmBtn.onclick = callback;
+
+    modal.classList.add('show');
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirmModal').classList.remove('show');
 }
 
 function showMessage(message, type) {
-    const container = document.querySelector('.messages') || createMessageContainer();
-    const id = 'msg-' + Date.now();
+    const container = document.querySelector('.messages-container') || createMessageContainer();
+    const messageId = 'msg-' + Date.now();
 
-    container.insertAdjacentHTML('beforeend', `
-        <div class="alert alert-${type}" id="${id}">
+    const alertHtml = `
+        <div class="alert alert-${type}" id="${messageId}">
             <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
             ${message}
-            <button onclick="closeAlert('${id}')">&times;</button>
+            <button class="close-alert" onclick="closeAlert('${messageId}')">&times;</button>
         </div>
-    `);
+    `;
 
-    setTimeout(() => closeAlert(id), 5000);
+    container.insertAdjacentHTML('beforeend', alertHtml);
+    setTimeout(() => closeAlert(messageId), 5000);
 }
 
 function createMessageContainer() {
     const container = document.createElement('div');
-    container.className = 'messages';
+    container.className = 'messages-container';
     document.querySelector('.dept-heads-page').insertBefore(
         container,
-        document.querySelector('.stats-grid')
+        document.querySelector('.filters-section')
     );
     return container;
 }
-
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeModal();
-});
 </script>
 {% endblock %}

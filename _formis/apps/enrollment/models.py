@@ -797,7 +797,6 @@ class Transfert(BaseModel):
 #     def __str__(self):
 #         return f"{self.nom} - {self.inscription.apprenant.nom_complet()}"
 
-
 class Abandon(BaseModel):
     """Abandons/Retraits d'inscription"""
     inscription = models.OneToOneField(

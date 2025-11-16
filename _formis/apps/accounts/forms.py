@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.exceptions import ValidationError
-from .models import Utilisateur, ProfilApprenant, ProfilEnseignant, ProfilUtilisateur
+from .models import Utilisateur, ProfilApprenant, ProfilEnseignant, ProfilComptable, ProfilUtilisateur
 from apps.academic.models import Departement
 from apps.courses.models import Matiere
 
@@ -152,6 +152,115 @@ class BasicProfileForm(forms.ModelForm):
                     raise forms.ValidationError("Format non supporté. Utilisez JPG ou PNG.")
 
         return photo
+
+class ComptableProfileForm(forms.ModelForm):
+    """Formulaire pour les comptables"""
+
+    # Champs utilisateur
+    prenom = forms.CharField(max_length=100, required=True, label="Prénom")
+    nom = forms.CharField(max_length=100, required=True, label="Nom")
+    email = forms.EmailField(required=True, label="Email")
+    telephone = forms.CharField(max_length=20, required=False, label="Téléphone")
+    date_naissance = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        label="Date de naissance"
+    )
+    genre = forms.ChoiceField(
+        choices=[('', '-- Sélectionner --')] + list(Utilisateur.CHOIX_GENRE),
+        required=False,
+        label="Genre"
+    )
+    adresse = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 2}),
+        required=False,
+        label="Adresse"
+    )
+
+    # Champs profil comptable
+    id_employe = forms.CharField(
+        max_length=20,
+        required=False,
+        label="ID Employé"
+    )
+    date_embauche = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        label="Date d'embauche"
+    )
+    specialisation = forms.CharField(
+        max_length=100,
+        required=False,
+        label="Spécialisation",
+        help_text="Ex: Comptabilité générale, Gestion de trésorerie"
+    )
+    certifications = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 3}),
+        required=False,
+        label="Certifications",
+        help_text="Liste des certifications professionnelles"
+    )
+
+    # Permissions
+    peut_valider_paiements = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Peut valider les paiements"
+    )
+    peut_generer_rapports = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Peut générer les rapports financiers"
+    )
+    peut_gerer_echeanciers = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Peut gérer les échéanciers"
+    )
+
+    class Meta:
+        model = Utilisateur
+        fields = [
+            'prenom', 'nom', 'email', 'telephone',
+            'date_naissance', 'genre', 'adresse'
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Si modification, charger les données du profil comptable
+        if self.instance and self.instance.pk:
+            try:
+                profil = self.instance.profil_comptable
+                self.fields['id_employe'].initial = profil.id_employe
+                self.fields['date_embauche'].initial = profil.date_embauche
+                self.fields['specialisation'].initial = profil.specialisation
+                self.fields['certifications'].initial = profil.certifications
+                self.fields['peut_valider_paiements'].initial = profil.peut_valider_paiements
+                self.fields['peut_generer_rapports'].initial = profil.peut_generer_rapports
+                self.fields['peut_gerer_echeanciers'].initial = profil.peut_gerer_echeanciers
+            except ProfilComptable.DoesNotExist:
+                pass
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.role = 'COMPTABLE'
+
+        if commit:
+            user.save()
+
+            # Créer ou mettre à jour le profil comptable
+            profil, created = ProfilComptable.objects.get_or_create(utilisateur=user)
+            profil.id_employe = self.cleaned_data.get('id_employe')
+            profil.date_embauche = self.cleaned_data.get('date_embauche')
+            profil.specialisation = self.cleaned_data.get('specialisation')
+            profil.certifications = self.cleaned_data.get('certifications')
+            profil.peut_valider_paiements = self.cleaned_data.get('peut_valider_paiements', True)
+            profil.peut_generer_rapports = self.cleaned_data.get('peut_generer_rapports', True)
+            profil.peut_gerer_echeanciers = self.cleaned_data.get('peut_gerer_echeanciers', True)
+            profil.save()
+
+        return user
 
 class StudentProfileForm(BasicProfileForm):
     """Formulaire étendu pour les apprenants"""

@@ -39,9 +39,8 @@ INSTALLED_APPS = [
     'celery',
 
     # Applications locales
-    'api.v1',
-    'api.v2',
     'apps.academic',
+    'apps.accounting',
     'apps.accounts',
     'apps.core',
     'apps.courses',
@@ -89,24 +88,24 @@ WSGI_APPLICATION = '_formis.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'formis',
-#         'USER': 'postgres',
-#         'PASSWORD': 'admin',
-#         'HOST': 'localhost',
-#         'PORT': '5432',
-#     }
-# }
-
 DATABASES = {
-    'default': dj_database_url.config(
-        default=config('DATABASE_URL'),
-        conn_max_age=600,
-        ssl_require=True
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'formis',
+        'USER': 'postgres',
+        'PASSWORD': 'admin',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
 }
+
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=config('DATABASE_URL'),
+#         conn_max_age=600,
+#         ssl_require=True
+#     )
+# }
 
 
 # Password validation
@@ -228,7 +227,10 @@ LIGDICASH_MONTANT_MINIMUM = 100
 
 # Informations du site
 SITE_NAME = 'FORMIS'
-SITE_URL = 'http://localhost:8000'
+# SITE_URL = 'http://localhost:8000'
+
+SITE_URL = 'https://expectingly-yellowish-winter.ngrok-free.dev'
+CSRF_TRUSTED_ORIGINS = ['https://expectingly-yellowish-winter.ngrok-free.dev']
 
 
 # Créer le dossier logs s'il n'existe pas

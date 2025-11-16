@@ -1,0 +1,120 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block page_title %}Compte de résultat{% endblock %}
+
+{% block content %}
+<div style="padding: 20px; max-width: 1400px; margin: 0 auto;">
+    <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="font-size: 28px; font-weight: 700; color: #1e293b; margin: 0 0 10px 0;">COMPTE DE RÉSULTAT</h1>
+            <p style="font-size: 16px; color: #64748b;">Du {{ date_debut|date:"d/m/Y" }} au {{ date_fin|date:"d/m/Y" }}</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <!-- CHARGES -->
+            <div>
+                <div style="background: #ef4444; color: white; padding: 12px; border-radius: 8px 8px 0 0; text-align: center; font-weight: 700;">
+                    CHARGES
+                </div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #f8fafc;">
+                        <tr>
+                            <th style="padding: 12px; text-align: left; border: 1px solid #e2e8f0;">Compte</th>
+                            <th style="padding: 12px; text-align: right; border: 1px solid #e2e8f0;">Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in resultat.charges %}
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #e2e8f0;">
+                                {{ item.compte.numero_compte }} - {{ item.compte.libelle }}
+                            </td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #e2e8f0; font-family: monospace;">
+                                {{ item.montant|floatformat:0|intcomma }}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2" style="padding: 20px; text-align: center; color: #94a3b8; border: 1px solid #e2e8f0;">
+                                Aucune charge
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot style="background: #f8fafc; font-weight: 700;">
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #e2e8f0;">TOTAL CHARGES</td>
+                            <td style="padding: 12px; text-align: right; border: 1px solid #e2e8f0; font-family: monospace; color: #ef4444;">
+                                {{ resultat.total_charges|floatformat:0|intcomma }} FCFA
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- PRODUITS -->
+            <div>
+                <div style="background: #10b981; color: white; padding: 12px; border-radius: 8px 8px 0 0; text-align: center; font-weight: 700;">
+                    PRODUITS
+                </div>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #f8fafc;">
+                        <tr>
+                            <th style="padding: 12px; text-align: left; border: 1px solid #e2e8f0;">Compte</th>
+                            <th style="padding: 12px; text-align: right; border: 1px solid #e2e8f0;">Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in resultat.produits %}
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #e2e8f0;">
+                                {{ item.compte.numero_compte }} - {{ item.compte.libelle }}
+                            </td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #e2e8f0; font-family: monospace;">
+                                {{ item.montant|floatformat:0|intcomma }}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2" style="padding: 20px; text-align: center; color: #94a3b8; border: 1px solid #e2e8f0;">
+                                Aucun produit
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot style="background: #f8fafc; font-weight: 700;">
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #e2e8f0;">TOTAL PRODUITS</td>
+                            <td style="padding: 12px; text-align: right; border: 1px solid #e2e8f0; font-family: monospace; color: #10b981;">
+                                {{ resultat.total_produits|floatformat:0|intcomma }} FCFA
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Résultat -->
+        <div style="margin-top: 30px; padding: 25px; background: {% if resultat.resultat >= 0 %}#d1fae5{% else %}#fee2e2{% endif %}; border-radius: 8px; text-align: center;">
+            <div style="font-size: 16px; color: {% if resultat.resultat >= 0 %}#065f46{% else %}#991b1b{% endif %}; margin-bottom: 10px;">
+                {% if resultat.resultat >= 0 %}BÉNÉFICE{% else %}PERTE{% endif %}
+            </div>
+            <div style="font-size: 32px; font-weight: 700; color: {% if resultat.resultat >= 0 %}#065f46{% else %}#991b1b{% endif %};">
+                {{ resultat.resultat_abs|floatformat:0|intcomma }} FCFA
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; gap: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; justify-content: center;">
+            <button onclick="window.print()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                <i class="fas fa-print"></i> Imprimer
+            </button>
+            <a href="{% url 'dashboard:comptable_rapports' %}" style="padding: 10px 20px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; text-decoration: none; color: #64748b;">
+                <i class="fas fa-arrow-left"></i> Retour
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

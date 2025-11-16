@@ -1,0 +1,327 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block page_title %}Facture {{ facture.numero_facture }}{% endblock %}
+
+{% block breadcrumb %}
+Dashboard > Comptabilité > Factures > {{ facture.numero_facture }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.facture-detail {
+    padding: 20px;
+}
+
+.detail-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.facture-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.header-left h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 10px 0;
+}
+
+.facture-numero {
+    font-size: 18px;
+    color: #64748b;
+}
+
+.badge {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-emise { background: #dbeafe; color: #1e40af; }
+.badge-payee { background: #d1fae5; color: #065f46; }
+.badge-partielle { background: #fed7aa; color: #92400e; }
+.badge-annulee { background: #fee2e2; color: #991b1b; }
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.info-label {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 16px;
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #3b82f6;
+}
+
+.lignes-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.lignes-table th {
+    background: #f8fafc;
+    padding: 12px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.lignes-table td {
+    padding: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.totaux {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 20px;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.total-ligne {
+    display: flex;
+    justify-content: space-between;
+    width: 300px;
+    font-size: 15px;
+}
+
+.total-ligne.grand-total {
+    font-size: 20px;
+    font-weight: 700;
+    color: #3b82f6;
+    padding-top: 10px;
+    border-top: 2px solid #e2e8f0;
+}
+
+.actions-bar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+}
+
+.btn-secondary {
+    background: white;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="facture-detail">
+    <div class="detail-card">
+        <!-- En-tête -->
+        <div class="facture-header">
+            <div class="header-left">
+                <h1>Facture</h1>
+                <div class="facture-numero">{{ facture.numero_facture }}</div>
+            </div>
+            <div class="header-right">
+                <span class="badge badge-{{ facture.statut|lower }}">
+                    {{ facture.get_statut_display }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Informations générales -->
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Client</span>
+                <span class="info-value">{{ facture.apprenant.get_full_name }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Matricule</span>
+                <span class="info-value">{{ facture.apprenant.matricule }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Type</span>
+                <span class="info-value">{{ facture.get_type_facture_display }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Date d'émission</span>
+                <span class="info-value">{{ facture.date_emission|date:"d/m/Y" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Date d'échéance</span>
+                <span class="info-value">{{ facture.date_echeance|date:"d/m/Y" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Émise par</span>
+                <span class="info-value">
+                    {{ facture.emise_par.get_full_name|default:"Système" }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Lignes de la facture -->
+        <h3 class="section-title">Détails de la facture</h3>
+        <table class="lignes-table">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th style="text-align: right;">Quantité</th>
+                    <th style="text-align: right;">Prix unitaire</th>
+                    <th style="text-align: right;">Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ligne in facture.lignes.all %}
+                <tr>
+                    <td>{{ ligne.description }}</td>
+                    <td style="text-align: right;">{{ ligne.quantite }}</td>
+                    <td style="text-align: right;">{{ ligne.prix_unitaire|floatformat:0|intcomma }} FCFA</td>
+                    <td style="text-align: right;">{{ ligne.montant|floatformat:0|intcomma }} FCFA</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Totaux -->
+        <div class="totaux">
+            <div class="total-ligne">
+                <span>Montant HT :</span>
+                <span>{{ facture.montant_ht|floatformat:0|intcomma }} FCFA</span>
+            </div>
+            <div class="total-ligne">
+                <span>TVA ({{ facture.taux_tva }}%) :</span>
+                <span>{{ facture.montant_tva|floatformat:0|intcomma }} FCFA</span>
+            </div>
+            <div class="total-ligne grand-total">
+                <span>TOTAL TTC :</span>
+                <span>{{ facture.montant_ttc|floatformat:0|intcomma }} FCFA</span>
+            </div>
+            <div class="total-ligne">
+                <span>Montant payé :</span>
+                <span style="color: #10b981;">{{ facture.montant_paye|floatformat:0|intcomma }} FCFA</span>
+            </div>
+            <div class="total-ligne">
+                <span>Solde restant :</span>
+                <span style="color: #ef4444;">{{ facture.solde_restant|floatformat:0|intcomma }} FCFA</span>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        {% if facture.description %}
+        <div style="margin-top: 20px;">
+            <h3 class="section-title">Notes</h3>
+            <p style="color: #64748b;">{{ facture.description }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Actions -->
+    <div class="detail-card">
+        <div class="actions-bar">
+            <a href="{% url 'dashboard:comptable_facture_pdf' facture.pk %}"
+               class="btn btn-primary"
+               target="_blank">
+                <i class="fas fa-file-pdf"></i>
+                Télécharger PDF
+            </a>
+
+            {% if facture.statut == 'BROUILLON' %}
+            <a href="{% url 'dashboard:comptable_facture_update' facture.pk %}" class="btn btn-success">
+                <i class="fas fa-edit"></i>
+                Modifier
+            </a>
+            <button onclick="emettre()" class="btn btn-success">
+                <i class="fas fa-paper-plane"></i>
+                Émettre la facture
+            </button>
+            {% endif %}
+
+            <a href="{% url 'dashboard:comptable_factures' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i>
+                Retour
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function emettre() {
+    if (confirm('Voulez-vous vraiment émettre cette facture ?')) {
+        // Implémenter l'émission
+        alert('Fonctionnalité à implémenter');
+    }
+}
+</script>
+{% endblock %}

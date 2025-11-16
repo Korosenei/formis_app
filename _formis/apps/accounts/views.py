@@ -27,7 +27,7 @@ from django.db.models import Avg, Sum, F, IntegerField, Count, Q
 from django.utils.timesince import timesince
 
 from .forms import LoginForm, ProfileForm, ForgotPasswordForm, ResetPasswordForm, BasicProfileForm, TeacherProfileForm, StudentProfileForm, NommerChefDepartementForm
-from .models import Utilisateur, ProfilEnseignant, ProfilApprenant, PasswordResetToken
+from .models import Utilisateur, ProfilEnseignant, ProfilApprenant, ProfilComptable, PasswordResetToken
 from .managers import (send_account_creation_email, send_password_recovery_email, send_password_changed_email,
                        send_account_reactivation_email, send_account_deactivation_email, logger)
 
@@ -528,6 +528,7 @@ class UserListView(LoginRequiredMixin, ListView):
         if user.role == 'ADMIN':
             context['roles'] = [
                 ('ADMIN', 'Administrateur d\'établissement'),
+                ('COMPTABLE', 'Comptable'),
                 ('CHEF_DEPARTEMENT', 'Chef de département'),
                 ('ENSEIGNANT', 'Enseignant'),
             ]
@@ -784,6 +785,114 @@ class UserDeleteView(LoginRequiredMixin, DeleteView):
         user.save()
         messages.success(request, f"Utilisateur {user_name} désactivé avec succès")
         return self.get_success_url()
+
+# ================================
+# GESTION DES COMPTABLES
+# ================================
+class ComptableListView(LoginRequiredMixin, ListView):
+    """Liste des comptables (Admin uniquement)"""
+    model = Utilisateur
+    template_name = 'accounts/comptable/list.html'
+    context_object_name = 'comptables'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return Utilisateur.objects.filter(
+            etablissement=self.request.user.etablissement,
+            role='COMPTABLE'
+        ).select_related('profil_comptable').order_by('-date_creation')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['total_comptables'] = self.get_queryset().count()
+        context['comptables_actifs'] = self.get_queryset().filter(est_actif=True).count()
+        return context
+
+class ComptableCreateView(LoginRequiredMixin, CreateView):
+    """Création d'un comptable (Admin uniquement)"""
+    model = Utilisateur
+    template_name = 'accounts/comptable/form.html'
+    fields = ['prenom', 'nom', 'email', 'telephone', 'date_naissance',
+              'lieu_naissance', 'genre', 'adresse']
+    success_url = reverse_lazy('dashboard:admin_comptables')
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        user = form.save(commit=False)
+        user.role = 'COMPTABLE'
+        user.etablissement = self.request.user.etablissement
+        user.cree_par = self.request.user
+
+        temp_password = generate_password()
+        user.set_password(temp_password)
+        user.save()
+
+        # Créer le profil comptable
+        ProfilComptable.objects.create(utilisateur=user)
+
+        # Envoyer l'email
+        email_sent = send_account_creation_email(
+            user=user,
+            password=temp_password,
+            establishment=user.etablissement,
+            created_by=self.request.user
+        )
+
+        if email_sent:
+            messages.success(
+                self.request,
+                f"Comptable {user.get_full_name()} créé avec succès. "
+                f"Un email contenant les identifiants a été envoyé à {user.email}."
+            )
+        else:
+            messages.warning(
+                self.request,
+                f"Comptable {user.get_full_name()} créé avec succès. "
+                f"Mot de passe temporaire: {temp_password}"
+            )
+
+        return redirect(self.success_url)
+
+class ComptableUpdateView(LoginRequiredMixin, UpdateView):
+    """Modification d'un comptable"""
+    model = Utilisateur
+    template_name = 'accounts/comptable/form.html'
+    fields = ['prenom', 'nom', 'email', 'telephone', 'date_naissance',
+              'lieu_naissance', 'genre', 'adresse']
+    success_url = reverse_lazy('dashboard:admin_comptables')
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        messages.success(self.request, "Comptable modifié avec succès")
+        return super().form_valid(form)
+
+class ComptableDetailView(LoginRequiredMixin, DetailView):
+    """Détails d'un comptable"""
+    model = Utilisateur
+    template_name = 'accounts/comptable/detail.html'
+    context_object_name = 'comptable'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
 
 # ================================
 # GESTION DES CHEFS DE DEPARTEMENTS
@@ -1483,6 +1592,98 @@ def users_export(request):
             user.departement.nom if user.departement else '',
             'Actif' if user.est_actif else 'Inactif',
             user.date_creation.strftime('%d/%m/%Y %H:%M')
+        ])
+
+    return response
+
+@login_required
+def export_comptables(request):
+    """Exporter les comptables en CSV"""
+    if request.user.role != 'ADMIN':
+        return HttpResponse("Non autorisé", status=403)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="comptables.csv"'
+    response.write('\ufeff'.encode('utf8'))  # BOM pour Excel
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Matricule', 'Nom', 'Prénom', 'Email', 'Téléphone',
+        'Date embauche', 'Spécialisation', 'Statut'
+    ])
+
+    comptables = Utilisateur.objects.filter(
+        etablissement=request.user.etablissement,
+        role='COMPTABLE'
+    ).select_related('profil_comptable')
+
+    for comptable in comptables:
+        profil = getattr(comptable, 'profil_comptable', None)
+        writer.writerow([
+            comptable.matricule,
+            comptable.nom,
+            comptable.prenom,
+            comptable.email,
+            comptable.telephone or '',
+            profil.date_embauche.strftime('%d/%m/%Y') if profil and profil.date_embauche else '',
+            profil.specialisation if profil else '',
+            'Actif' if comptable.est_actif else 'Inactif'
+        ])
+
+    return response
+
+@login_required
+def export_department_heads(request):
+    """Exporter les chefs de département en CSV"""
+    if request.user.role != 'ADMIN':
+        return HttpResponse("Non autorisé", status=403)
+
+    etablissement = request.user.etablissement
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="chefs_departement.csv"'
+    response.write('\ufeff'.encode('utf8'))  # BOM pour Excel
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Département', 'Code Département', 'Chef', 'Matricule Chef',
+        'Email', 'Téléphone', 'Nombre Enseignants', 'Nombre Filières',
+        'Statut', 'Date Nomination'
+    ])
+
+    departements = Departement.objects.filter(
+        etablissement=etablissement,
+        est_actif=True
+    ).select_related('chef').prefetch_related('utilisateurs', 'filieres').order_by('nom')
+
+    for dept in departements:
+        if dept.chef:
+            chef_nom = dept.chef.get_full_name()
+            matricule = dept.chef.matricule
+            email = dept.chef.email
+            telephone = dept.chef.telephone or ''
+            statut = 'Assigné'
+            # Vous pouvez ajouter date_nomination si vous avez ce champ
+            date_nomination = dept.chef.date_creation.strftime('%d/%m/%Y') if dept.chef.date_creation else ''
+        else:
+            chef_nom = 'Non assigné'
+            matricule = '-'
+            email = '-'
+            telephone = '-'
+            statut = 'Vacant'
+            date_nomination = '-'
+
+        writer.writerow([
+            dept.nom,
+            dept.code,
+            chef_nom,
+            matricule,
+            email,
+            telephone,
+            dept.utilisateurs.count(),
+            dept.filieres.count(),
+            statut,
+            date_nomination
         ])
 
     return response

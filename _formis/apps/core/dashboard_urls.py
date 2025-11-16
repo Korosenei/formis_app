@@ -24,6 +24,8 @@ urlpatterns = [
             path('export/', dashboard_views.admin_export_users, name='admin_users_export'),
         ])),
 
+        path('comptables/', dashboard_views.AdminComptablesView.as_view(), name='admin_comptables'),
+
         # Enseignants et Étudiants
         path('department_heads/', dashboard_views.AdminDepartmentHeadsView.as_view(), name='admin_department_heads'),
         path('students/', dashboard_views.AdminStudentsView.as_view(), name='admin_students'),
@@ -63,6 +65,42 @@ urlpatterns = [
         path('salles/', dashboard_views.admin_salles, name='admin_salles'),
         path('reports/', dashboard_views.AdminReportsView.as_view(), name='admin_reports'),
         path('settings/', dashboard_views.AdminSettingsView.as_view(), name='admin_settings'),
+    ])),
+
+    # ================================
+    # ROUTES COMPTABLE
+    # ================================
+    path('comptable/', include([
+        path('', dashboard_views.ComptableDashboardView.as_view(), name='comptable'),
+
+        # Paiements
+        path('paiements/', dashboard_views.ComptablePaiementsView.as_view(), name='comptable_paiements'),
+
+        # Factures
+        path('factures/', dashboard_views.ComptableFacturesView.as_view(), name='comptable_factures'),
+
+        # Dépenses
+        path('depenses/', dashboard_views.ComptableDepensesView.as_view(), name='comptable_depenses'),
+
+        # Plan comptable
+        path('comptes/', dashboard_views.ComptableComptesView.as_view(), name='comptable_comptes'),
+
+        # Écritures comptables
+        path('ecritures/', dashboard_views.ComptableEcrituresView.as_view(), name='comptable_ecritures'),
+
+        # Rapports
+        path('rapports/', dashboard_views.ComptableRapportsView.as_view(), name='comptable_rapports'),
+        path('rapports/balance/', dashboard_views.ComptableRapportBalanceView.as_view(), name='comptable_rapport_balance'),
+        path('rapports/bilan/', dashboard_views.comptable_rapport_bilan, name='comptable_rapport_bilan'),
+        path('rapports/compte-resultat/', dashboard_views.comptable_rapport_resultat,
+             name='comptable_rapport_resultat'),
+        path('rapports/tresorerie/', dashboard_views.comptable_rapport_tresorerie, name='comptable_rapport_tresorerie'),
+
+        # Budget
+        path('budget/', dashboard_views.ComptableBudgetView.as_view(), name='comptable_budget'),
+
+        # Exercices comptables
+        path('exercices/', dashboard_views.ComptableExercicesView.as_view(), name='comptable_exercices'),
     ])),
 
     # ================================
@@ -108,7 +146,8 @@ urlpatterns = [
         # Emplois du temps et Ressources
         path('emplois_du_temps/', dashboard_views.DepartmentHeadEmploiDuTempsView.as_view(),
              name='department_head_emplois_du_temps'),
-        path('ressources/', dashboard_views.DepartmentHeadRessourcesView.as_view(), name='department_head_ressources'),
+        path('ressources/', dashboard_views.DepartmentHeadRessourcesView.as_view(),
+             name='department_head_ressources'),
         path('reports/', dashboard_views.DepartmentHeadReportsView.as_view(), name='department_head_reports'),
     ])),
 
@@ -138,7 +177,8 @@ urlpatterns = [
         path('presences/', dashboard_views.TeacherPresencesView.as_view(), name='teacher_presences'),
 
         # Emploi du temps
-        path('emplois_du_temps/', dashboard_views.TeacherEmploiDuTempsView.as_view(), name='teacher_emplois_du_temps'),
+        path('emplois_du_temps/', dashboard_views.TeacherEmploiDuTempsView.as_view(),
+             name='teacher_emplois_du_temps'),
 
         # Ressources pédagogiques
         path('resources/', dashboard_views.TeacherResourcesView.as_view(), name='teacher_resources'),
@@ -160,7 +200,8 @@ urlpatterns = [
         path('courses/', dashboard_views.StudentCoursesView.as_view(), name='student_courses'),
 
         # Emploi du temps
-        path('emplois_du_temps/', dashboard_views.StudentEmploiDuTempsView.as_view(), name='student_emplois_du_temps'),
+        path('emplois_du_temps/', dashboard_views.StudentEmploiDuTempsView.as_view(),
+             name='student_emplois_du_temps'),
 
         # Évaluations
         path('evaluations/', dashboard_views.StudentEvaluationsView.as_view(), name='student_evaluations'),
@@ -187,12 +228,11 @@ urlpatterns = [
         path('documents/', dashboard_views.StudentDocumentsView.as_view(), name='student_documents'),
     ])),
 
-
     # API endpoints pour AJAX
     path('api/', include([
-        path('notifications/mark-read/', dashboard_views.mark_notifications_read, name='api_mark_notifications_read'),
+        path('notifications/mark-read/', dashboard_views.mark_notifications_read,
+             name='api_mark_notifications_read'),
         path('statistics/<str:type>/', dashboard_views.api_get_statistics, name='api_get_statistics'),
         path('chart-data/<str:chart_type>/', dashboard_views.api_get_chart_data, name='api_get_chart_data'),
     ])),
 ]
-

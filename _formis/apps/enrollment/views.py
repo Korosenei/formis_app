@@ -356,8 +356,8 @@ class CandidatureEvaluerView(LoginRequiredMixin, DetailView):
                 EmailCandidatureManager.send_candidature_evaluated(candidature)
 
                 # Si approuvée, créer un compte utilisateur
-                if decision == 'APPROUVEE':
-                    self.create_user_account(candidature)
+                # if decision == 'APPROUVEE':
+                #     self.create_user_account(candidature)
 
                 return JsonResponse({
                     'success': True,
@@ -373,41 +373,41 @@ class CandidatureEvaluerView(LoginRequiredMixin, DetailView):
                 'message': f'Une erreur est survenue: {str(e)}'
             }, status=500)
 
-    def create_user_account(self, candidature):
-        """Créer un compte utilisateur depuis une candidature approuvée"""
-        try:
-            if User.objects.filter(email=candidature.email).exists():
-                logger.info(f"Compte existe déjà pour {candidature.email}")
-                return
-
-            password = get_random_string(12)
-
-            user = User.objects.create_user(
-                email=candidature.email,
-                username=candidature.email,
-                prenom=candidature.prenom,
-                nom=candidature.nom,
-                role='APPRENANT',
-                etablissement=candidature.etablissement,
-                departement=candidature.filiere.departement if hasattr(candidature.filiere, 'departement') else None,
-                date_naissance=candidature.date_naissance,
-                lieu_naissance=candidature.lieu_naissance,
-                genre=candidature.genre,
-                telephone=candidature.telephone,
-                adresse=candidature.adresse,
-                est_actif=True
-            )
-
-            user.set_password(password)
-            user.save()
-
-            # Envoyer les informations de connexion
-            EmailCandidatureManager.send_account_created(user, password, candidature.etablissement)
-
-            logger.info(f"Compte créé pour {user.email}")
-
-        except Exception as e:
-            logger.error(f"Erreur création compte: {str(e)}", exc_info=True)
+    # def create_user_account(self, candidature):
+    #     """Créer un compte utilisateur depuis une candidature approuvée"""
+    #     try:
+    #         if User.objects.filter(email=candidature.email).exists():
+    #             logger.info(f"Compte existe déjà pour {candidature.email}")
+    #             return
+    #
+    #         password = get_random_string(12)
+    #
+    #         user = User.objects.create_user(
+    #             email=candidature.email,
+    #             username=candidature.email,
+    #             prenom=candidature.prenom,
+    #             nom=candidature.nom,
+    #             role='APPRENANT',
+    #             etablissement=candidature.etablissement,
+    #             departement=candidature.filiere.departement if hasattr(candidature.filiere, 'departement') else None,
+    #             date_naissance=candidature.date_naissance,
+    #             lieu_naissance=candidature.lieu_naissance,
+    #             genre=candidature.genre,
+    #             telephone=candidature.telephone,
+    #             adresse=candidature.adresse,
+    #             est_actif=True
+    #         )
+    #
+    #         user.set_password(password)
+    #         user.save()
+    #
+    #         # Envoyer les informations de connexion
+    #         EmailCandidatureManager.send_account_created(user, password, candidature.etablissement)
+    #
+    #         logger.info(f"Compte créé pour {user.email}")
+    #
+    #     except Exception as e:
+    #         logger.error(f"Erreur création compte: {str(e)}", exc_info=True)
 
 class CandidatureSuccessView(DetailView):
     """View pour afficher la page de succès"""
@@ -600,118 +600,118 @@ def candidature_start_exam(request, pk):
             'message': 'Erreur lors du démarrage de l\'examen'
         }, status=500)
 
-def create_user_from_candidature(candidature):
-    """
-    Créer un compte utilisateur APPRENANT depuis une candidature approuvée.
-    L'inscription et le paiement seront effectués lors de la première connexion.
-    """
-    try:
-        # Vérifier si l'utilisateur existe déjà
-        if User.objects.filter(email=candidature.email).exists():
-            logger.info(f"Compte existe déjà pour {candidature.email}")
-            return None
-
-        # Générer un mot de passe aléatoire sécurisé
-        password = get_random_string(12)
-
-        with transaction.atomic():
-            # Récupérer la photo d'identité depuis les documents de candidature
-            photo_profil = None
-            try:
-                doc_photo = DocumentCandidature.objects.filter(
-                    candidature=candidature,
-                    type_document='PHOTO_IDENTITE'
-                ).first()
-
-                if doc_photo and doc_photo.fichier:
-                    photo_profil = doc_photo.fichier
-                    logger.info(f"Photo d'identité trouvée pour {candidature.email}")
-            except Exception as e:
-                logger.error(f"Erreur récupération photo d'identité: {str(e)}")
-
-            # 1. Créer l'utilisateur de base avec rôle APPRENANT
-            user = User.objects.create_user(
-                email=candidature.email,
-                username=candidature.email,  # Sera remplacé par le matricule automatiquement
-                prenom=candidature.prenom,
-                nom=candidature.nom,
-                role='APPRENANT',
-                etablissement=candidature.etablissement,
-                departement=candidature.filiere.departement,
-                date_naissance=candidature.date_naissance,
-                lieu_naissance=candidature.lieu_naissance,
-                genre=candidature.genre,
-                telephone=candidature.telephone,
-                adresse=candidature.adresse,
-                photo_profil=photo_profil,
-                est_actif=True
-            )
-
-            user.set_password(password)
-            user.save()
-
-            logger.info(f"✅ Utilisateur créé: {user.email} - Matricule: {user.matricule}")
-
-            # 2. Créer le ProfilUtilisateur
-            profil_utilisateur, created = ProfilUtilisateur.objects.get_or_create(
-                utilisateur=user,
-                defaults={
-                    'recevoir_notifications': True,
-                    'recevoir_notifications_email': True,
-                    'langue': 'fr',
-                    'fuseau_horaire': 'Africa/Ouagadougou',
-                }
-            )
-
-            logger.info(f"✅ ProfilUtilisateur créé pour {user.email}")
-
-            # 3. Créer le ProfilApprenant avec les informations de base
-            # IMPORTANT: Pas de classe assignée ni d'inscription à ce stade
-            profil_apprenant = ProfilApprenant.objects.create(
-                utilisateur=user,
-                # Informations académiques de base
-                niveau_actuel=candidature.niveau,
-                annee_academique=candidature.annee_academique,
-                classe_actuelle=None,  # Sera assigné lors de l'inscription
-                statut_paiement='EN_ATTENTE',
-
-                # Informations parentales depuis la candidature
-                nom_pere=candidature.nom_pere or '',
-                telephone_pere=candidature.telephone_pere or '',
-                nom_mere=candidature.nom_mere or '',
-                telephone_mere=candidature.telephone_mere or '',
-                nom_tuteur=candidature.nom_tuteur or '',
-                telephone_tuteur=candidature.telephone_tuteur or '',
-            )
-
-            logger.info(f"✅ ProfilApprenant créé pour {user.email}")
-
-            # 4. Envoyer les informations de connexion par email
-            try:
-                EmailCandidatureManager.send_account_created(
-                    user,
-                    password,
-                    candidature.etablissement
-                )
-                logger.info(f"✅ Email de création de compte envoyé à {user.email}")
-            except Exception as e:
-                logger.error(f"❌ Erreur envoi email: {str(e)}")
-
-            logger.info(
-                f"✅ Compte APPRENANT créé avec succès:\n"
-                f"   - Email: {user.email}\n"
-                f"   - Matricule: {user.matricule}\n"
-                f"   - Rôle: {user.role}\n"
-                f"   - Niveau: {candidature.niveau.nom}\n"
-                f"   - Filière: {candidature.filiere.nom}\n"
-                f"   ⚠️ L'apprenant devra s'inscrire et payer lors de sa première connexion"
-            )
-
-            return user
-
-    except Exception as e:
-        logger.error(f"❌ Erreur création compte depuis candidature: {str(e)}", exc_info=True)
-        return None
+# def create_user_from_candidature(candidature):
+#     """
+#     Créer un compte utilisateur APPRENANT depuis une candidature approuvée.
+#     L'inscription et le paiement seront effectués lors de la première connexion.
+#     """
+#     try:
+#         # Vérifier si l'utilisateur existe déjà
+#         if User.objects.filter(email=candidature.email).exists():
+#             logger.info(f"Compte existe déjà pour {candidature.email}")
+#             return None
+#
+#         # Générer un mot de passe aléatoire sécurisé
+#         password = get_random_string(12)
+#
+#         with transaction.atomic():
+#             # Récupérer la photo d'identité depuis les documents de candidature
+#             photo_profil = None
+#             try:
+#                 doc_photo = DocumentCandidature.objects.filter(
+#                     candidature=candidature,
+#                     type_document='PHOTO_IDENTITE'
+#                 ).first()
+#
+#                 if doc_photo and doc_photo.fichier:
+#                     photo_profil = doc_photo.fichier
+#                     logger.info(f"Photo d'identité trouvée pour {candidature.email}")
+#             except Exception as e:
+#                 logger.error(f"Erreur récupération photo d'identité: {str(e)}")
+#
+#             # 1. Créer l'utilisateur de base avec rôle APPRENANT
+#             user = User.objects.create_user(
+#                 email=candidature.email,
+#                 username=candidature.email,  # Sera remplacé par le matricule automatiquement
+#                 prenom=candidature.prenom,
+#                 nom=candidature.nom,
+#                 role='APPRENANT',
+#                 etablissement=candidature.etablissement,
+#                 departement=candidature.filiere.departement,
+#                 date_naissance=candidature.date_naissance,
+#                 lieu_naissance=candidature.lieu_naissance,
+#                 genre=candidature.genre,
+#                 telephone=candidature.telephone,
+#                 adresse=candidature.adresse,
+#                 photo_profil=photo_profil,
+#                 est_actif=True
+#             )
+#
+#             user.set_password(password)
+#             user.save()
+#
+#             logger.info(f"✅ Utilisateur créé: {user.email} - Matricule: {user.matricule}")
+#
+#             # 2. Créer le ProfilUtilisateur
+#             profil_utilisateur, created = ProfilUtilisateur.objects.get_or_create(
+#                 utilisateur=user,
+#                 defaults={
+#                     'recevoir_notifications': True,
+#                     'recevoir_notifications_email': True,
+#                     'langue': 'fr',
+#                     'fuseau_horaire': 'Africa/Ouagadougou',
+#                 }
+#             )
+#
+#             logger.info(f"✅ ProfilUtilisateur créé pour {user.email}")
+#
+#             # 3. Créer le ProfilApprenant avec les informations de base
+#             # IMPORTANT: Pas de classe assignée ni d'inscription à ce stade
+#             profil_apprenant = ProfilApprenant.objects.create(
+#                 utilisateur=user,
+#                 # Informations académiques de base
+#                 niveau_actuel=candidature.niveau,
+#                 annee_academique=candidature.annee_academique,
+#                 classe_actuelle=None,  # Sera assigné lors de l'inscription
+#                 statut_paiement='EN_ATTENTE',
+#
+#                 # Informations parentales depuis la candidature
+#                 nom_pere=candidature.nom_pere or '',
+#                 telephone_pere=candidature.telephone_pere or '',
+#                 nom_mere=candidature.nom_mere or '',
+#                 telephone_mere=candidature.telephone_mere or '',
+#                 nom_tuteur=candidature.nom_tuteur or '',
+#                 telephone_tuteur=candidature.telephone_tuteur or '',
+#             )
+#
+#             logger.info(f"✅ ProfilApprenant créé pour {user.email}")
+#
+#             # 4. Envoyer les informations de connexion par email
+#             try:
+#                 EmailCandidatureManager.send_account_created(
+#                     user,
+#                     password,
+#                     candidature.etablissement
+#                 )
+#                 logger.info(f"✅ Email de création de compte envoyé à {user.email}")
+#             except Exception as e:
+#                 logger.error(f"❌ Erreur envoi email: {str(e)}")
+#
+#             logger.info(
+#                 f"✅ Compte APPRENANT créé avec succès:\n"
+#                 f"   - Email: {user.email}\n"
+#                 f"   - Matricule: {user.matricule}\n"
+#                 f"   - Rôle: {user.role}\n"
+#                 f"   - Niveau: {candidature.niveau.nom}\n"
+#                 f"   - Filière: {candidature.filiere.nom}\n"
+#                 f"   ⚠️ L'apprenant devra s'inscrire et payer lors de sa première connexion"
+#             )
+#
+#             return user
+#
+#     except Exception as e:
+#         logger.error(f"❌ Erreur création compte depuis candidature: {str(e)}", exc_info=True)
+#         return None
 
 @login_required
 @require_http_methods(["POST"])
@@ -977,10 +977,55 @@ class InscriptionAvecPaiementView(TemplateView):
                 messages.error(request, "Ce lien d'inscription a expiré. Contactez l'établissement.")
                 return redirect('enrollment:candidature_create')
 
-            # Vérifier si déjà inscrit
+            # ============================================
+            # VÉRIFIER SI DÉJÀ INSCRIT (avec apprenant)
+            # ============================================
             if hasattr(candidature, 'inscription'):
-                messages.info(request, "Vous êtes déjà inscrit. Connectez-vous avec vos identifiants.")
-                return redirect('accounts:login')
+                inscription_existante = candidature.inscription
+
+                # Si inscription ACTIVE avec apprenant → déjà inscrit
+                if inscription_existante.apprenant and inscription_existante.statut == 'ACTIVE':
+                    logger.info(f"[INFO] Candidat déjà inscrit: {inscription_existante.apprenant.email}")
+                    messages.info(request, "Vous êtes déjà inscrit. Connectez-vous avec vos identifiants.")
+                    return redirect('accounts:login')
+
+                # Si inscription PENDING sans apprenant → Nettoyer
+                if not inscription_existante.apprenant:
+                    logger.warning(
+                        f"[WARN] Inscription PENDING orpheline détectée: {inscription_existante.numero_inscription}")
+
+                    # Vérifier s'il y a des paiements en cours
+                    paiements_en_cours = Paiement.objects.filter(
+                        inscription_paiement__inscription=inscription_existante,
+                        statut__in=['EN_ATTENTE', 'EN_COURS']
+                    )
+
+                    # Si paiements anciens (> 1 heure), nettoyer
+                    from datetime import timedelta
+                    paiements_recents = paiements_en_cours.filter(
+                        created_at__gte=timezone.now() - timedelta(hours=1)
+                    )
+
+                    if not paiements_recents.exists():
+                        logger.info("[CLEAN] Nettoyage inscription PENDING orpheline...")
+
+                        # Annuler les vieux paiements
+                        paiements_en_cours.update(
+                            statut='ANNULE',
+                            notes_admin='Paiement expiré automatiquement'
+                        )
+
+                        # Supprimer l'InscriptionPaiement
+                        InscriptionPaiement.objects.filter(inscription=inscription_existante).delete()
+
+                        # Supprimer l'inscription
+                        inscription_existante.delete()
+
+                        logger.info("[OK] Nettoyage terminé - Nouvelle tentative possible")
+
+            # ============================================
+            # AFFICHER LA PAGE D'INSCRIPTION
+            # ============================================
 
             # Récupérer le plan de paiement
             plan = PlanPaiement.objects.get(
@@ -1008,11 +1053,18 @@ class InscriptionAvecPaiementView(TemplateView):
             return render(request, self.template_name, context)
 
         except PlanPaiement.DoesNotExist:
+            logger.error(f"[ERROR] Plan de paiement non trouvé pour candidature {candidature.id}")
             messages.error(request, "Aucun plan de paiement configuré. Contactez l'établissement.")
             return redirect('enrollment:candidature_create')
 
         except Candidature.DoesNotExist:
+            logger.error(f"[ERROR] Candidature non trouvée pour token: {token}")
             messages.error(request, "Lien d'inscription invalide.")
+            return redirect('enrollment:candidature_create')
+
+        except Exception as e:
+            logger.error(f"[ERROR] Erreur get(): {str(e)}", exc_info=True)
+            messages.error(request, f"Une erreur est survenue: {str(e)}")
             return redirect('enrollment:candidature_create')
 
     def post(self, request, token):
@@ -1043,8 +1095,26 @@ class InscriptionAvecPaiementView(TemplateView):
 
             with transaction.atomic():
                 # ============================================
+                # VÉRIFIER/NETTOYER INSCRIPTION EXISTANTE
+                # ============================================
+                if hasattr(candidature, 'inscription'):
+                    inscription_existante = candidature.inscription
+
+                    # Si déjà inscrit avec apprenant
+                    if inscription_existante.apprenant:
+                        logger.warning(f"[WARN] Tentative de réinscription: {inscription_existante.apprenant.email}")
+                        return JsonResponse({
+                            'success': False,
+                            'message': "Vous êtes déjà inscrit. Connectez-vous avec vos identifiants."
+                        }, status=400)
+
+                    # Si PENDING sans apprenant, nettoyer
+                    logger.info(f"[CLEAN] Suppression inscription PENDING: {inscription_existante.numero_inscription}")
+                    InscriptionPaiement.objects.filter(inscription=inscription_existante).delete()
+                    inscription_existante.delete()
+
+                # ============================================
                 # ÉTAPE 1: CRÉER L'INSCRIPTION SANS APPRENANT
-                # apprenant sera NULL pour l'instant
                 # ============================================
                 plan = PlanPaiement.objects.get(
                     filiere=candidature.filiere,

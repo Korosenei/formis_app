@@ -1,0 +1,234 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Nouvelle dépense{% endblock %}
+
+{% block breadcrumb %}
+Dashboard > Comptabilité > Dépenses > Nouvelle
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.depense-form {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.form-card {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.form-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 30px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.form-label.required::after {
+    content: " *";
+    color: #ef4444;
+}
+
+.form-control, .form-select {
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-control[type="file"] {
+    padding: 10px;
+}
+
+textarea.form-control {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.form-help {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+}
+
+.btn-secondary {
+    background: white;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.error {
+    color: #ef4444;
+    font-size: 13px;
+    margin-top: 4px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="depense-form">
+    <div class="form-card">
+        <h1 class="form-title">
+            <i class="fas fa-receipt"></i>
+            Nouvelle dépense
+        </h1>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label required">Date de dépense</label>
+                    {{ form.date_depense }}
+                    {% if form.date_depense.errors %}
+                        <span class="error">{{ form.date_depense.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required">Catégorie</label>
+                    {{ form.categorie }}
+                    {% if form.categorie.errors %}
+                        <span class="error">{{ form.categorie.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group full-width">
+                    <label class="form-label required">Fournisseur</label>
+                    {{ form.fournisseur }}
+                    {% if form.fournisseur.errors %}
+                        <span class="error">{{ form.fournisseur.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required">Montant (FCFA)</label>
+                    {{ form.montant }}
+                    {% if form.montant.errors %}
+                        <span class="error">{{ form.montant.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required">Mode de paiement</label>
+                    {{ form.mode_paiement }}
+                    {% if form.mode_paiement.errors %}
+                        <span class="error">{{ form.mode_paiement.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group full-width">
+                    <label class="form-label required">Description</label>
+                    {{ form.description }}
+                    <span class="form-help">Décrivez la nature de la dépense</span>
+                    {% if form.description.errors %}
+                        <span class="error">{{ form.description.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Numéro de pièce</label>
+                    {{ form.numero_piece }}
+                    <span class="form-help">Numéro de facture ou reçu</span>
+                    {% if form.numero_piece.errors %}
+                        <span class="error">{{ form.numero_piece.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Pièce justificative</label>
+                    {{ form.piece_justificative }}
+                    <span class="form-help">PDF, image (max 5MB)</span>
+                    {% if form.piece_justificative.errors %}
+                        <span class="error">{{ form.piece_justificative.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group full-width">
+                    <label class="form-label">Notes</label>
+                    {{ form.notes }}
+                    {% if form.notes.errors %}
+                        <span class="error">{{ form.notes.errors.0 }}</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    Enregistrer
+                </button>
+                <a href="{% url 'dashboard:comptable_depenses' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i>
+                    Annuler
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

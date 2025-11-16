@@ -1,0 +1,614 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block page_title %}Journal Comptable{% endblock %}
+
+{% block breadcrumb %}
+Dashboard > Comptabilité > Rapports > Journal Comptable
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.journal-page {
+    padding: 20px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.header-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #ec4899, #db2777);
+    color: white;
+}
+
+.btn-secondary {
+    background: white;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+/* Rapport Header */
+.rapport-header {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    text-align: center;
+}
+
+.etablissement-nom {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 8px;
+}
+
+.rapport-titre {
+    font-size: 20px;
+    font-weight: 600;
+    color: #ec4899;
+    margin-bottom: 16px;
+}
+
+.rapport-periode {
+    font-size: 14px;
+    color: #64748b;
+}
+
+/* Filters */
+.filters-section {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.form-control,
+.form-select {
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+/* Ecriture Card */
+.ecriture-card {
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    overflow: hidden;
+    page-break-inside: avoid;
+}
+
+.ecriture-header {
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    padding: 20px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.ecriture-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.ecriture-numero {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.ecriture-date {
+    font-size: 14px;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.ecriture-libelle {
+    font-size: 15px;
+    color: #1e293b;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.ecriture-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    font-size: 13px;
+    color: #64748b;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.journal-badge {
+    padding: 4px 12px;
+    background: #ec4899;
+    color: white;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.validee {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.brouillon {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Lignes Table */
+.lignes-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.lignes-table thead {
+    background: #f8fafc;
+}
+
+.lignes-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.lignes-table td {
+    padding: 14px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.compte-cell {
+    display: flex;
+    flex-direction: column;
+}
+
+.compte-numero {
+    font-weight: 600;
+    color: #ec4899;
+}
+
+.compte-libelle {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.montant {
+    font-weight: 600;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.montant.debit {
+    color: #10b981;
+}
+
+.montant.credit {
+    color: #ef4444;
+}
+
+/* Totaux Row */
+.lignes-table tfoot {
+    background: #1e293b;
+    color: white;
+    font-weight: 700;
+}
+
+.lignes-table tfoot td {
+    padding: 16px;
+}
+
+/* Balance Status */
+.balance-status {
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.balance-status.equilibree {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.balance-status.desequilibree {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Summary Section */
+.summary-section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.summary-item {
+    text-align: center;
+    padding: 20px;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.summary-label {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.summary-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.empty-state i {
+    font-size: 64px;
+    color: #cbd5e1;
+    margin-bottom: 20px;
+}
+
+/* Print Styles */
+@media print {
+    .page-header,
+    .header-actions,
+    .filters-section,
+    .btn {
+        display: none !important;
+    }
+
+    .journal-page {
+        padding: 0;
+    }
+
+    .ecriture-card {
+        page-break-inside: avoid;
+        margin-bottom: 30px;
+    }
+}
+
+@media (max-width: 768px) {
+    .filters-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ecriture-title-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .ecriture-meta {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="journal-page">
+    <!-- En-tête -->
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="fas fa-file-alt"></i>
+            Journal Comptable
+        </h1>
+        <div class="header-actions">
+            <a href="{% url 'dashboard:comptable_rapports' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i>
+                Retour
+            </a>
+            <button class="btn btn-secondary" onclick="window.print()">
+                <i class="fas fa-print"></i>
+                Imprimer
+            </button>
+            <a href="?format=pdf" class="btn btn-primary" target="_blank">
+                <i class="fas fa-file-pdf"></i>
+                Télécharger PDF
+            </a>
+        </div>
+    </div>
+
+    <!-- En-tête du rapport -->
+    <div class="rapport-header">
+        <div class="etablissement-nom">{{ etablissement.nom }}</div>
+        <div class="rapport-titre">JOURNAL COMPTABLE</div>
+        <div class="rapport-periode">
+            Période du {{ date_debut|date:"d/m/Y" }} au {{ date_fin|date:"d/m/Y" }}
+        </div>
+        <div class="rapport-periode" style="margin-top: 8px;">
+            Édité le {{ today|date:"d/m/Y à H:i" }}
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filters-section">
+        <form method="get">
+            <div class="filters-grid">
+                <div class="form-group">
+                    <label class="form-label">Journal</label>
+                    <select name="journal" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tous les journaux</option>
+                        {% for journal in journaux %}
+                        <option value="{{ journal.id }}" {% if request.GET.journal == journal.id|stringformat:"s" %}selected{% endif %}>
+                            {{ journal.code }} - {{ journal.libelle }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Statut</label>
+                    <select name="statut" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tous</option>
+                        <option value="VALIDEE" {% if request.GET.statut == 'VALIDEE' %}selected{% endif %}>Validées</option>
+                        <option value="BROUILLON" {% if request.GET.statut == 'BROUILLON' %}selected{% endif %}>Brouillons</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Trier par</label>
+                    <select name="tri" class="form-select" onchange="this.form.submit()">
+                        <option value="date" {% if request.GET.tri == 'date' %}selected{% endif %}>Date</option>
+                        <option value="piece" {% if request.GET.tri == 'piece' %}selected{% endif %}>N° Pièce</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="align-self: end;">
+                    <a href="{% url 'accounting:comptable_rapport_journal' %}" class="btn btn-secondary" style="width: 100%; justify-content: center;">
+                        <i class="fas fa-times"></i>
+                        Réinitialiser
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Liste des écritures -->
+    {% for ecriture in ecritures %}
+    <div class="ecriture-card">
+        <!-- En-tête de l'écriture -->
+        <div class="ecriture-header">
+            <div class="ecriture-title-row">
+                <div>
+                    <div class="ecriture-numero">
+                        <i class="fas fa-file-alt"></i>
+                        Pièce N° {{ ecriture.numero_piece }}
+                    </div>
+                    <div class="ecriture-date">
+                        <i class="far fa-calendar"></i>
+                        {{ ecriture.date_ecriture|date:"d/m/Y" }}
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <span class="journal-badge">{{ ecriture.journal.code }}</span>
+                    <div style="margin-top: 8px;">
+                        <span class="status-badge {{ ecriture.statut|lower }}">
+                            {{ ecriture.get_statut_display }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ecriture-libelle">
+                {{ ecriture.libelle }}
+            </div>
+
+            <div class="ecriture-meta">
+                {% if ecriture.reference_externe %}
+                <div class="meta-item">
+                    <i class="fas fa-link"></i>
+                    Réf: {{ ecriture.reference_externe }}
+                </div>
+                {% endif %}
+                {% if ecriture.saisi_par %}
+                <div class="meta-item">
+                    <i class="fas fa-user"></i>
+                    Par {{ ecriture.saisi_par.get_full_name }}
+                </div>
+                {% endif %}
+                <div class="meta-item">
+                    <i class="far fa-clock"></i>
+                    {{ ecriture.created_at|date:"d/m/Y H:i" }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Table des lignes -->
+        <table class="lignes-table">
+            <thead>
+                <tr>
+                    <th>Compte</th>
+                    <th>Libellé</th>
+                    <th style="text-align: right;">Débit</th>
+                    <th style="text-align: right;">Crédit</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ligne in ecriture.lignes.all %}
+                <tr>
+                    <td>
+                        <div class="compte-cell">
+                            <span class="compte-numero">{{ ligne.compte.numero_compte }}</span>
+                            <span class="compte-libelle">{{ ligne.compte.libelle }}</span>
+                        </div>
+                    </td>
+                    <td>{{ ligne.libelle }}</td>
+                    <td class="montant debit">
+                        {% if ligne.debit > 0 %}
+                        {{ ligne.debit|floatformat:0|intcomma }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="montant credit">
+                        {% if ligne.credit > 0 %}
+                        {{ ligne.credit|floatformat:0|intcomma }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="2">TOTAUX</td>
+                    <td style="text-align: right;">{{ ecriture.total_debit|floatformat:0|intcomma }}</td>
+                    <td style="text-align: right;">{{ ecriture.total_credit|floatformat:0|intcomma }}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <!-- Vérification équilibre -->
+        <div class="balance-status {% if ecriture.est_equilibree %}equilibree{% else %}desequilibree{% endif %}">
+            <i class="fas {% if ecriture.est_equilibree %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+            {% if ecriture.est_equilibree %}
+            Écriture équilibrée
+            {% else %}
+            Écriture déséquilibrée - Écart: {{ ecriture.total_debit|add:"-"|add:ecriture.total_credit|floatformat:0|intcomma }} FCFA
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <i class="fas fa-file-alt"></i>
+        <h3 style="font-size: 20px; color: #64748b; margin-bottom: 10px;">Aucune écriture trouvée</h3>
+        <p style="color: #94a3b8;">Aucune écriture comptable sur la période sélectionnée</p>
+    </div>
+    {% endfor %}
+
+    <!-- Résumé -->
+    {% if ecritures %}
+    <div class="summary-section">
+        <h3 style="font-size: 20px; font-weight: 600; color: #1e293b; margin-bottom: 20px; text-align: center;">
+            <i class="fas fa-chart-bar"></i>
+            Résumé de la période
+        </h3>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="summary-label">Nombre d'écritures</div>
+                <div class="summary-value">{{ total_ecritures }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Total Débits</div>
+                <div class="summary-value" style="color: #10b981;">{{ total_debits|floatformat:0|intcomma }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Total Crédits</div>
+                <div class="summary-value" style="color: #ef4444;">{{ total_credits|floatformat:0|intcomma }}</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Écritures validées</div>
+                <div class="summary-value">{{ ecritures_validees }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Filtrage en temps réel (optionnel)
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Journal chargé: {{ total_ecritures }} écritures');
+});
+</script>
+{% endblock %}

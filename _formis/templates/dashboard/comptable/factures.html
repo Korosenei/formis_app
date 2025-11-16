@@ -1,0 +1,617 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block page_title %}Gestion des factures{% endblock %}
+
+{% block breadcrumb %}
+Dashboard > Comptabilité > Factures
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.factures-page {
+    padding: 20px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-secondary {
+    background: white;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.btn-secondary:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+/* Filtres */
+.filters-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.form-control, .form-select {
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Stats rapides */
+.quick-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-box {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-left: 4px solid;
+}
+
+.stat-box.total { border-color: #3b82f6; }
+.stat-box.payee { border-color: #10b981; }
+.stat-box.impayee { border-color: #ef4444; }
+.stat-box.partielle { border-color: #f59e0b; }
+
+.stat-label {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+/* Table */
+.table-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.factures-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.factures-table thead {
+    background: #f8fafc;
+}
+
+.factures-table th {
+    padding: 16px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.factures-table td {
+    padding: 16px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.factures-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.factures-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+.facture-numero {
+    font-weight: 600;
+    color: #3b82f6;
+    text-decoration: none;
+}
+
+.facture-numero:hover {
+    text-decoration: underline;
+}
+
+.apprenant-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.apprenant-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.apprenant-name {
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.apprenant-matricule {
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-emise {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-payee {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-partielle {
+    background: #fed7aa;
+    color: #92400e;
+}
+
+.badge-annulee {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.montant {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-action {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-action:hover {
+    background: #f8fafc;
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+/* Pagination */
+.pagination-wrapper {
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #f1f5f9;
+}
+
+.pagination-info {
+    color: #64748b;
+    font-size: 14px;
+}
+
+.pagination {
+    display: flex;
+    gap: 6px;
+}
+
+.page-link {
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    color: #64748b;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.page-link:hover {
+    background: #f8fafc;
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.page-link.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #94a3b8;
+}
+
+.empty-state i {
+    font-size: 64px;
+    margin-bottom: 20px;
+    display: block;
+}
+
+.empty-state h3 {
+    font-size: 20px;
+    color: #64748b;
+    margin-bottom: 10px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .filters-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .table-card {
+        overflow-x: auto;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="factures-page">
+    <!-- En-tête -->
+    <div class="page-header">
+        <h1 class="page-title">Gestion des factures</h1>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="exportFactures()">
+                <i class="fas fa-download"></i>
+                Exporter
+            </button>
+            <a href="{% url 'accounting:comptable_facture_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                Nouvelle facture
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats rapides -->
+    <div class="quick-stats">
+        <div class="stat-box total">
+            <div class="stat-label">Total factures</div>
+            <div class="stat-value">{{ factures.paginator.count }}</div>
+        </div>
+        <div class="stat-box payee">
+            <div class="stat-label">Payées</div>
+            <div class="stat-value">--</div>
+        </div>
+        <div class="stat-box impayee">
+            <div class="stat-label">Impayées</div>
+            <div class="stat-value">--</div>
+        </div>
+        <div class="stat-box partielle">
+            <div class="stat-label">Partiellement payées</div>
+            <div class="stat-value">--</div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filters-card">
+        <form method="get" id="filterForm">
+            <div class="filters-grid">
+                <div class="form-group">
+                    <label class="form-label">Recherche</label>
+                    <input
+                        type="text"
+                        name="search"
+                        class="form-control"
+                        placeholder="N° facture, nom..."
+                        value="{{ request.GET.search }}"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Statut</label>
+                    <select name="statut" class="form-select">
+                        <option value="">Tous les statuts</option>
+                        <option value="BROUILLON" {% if request.GET.statut == 'BROUILLON' %}selected{% endif %}>Brouillon</option>
+                        <option value="EMISE" {% if request.GET.statut == 'EMISE' %}selected{% endif %}>Émise</option>
+                        <option value="PARTIELLE" {% if request.GET.statut == 'PARTIELLE' %}selected{% endif %}>Partielle</option>
+                        <option value="PAYEE" {% if request.GET.statut == 'PAYEE' %}selected{% endif %}>Payée</option>
+                        <option value="ANNULEE" {% if request.GET.statut == 'ANNULEE' %}selected{% endif %}>Annulée</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <select name="type" class="form-select">
+                        <option value="">Tous les types</option>
+                        <option value="SCOLARITE" {% if request.GET.type == 'SCOLARITE' %}selected{% endif %}>Scolarité</option>
+                        <option value="INSCRIPTION" {% if request.GET.type == 'INSCRIPTION' %}selected{% endif %}>Inscription</option>
+                        <option value="EXAMEN" {% if request.GET.type == 'EXAMEN' %}selected{% endif %}>Examen</option>
+                        <option value="FOURNITURES" {% if request.GET.type == 'FOURNITURES' %}selected{% endif %}>Fournitures</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Période</label>
+                    <input
+                        type="month"
+                        name="periode"
+                        class="form-control"
+                        value="{{ request.GET.periode }}"
+                    >
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i>
+                    Filtrer
+                </button>
+                <a href="{% url 'dashboard:comptable_factures' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i>
+                    Réinitialiser
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table des factures -->
+    <div class="table-card">
+        <div class="table-responsive">
+            <table class="factures-table">
+                <thead>
+                    <tr>
+                        <th>N° Facture</th>
+                        <th>Apprenant</th>
+                        <th>Type</th>
+                        <th>Montant</th>
+                        <th>Date émission</th>
+                        <th>Échéance</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for facture in factures %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'accounting:comptable_facture_detail' facture.pk %}" class="facture-numero">
+                                {{ facture.numero_facture }}
+                            </a>
+                        </td>
+                        <td>
+                            <div class="apprenant-info">
+                                <div class="apprenant-avatar">
+                                    {{ facture.apprenant.prenom|first }}{{ facture.apprenant.nom|first }}
+                                </div>
+                                <div>
+                                    <div class="apprenant-name">{{ facture.apprenant.get_full_name }}</div>
+                                    <div class="apprenant-matricule">{{ facture.apprenant.matricule }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ facture.get_type_facture_display }}</td>
+                        <td class="montant">{{ facture.montant_ttc|floatformat:0|intcomma }} FCFA</td>
+                        <td>{{ facture.date_emission|date:"d/m/Y" }}</td>
+                        <td>{{ facture.date_echeance|date:"d/m/Y" }}</td>
+                        <td>
+                            <span class="badge badge-{{ facture.statut|lower }}">
+                                {{ facture.get_statut_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="actions">
+                                <a href="{% url 'accounting:comptable_facture_detail' facture.pk %}"
+                                   class="btn-action"
+                                   title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'accounting:comptable_facture_pdf' facture.pk %}"
+                                   class="btn-action"
+                                   title="PDF"
+                                   target="_blank">
+                                    <i class="fas fa-file-pdf"></i>
+                                </a>
+                                {% if facture.statut == 'BROUILLON' %}
+                                <a href="{% url 'accounting:comptable_facture_update' facture.pk %}"
+                                   class="btn-action"
+                                   title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-state">
+                                <i class="fas fa-file-invoice"></i>
+                                <h3>Aucune facture trouvée</h3>
+                                <p>Commencez par créer votre première facture</p>
+                                <a href="{% url 'accounting:comptable_facture_create' %}" class="btn btn-primary" style="margin-top: 20px;">
+                                    <i class="fas fa-plus"></i>
+                                    Créer une facture
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if factures.has_other_pages %}
+        <div class="pagination-wrapper">
+            <div class="pagination-info">
+                Affichage de {{ factures.start_index }} à {{ factures.end_index }} sur {{ factures.paginator.count }} factures
+            </div>
+            <div class="pagination">
+                {% if factures.has_previous %}
+                <a href="?page=1" class="page-link">
+                    <i class="fas fa-angle-double-left"></i>
+                </a>
+                <a href="?page={{ factures.previous_page_number }}" class="page-link">
+                    <i class="fas fa-angle-left"></i>
+                </a>
+                {% endif %}
+
+                {% for num in factures.paginator.page_range %}
+                    {% if factures.number == num %}
+                    <span class="page-link active">{{ num }}</span>
+                    {% elif num > factures.number|add:'-3' and num < factures.number|add:'3' %}
+                    <a href="?page={{ num }}" class="page-link">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if factures.has_next %}
+                <a href="?page={{ factures.next_page_number }}" class="page-link">
+                    <i class="fas fa-angle-right"></i>
+                </a>
+                <a href="?page={{ factures.paginator.num_pages }}" class="page-link">
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function exportFactures() {
+    const format = prompt('Format d\'export (pdf/excel/csv):', 'pdf');
+    if (format) {
+        window.location.href = `{% url 'dashboard:comptable_factures' %}?export=${format}`;
+    }
+}
+
+// Auto-submit du formulaire de filtre avec debounce
+let debounceTimer;
+document.getElementById('filterForm').addEventListener('input', function(e) {
+    if (e.target.name === 'search') {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            this.submit();
+        }, 500);
+    }
+});
+</script>
+{% endblock %}

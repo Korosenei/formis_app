@@ -1,0 +1,706 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}
+    {% if form.instance.pk %}Modifier un comptable{% else %}Ajouter un comptable{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="form-page">
+    <!-- Header -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <a href="{% url 'dashboard:admin_comptables' %}">Comptables</a>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">{% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %}</span>
+            </div>
+            <h1>
+                <i class="fas fa-calculator"></i>
+                {% if form.instance.pk %}Modifier un comptable{% else %}Ajouter un comptable{% endif %}
+            </h1>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="messages-container">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}" id="message-{{ forloop.counter }}">
+                    {% if message.tags == 'success' %}
+                        <i class="fas fa-check-circle"></i>
+                    {% else %}
+                        <i class="fas fa-exclamation-circle"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button class="close-alert" onclick="closeAlert('message-{{ forloop.counter }}')">&times;</button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Formulaire -->
+    <div class="form-container">
+        <form method="POST" enctype="multipart/form-data" id="comptableForm">
+            {% csrf_token %}
+
+            <!-- Section Informations Personnelles -->
+            <div class="form-section">
+                <div class="section-header">
+                    <i class="fas fa-user"></i>
+                    <h3>Informations Personnelles</h3>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="id_prenom" class="required">Prénom</label>
+                        <input type="text" name="prenom" id="id_prenom"
+                               class="form-control"
+                               value="{{ form.prenom.value|default:'' }}"
+                               required>
+                        {% if form.prenom.errors %}
+                            <div class="error-message">{{ form.prenom.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_nom" class="required">Nom</label>
+                        <input type="text" name="nom" id="id_nom"
+                               class="form-control"
+                               value="{{ form.nom.value|default:'' }}"
+                               required>
+                        {% if form.nom.errors %}
+                            <div class="error-message">{{ form.nom.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_genre">Genre</label>
+                        <select name="genre" id="id_genre" class="form-control">
+                            <option value="">-- Sélectionner --</option>
+                            <option value="M" {% if form.genre.value == 'M' %}selected{% endif %}>Masculin</option>
+                            <option value="F" {% if form.genre.value == 'F' %}selected{% endif %}>Féminin</option>
+                        </select>
+                        {% if form.genre.errors %}
+                            <div class="error-message">{{ form.genre.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_date_naissance">Date de naissance</label>
+                        <input type="date" name="date_naissance" id="id_date_naissance"
+                               class="form-control"
+                               value="{{ form.date_naissance.value|date:'Y-m-d'|default:'' }}">
+                        {% if form.date_naissance.errors %}
+                            <div class="error-message">{{ form.date_naissance.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="id_lieu_naissance">Lieu de naissance</label>
+                        <input type="text" name="lieu_naissance" id="id_lieu_naissance"
+                               class="form-control"
+                               value="{{ form.lieu_naissance.value|default:'' }}">
+                        {% if form.lieu_naissance.errors %}
+                            <div class="error-message">{{ form.lieu_naissance.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Contact -->
+            <div class="form-section">
+                <div class="section-header">
+                    <i class="fas fa-address-book"></i>
+                    <h3>Informations de Contact</h3>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="id_email" class="required">Email</label>
+                        <input type="email" name="email" id="id_email"
+                               class="form-control"
+                               value="{{ form.email.value|default:'' }}"
+                               required>
+                        <small class="form-help">Cet email servira pour la connexion</small>
+                        {% if form.email.errors %}
+                            <div class="error-message">{{ form.email.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_telephone">Téléphone</label>
+                        <input type="tel" name="telephone" id="id_telephone"
+                               class="form-control"
+                               value="{{ form.telephone.value|default:'' }}"
+                               placeholder="+226 XX XX XX XX">
+                        {% if form.telephone.errors %}
+                            <div class="error-message">{{ form.telephone.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="id_adresse">Adresse</label>
+                        <textarea name="adresse" id="id_adresse"
+                                  class="form-control"
+                                  rows="2">{{ form.adresse.value|default:'' }}</textarea>
+                        {% if form.adresse.errors %}
+                            <div class="error-message">{{ form.adresse.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Profil Comptable -->
+            <div class="form-section">
+                <div class="section-header">
+                    <i class="fas fa-briefcase"></i>
+                    <h3>Informations Professionnelles</h3>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="id_id_employe">ID Employé</label>
+                        <input type="text" name="id_employe" id="id_id_employe"
+                               class="form-control"
+                               value="{{ form.instance.profil_comptable.id_employe|default:'' }}"
+                               placeholder="Ex: EMP-2024-001">
+                        <small class="form-help">Identifiant unique de l'employé</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_date_embauche">Date d'embauche</label>
+                        <input type="date" name="date_embauche" id="id_date_embauche"
+                               class="form-control"
+                               value="{% if form.instance.profil_comptable.date_embauche %}{{ form.instance.profil_comptable.date_embauche|date:'Y-m-d' }}{% endif %}">
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="id_specialisation">Spécialisation</label>
+                        <input type="text" name="specialisation" id="id_specialisation"
+                               class="form-control"
+                               value="{{ form.instance.profil_comptable.specialisation|default:'' }}"
+                               placeholder="Ex: Comptabilité générale, Trésorerie, Audit">
+                        <small class="form-help">Domaine de spécialisation comptable</small>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="id_certifications">Certifications</label>
+                        <textarea name="certifications" id="id_certifications"
+                                  class="form-control"
+                                  rows="3"
+                                  placeholder="Listez les certifications (une par ligne)">{{ form.instance.profil_comptable.certifications|default:'' }}</textarea>
+                        <small class="form-help">Ex: Expert-comptable SYSCOHADA, CPA, etc.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Permissions -->
+            <div class="form-section">
+                <div class="section-header">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>Permissions</h3>
+                </div>
+                <div class="permissions-grid">
+                    <div class="permission-item">
+                        <input type="checkbox" name="peut_valider_paiements" id="id_peut_valider_paiements"
+                               {% if form.instance.pk %}
+                                   {% if form.instance.profil_comptable.peut_valider_paiements %}checked{% endif %}
+                               {% else %}
+                                   checked
+                               {% endif %}>
+                        <label for="id_peut_valider_paiements">
+                            <div class="permission-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="permission-info">
+                                <strong>Valider les paiements</strong>
+                                <span>Autoriser la validation des transactions financières</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="permission-item">
+                        <input type="checkbox" name="peut_generer_factures" id="id_peut_generer_factures"
+                               {% if form.instance.pk %}
+                                   {% if form.instance.profil_comptable.peut_generer_factures %}checked{% endif %}
+                               {% else %}
+                                   checked
+                               {% endif %}>
+                        <label for="id_peut_generer_factures">
+                            <div class="permission-icon">
+                                <i class="fas fa-file-invoice"></i>
+                            </div>
+                            <div class="permission-info">
+                                <strong>Générer les factures</strong>
+                                <span>Autoriser la création et l'édition de factures</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="permission-item">
+                        <input type="checkbox" name="peut_voir_rapports_financiers" id="id_peut_voir_rapports_financiers"
+                               {% if form.instance.pk %}
+                                   {% if form.instance.profil_comptable.peut_voir_rapports_financiers %}checked{% endif %}
+                               {% else %}
+                                   checked
+                               {% endif %}>
+                        <label for="id_peut_voir_rapports_financiers">
+                            <div class="permission-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="permission-info">
+                                <strong>Consulter les rapports financiers</strong>
+                                <span>Accès aux rapports et statistiques financières</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Photo de profil -->
+            {% if form.instance.pk %}
+            <div class="form-section">
+                <div class="section-header">
+                    <i class="fas fa-image"></i>
+                    <h3>Photo de Profil</h3>
+                </div>
+                <div class="photo-upload-section">
+                    <div class="current-photo">
+                        {% if form.instance.photo_profil %}
+                            <img src="{{ form.instance.photo_profil.url }}" alt="Photo actuelle" id="photoPreview">
+                        {% else %}
+                            <div class="no-photo" id="photoPreview">
+                                <i class="fas fa-user fa-3x"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="photo-upload-controls">
+                        <input type="file" name="photo_profil" id="id_photo_profil"
+                               accept="image/*" onchange="previewPhoto(event)" hidden>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('id_photo_profil').click()">
+                            <i class="fas fa-upload"></i> Choisir une photo
+                        </button>
+                        <small class="form-help">Format: JPG, PNG. Taille max: 2MB</small>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Actions -->
+            <div class="form-actions">
+                <a href="{% url 'dashboard:admin_comptables' %}" class="btn btn-outline">
+                    <i class="fas fa-times"></i> Annuler
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    {% if form.instance.pk %}Enregistrer{% else %}Créer le comptable{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.form-page {
+    padding: 15px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.page-header-compact {
+    background: white;
+    padding: 15px;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    margin-bottom: 15px;
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.breadcrumb-nav a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb-nav .current {
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.page-header-compact h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.page-header-compact h1 i {
+    color: #10b981;
+}
+
+.messages-container {
+    margin-bottom: 15px;
+}
+
+.alert {
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    position: relative;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.alert-success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.alert-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.close-alert {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+}
+
+.close-alert:hover {
+    opacity: 1;
+}
+
+.form-container {
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e5e7eb;
+}
+
+.form-section {
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.section-header i {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.form-group label.required::after {
+    content: " *";
+    color: #ef4444;
+}
+
+.form-control {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-help {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+.error-message {
+    color: #ef4444;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.permissions-grid {
+    display: grid;
+    gap: 15px;
+}
+
+.permission-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 15px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    transition: all 0.3s;
+}
+
+.permission-item:hover {
+    background: #f3f4f6;
+    border-color: #2563eb;
+}
+
+.permission-item input[type="checkbox"] {
+    margin-top: 4px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.permission-item label {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    cursor: pointer;
+    flex: 1;
+    margin: 0;
+}
+
+.permission-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 18px;
+    color: #10b981;
+    flex-shrink: 0;
+}
+
+.permission-info {
+    flex: 1;
+}
+
+.permission-info strong {
+    display: block;
+    font-size: 14px;
+    color: #1f2937;
+    margin-bottom: 2px;
+}
+
+.permission-info span {
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.photo-upload-section {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.current-photo {
+    width: 120px;
+    height: 120px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #e5e7eb;
+}
+
+.current-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.no-photo {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    color: #9ca3af;
+}
+
+.photo-upload-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-actions {
+    padding: 20px;
+    background: #f9fafb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-outline {
+    background: white;
+    color: #1f2937;
+    border: 1px solid #d1d5db;
+}
+
+.btn-outline:hover {
+    background: #f3f4f6;
+}
+
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .photo-upload-section {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .form-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+function closeAlert(id) {
+    const alert = document.getElementById(id);
+    if (alert) {
+        alert.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => alert.remove(), 300);
+    }
+}
+
+function previewPhoto(event) {
+    const file = event.target.files[0];
+    const preview = document.getElementById('photoPreview');
+
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = `<img src="${e.target.result}" alt="Aperçu" style="width: 100%; height: 100%; object-fit: cover;">`;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            alert.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => alert.remove(), 300);
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

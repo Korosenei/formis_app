@@ -30,6 +30,7 @@ urlpatterns = [
     # # Applications principales
     path('', include('apps.core.urls')),
     path('accounts/', include('apps.accounts.urls')),
+    path('accounting/', include('apps.accounting.urls')),
     path('establishments/', include('apps.establishments.urls')),
     path('academic/', include('apps.academic.urls')),
     path('courses/', include('apps.courses.urls')),

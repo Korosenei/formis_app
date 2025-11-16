@@ -1,0 +1,76 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block page_title %}État de trésorerie{% endblock %}
+
+{% block content %}
+<div style="padding: 20px; max-width: 1000px; margin: 0 auto;">
+    <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="font-size: 28px; font-weight: 700; color: #1e293b; margin: 0 0 10px 0;">ÉTAT DE TRÉSORERIE</h1>
+            <p style="font-size: 16px; color: #64748b;">Au {{ date_fin|date:"d/m/Y" }}</p>
+        </div>
+
+        <!-- Solde total -->
+        <div style="text-align: center; padding: 30px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 12px; margin-bottom: 30px;">
+            <div style="font-size: 16px; margin-bottom: 10px; opacity: 0.9;">Solde total de trésorerie</div>
+            <div style="font-size: 42px; font-weight: 700;">{{ tresorerie.total|floatformat:0|intcomma }} FCFA</div>
+        </div>
+
+        <!-- Détail par compte -->
+        <div>
+            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">Détail par compte</h3>
+
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead style="background: #f8fafc;">
+                    <tr>
+                        <th style="padding: 12px; text-align: left; border: 1px solid #e2e8f0;">Compte</th>
+                        <th style="padding: 12px; text-align: left; border: 1px solid #e2e8f0;">Libellé</th>
+                        <th style="padding: 12px; text-align: right; border: 1px solid #e2e8f0;">Solde</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in tresorerie.comptes %}
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #e2e8f0; font-family: monospace; font-weight: 600;">
+                            {{ item.compte.numero_compte }}
+                        </td>
+                        <td style="padding: 10px; border: 1px solid #e2e8f0;">
+                            {{ item.compte.libelle }}
+                        </td>
+                        <td style="padding: 10px; text-align: right; border: 1px solid #e2e8f0; font-family: monospace; font-weight: 600;">
+                            {{ item.solde|floatformat:0|intcomma }} FCFA
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="padding: 20px; text-align: center; color: #94a3b8; border: 1px solid #e2e8f0;">
+                            Aucun compte de trésorerie
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot style="background: #f8fafc; font-weight: 700;">
+                    <tr>
+                        <td colspan="2" style="padding: 12px; border: 1px solid #e2e8f0;">TOTAL</td>
+                        <td style="padding: 12px; text-align: right; border: 1px solid #e2e8f0; font-family: monospace; color: #3b82f6;">
+                            {{ tresorerie.total|floatformat:0|intcomma }} FCFA
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; gap: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; justify-content: center;">
+            <button onclick="window.print()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                <i class="fas fa-print"></i> Imprimer
+            </button>
+            <a href="{% url 'dashboard:comptable_rapports' %}" style="padding: 10px 20px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; text-decoration: none; color: #64748b;">
+                <i class="fas fa-arrow-left"></i> Retour
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

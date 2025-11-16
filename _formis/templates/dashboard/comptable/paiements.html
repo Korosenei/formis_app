@@ -1,0 +1,659 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block page_title %}Validation des paiements{% endblock %}
+
+{% block breadcrumb %}
+Dashboard > Comptabilité > Paiements
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.paiements-page {
+    padding: 20px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+/* Stats Cards */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-left: 4px solid;
+}
+
+.stat-card.attente { border-color: #f59e0b; }
+.stat-card.confirme { border-color: #10b981; }
+.stat-card.total { border-color: #3b82f6; }
+.stat-card.echec { border-color: #ef4444; }
+
+.stat-label {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.stat-amount {
+    font-size: 14px;
+    color: #64748b;
+    margin-top: 5px;
+}
+
+/* Filters */
+.filters-section {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.form-control, .form-select {
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.form-control:focus, .form-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Paiements List */
+.paiements-grid {
+    display: grid;
+    gap: 15px;
+}
+
+.paiement-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-left: 4px solid;
+}
+
+.paiement-card.en-attente { border-color: #f59e0b; }
+.paiement-card.confirme { border-color: #10b981; }
+.paiement-card.echec { border-color: #ef4444; }
+
+.paiement-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.paiement-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.paiement-info {
+    flex: 1;
+}
+
+.paiement-numero {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 5px;
+}
+
+.paiement-date {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.paiement-montant {
+    text-align: right;
+}
+
+.montant-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.montant-currency {
+    font-size: 14px;
+    color: #64748b;
+}
+
+.paiement-details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    padding: 15px 0;
+    border-top: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 15px;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-label {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 4px;
+}
+
+.detail-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.apprenant-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.apprenant-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.apprenant-name {
+    font-weight: 500;
+}
+
+.apprenant-matricule {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-en-attente {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-confirme {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-echec {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-en-cours {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.paiement-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.btn-valider {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+}
+
+.btn-valider:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-rejeter {
+    background: white;
+    color: #ef4444;
+    border: 1px solid #ef4444;
+}
+
+.btn-rejeter:hover {
+    background: #fef2f2;
+}
+
+.btn-details {
+    background: white;
+    color: #3b82f6;
+    border: 1px solid #3b82f6;
+}
+
+.btn-details:hover {
+    background: #eff6ff;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 16px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #94a3b8;
+}
+
+.modal-body {
+    margin-bottom: 20px;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 12px;
+}
+
+.empty-state i {
+    font-size: 64px;
+    color: #cbd5e1;
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    font-size: 20px;
+    color: #64748b;
+    margin-bottom: 10px;
+}
+
+@media (max-width: 768px) {
+    .stats-row {
+        grid-template-columns: 1fr;
+    }
+
+    .paiement-details {
+        grid-template-columns: 1fr;
+    }
+
+    .paiement-actions {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="paiements-page">
+    <!-- En-tête -->
+    <div class="page-header">
+        <h1 class="page-title">Validation des paiements</h1>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="stats-row">
+        <div class="stat-card attente">
+            <div class="stat-label">En attente</div>
+            <div class="stat-value">{{ paiements_stats.en_attente|default:0 }}</div>
+            <div class="stat-amount">À valider</div>
+        </div>
+
+        <div class="stat-card confirme">
+            <div class="stat-label">Confirmés aujourd'hui</div>
+            <div class="stat-value">{{ paiements_stats.confirmes_jour|default:0 }}</div>
+            <div class="stat-amount">{{ paiements_stats.montant_jour|floatformat:0|intcomma }} FCFA</div>
+        </div>
+
+        <div class="stat-card total">
+            <div class="stat-label">Total du mois</div>
+            <div class="stat-value">{{ paiements_stats.total_mois|default:0 }}</div>
+            <div class="stat-amount">{{ paiements_stats.montant_mois|floatformat:0|intcomma }} FCFA</div>
+        </div>
+
+        <div class="stat-card echec">
+            <div class="stat-label">En échec</div>
+            <div class="stat-value">{{ paiements_stats.echec|default:0 }}</div>
+            <div class="stat-amount">À traiter</div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filters-section">
+        <form method="get">
+            <div class="filters-grid">
+                <div class="form-group">
+                    <label class="form-label">Statut</label>
+                    <select name="statut" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tous</option>
+                        <option value="EN_ATTENTE" {% if request.GET.statut == 'EN_ATTENTE' %}selected{% endif %}>En attente</option>
+                        <option value="CONFIRME" {% if request.GET.statut == 'CONFIRME' %}selected{% endif %}>Confirmé</option>
+                        <option value="ECHEC" {% if request.GET.statut == 'ECHEC' %}selected{% endif %}>Échec</option>
+                        <option value="EN_COURS" {% if request.GET.statut == 'EN_COURS' %}selected{% endif %}>En cours</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Méthode de paiement</label>
+                    <select name="methode" class="form-select" onchange="this.form.submit()">
+                        <option value="">Toutes</option>
+                        <option value="LIGDICASH" {% if request.GET.methode == 'LIGDICASH' %}selected{% endif %}>LigdiCash</option>
+                        <option value="ESPECES" {% if request.GET.methode == 'ESPECES' %}selected{% endif %}>Espèces</option>
+                        <option value="CHEQUE" {% if request.GET.methode == 'CHEQUE' %}selected{% endif %}>Chèque</option>
+                        <option value="VIREMENT" {% if request.GET.methode == 'VIREMENT' %}selected{% endif %}>Virement</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" class="form-control" value="{{ request.GET.date }}" onchange="this.form.submit()">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Recherche</label>
+                    <input type="text" name="search" class="form-control" placeholder="N° transaction, nom..." value="{{ request.GET.search }}">
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Liste des paiements -->
+    <div class="paiements-grid">
+        {% for paiement in paiements %}
+        <div class="paiement-card {{ paiement.statut|lower }}">
+            <div class="paiement-header">
+                <div class="paiement-info">
+                    <div class="paiement-numero">{{ paiement.numero_transaction }}</div>
+                    <div class="paiement-date">
+                        <i class="far fa-clock"></i>
+                        {{ paiement.date_paiement|date:"d/m/Y à H:i" }}
+                    </div>
+                </div>
+                <div class="paiement-montant">
+                    <div class="montant-value">{{ paiement.montant|floatformat:0|intcomma }}</div>
+                    <div class="montant-currency">FCFA</div>
+                </div>
+            </div>
+
+            <div class="paiement-details">
+                <div class="detail-item">
+                    <div class="detail-label">Apprenant</div>
+                    <div class="detail-value">
+                        <div class="apprenant-info">
+                            <div class="apprenant-avatar">
+                                {{ paiement.inscription_paiement.inscription.apprenant.prenom|first }}{{ paiement.inscription_paiement.inscription.apprenant.nom|first }}
+                            </div>
+                            <div>
+                                <div class="apprenant-name">
+                                    {{ paiement.inscription_paiement.inscription.apprenant.get_full_name }}
+                                </div>
+                                <div class="apprenant-matricule">
+                                    {{ paiement.inscription_paiement.inscription.apprenant.matricule }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-item">
+                    <div class="detail-label">Méthode de paiement</div>
+                    <div class="detail-value">
+                        <i class="fas fa-credit-card"></i>
+                        {{ paiement.get_methode_paiement_display }}
+                    </div>
+                </div>
+
+                <div class="detail-item">
+                    <div class="detail-label">Statut</div>
+                    <div class="detail-value">
+                        <span class="badge badge-{{ paiement.statut|lower }}">
+                            {{ paiement.get_statut_display }}
+                        </span>
+                    </div>
+                </div>
+
+                {% if paiement.reference_externe %}
+                <div class="detail-item">
+                    <div class="detail-label">Référence externe</div>
+                    <div class="detail-value">{{ paiement.reference_externe }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="paiement-actions">
+                {% if paiement.statut == 'EN_ATTENTE' %}
+                <button class="btn btn-valider" onclick="validerPaiement('{{ paiement.pk }}')">
+                    <i class="fas fa-check"></i>
+                    Valider
+                </button>
+                <button class="btn btn-rejeter" onclick="rejeterPaiement('{{ paiement.pk }}')">
+                    <i class="fas fa-times"></i>
+                    Rejeter
+                </button>
+                {% endif %}
+                <button class="btn btn-details" onclick="voirDetails('{{ paiement.pk }}')">
+                    <i class="fas fa-eye"></i>
+                    Détails
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <i class="fas fa-credit-card"></i>
+            <h3>Aucun paiement à afficher</h3>
+            <p>Il n'y a pas de paiements correspondant à vos critères</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal de rejet -->
+<div id="rejetModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Rejeter le paiement</h3>
+            <button class="modal-close" onclick="closeModal('rejetModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="rejetForm">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label class="form-label">Motif du rejet *</label>
+                    <textarea name="motif" class="form-control" rows="4" required placeholder="Expliquez la raison du rejet..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('rejetModal')">Annuler</button>
+            <button class="btn btn-rejeter" onclick="confirmerRejet()">
+                <i class="fas fa-times"></i>
+                Confirmer le rejet
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let paiementEnCours = null;
+
+function validerPaiement(paiementId) {
+    if (confirm('Êtes-vous sûr de vouloir valider ce paiement ?')) {
+        fetch(`{% url 'accounting:comptable_paiement_valider' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', paiementId), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Paiement validé avec succès');
+                location.reload();
+            } else {
+                alert('Erreur: ' + data.error);
+            }
+        });
+    }
+}
+
+function rejeterPaiement(paiementId) {
+    paiementEnCours = paiementId;
+    document.getElementById('rejetModal').classList.add('show');
+}
+
+function confirmerRejet() {
+    const motif = document.querySelector('#rejetForm textarea[name="motif"]').value;
+
+    if (!motif) {
+        alert('Veuillez saisir un motif de rejet');
+        return;
+    }
+
+    fetch(`{% url 'accounting:comptable_paiement_rejeter' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', paiementEnCours), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'motif=' + encodeURIComponent(motif)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Paiement rejeté');
+            closeModal('rejetModal');
+            location.reload();
+        } else {
+            alert('Erreur: ' + data.error);
+        }
+    });
+}
+
+function voirDetails(paiementId) {
+    window.location.href = `{% url 'dashboard:comptable_paiements' %}?paiement=${paiementId}`;
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('show');
+}
+
+// Fermer modal en cliquant à l'extérieur
+window.onclick = function(event) {
+    if (event.target.classList.contains('modal')) {
+        event.target.classList.remove('show');
+    }
+}
+</script>
+{% endblock %}

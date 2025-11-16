@@ -18,7 +18,8 @@
             <h1>Gestion des Utilisateurs</h1>
         </div>
         <div class="header-actions">
-            <button onclick="exportUsers()" class="btn-icon" title="Exporter">
+            <!-- NOUVEAU: Bouton d'export avec modal -->
+            <button onclick="openExportModal('users')" class="btn-icon" title="Exporter">
                 <i class="fas fa-download"></i>
             </button>
             <a href="{% url 'accounts:user_add' %}" class="btn btn-primary btn-sm">
@@ -92,8 +93,8 @@
             <button class="btn btn-sm btn-info" onclick="sendBulkMessage()">
                 <i class="fas fa-envelope"></i> Message
             </button>
-            <button class="btn btn-sm btn-warning" onclick="bulkExport()">
-                <i class="fas fa-file-export"></i> Export
+            <button class="btn btn-sm btn-warning" onclick="openExportModal('users')">
+                <i class="fas fa-file-export"></i> Export sélection
             </button>
         </div>
     </div>
@@ -252,6 +253,9 @@
         </div>
     </div>
 </div>
+
+<!-- NOUVEAU: Inclusion du modal d'exportation -->
+{% include 'components/export_modal.html' %}
 
 <style>
 .admin-users {
@@ -472,8 +476,8 @@
 }
 
 .admin-users .table-wrapper {
+    position: relative;
     overflow-x: auto;
-    max-width: 100%;
 }
 
 .admin-users .users-table {
@@ -649,19 +653,19 @@
 
 .admin-users .dropdown-compact {
     position: relative;
+    display: inline-block;
 }
 
-.admin-users .dropdown-menu-compact {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 4px;
-    min-width: 140px;
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
+.dropdown-menu-compact {
+    position: fixed !important;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
     display: none;
+    right: 0;
+    min-width: 100px;
 }
 
 .admin-users .dropdown-menu-compact.show {

@@ -8,275 +8,224 @@ from typing import Optional, Dict, Any, Tuple
 from django.conf import settings
 from django.utils import timezone
 import hashlib
+from django.urls import reverse
 
 logger = logging.getLogger(__name__)
 
 
 class LigdiCashService:
-    """Service pour intégrer les paiements LigdiCash"""
+    """Service pour gérer les paiements LigdiCash"""
 
     def __init__(self):
         self.api_key = getattr(settings, 'LIGDICASH_API_KEY', '')
         self.auth_token = getattr(settings, 'LIGDICASH_AUTH_TOKEN', '')
-        self.platform = getattr(settings, 'LIGDICASH_PLATFORM', 'test')
+        self.base_url = getattr(settings, 'LIGDICASH_BASE_URL',
+                                'https://client.ligdicash.com/pay/v01/redirect/checkout-invoice/create')
+        self.store_name = getattr(settings, 'LIGDICASH_STORE_NAME', 'FORMIS')
+        self.store_website = getattr(settings, 'LIGDICASH_STORE_WEBSITE', '')
 
-        # URLs de l'API
-        if self.platform == 'live':
-            self.base_url = 'https://client.ligdicash.com'
-        else:
-            self.base_url = 'https://app.ligdicash.com'
-
-        # Headers par défaut
-        self.headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        }
-
-        if self.auth_token:
-            self.headers['Authorization'] = f'Bearer {self.auth_token}'
-        if self.api_key:
-            self.headers['Apikey'] = self.api_key
-
-        if not self.api_key or not self.auth_token:
-            logger.warning("[WARN] Configuration LigdiCash incomplete")
-
-    def creer_paiement_redirection(
-            self,
-            paiement_id: str,
-            montant: Decimal,
-            description: str,
-            email_client: str,
-            nom_client: str,
-            url_retour_succes: str,
-            url_retour_echec: str,
-            url_callback: str = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def creer_paiement_redirection(self, paiement_id, montant, description,
+                                   email_client, nom_client, url_retour_succes,
+                                   url_retour_echec, url_callback):
         """
-        Crée un paiement avec redirection vers LigdiCash
+        Créer un paiement avec redirection LigdiCash
+
+        CORRECTION: Structure du payload selon la doc LigdiCash
         """
+        logger.info("=" * 60)
+        logger.info("LIGDICASH API CALL")
+        logger.info("=" * 60)
+
+        logger.info("[PARAMS] Parametres d'entree:")
+        logger.info(f"  - paiement_id: {paiement_id}")
+        logger.info(f"  - montant: {montant}")
+        logger.info(f"  - email_client: {email_client}")
+        logger.info(f"  - nom_client: {nom_client}")
+
+        logger.info("[URLS] URLs de callback:")
+        logger.info(f"  - url_retour_succes: {url_retour_succes}")
+        logger.info(f"  - url_retour_echec: {url_retour_echec}")
+        logger.info(f"  - url_callback: {url_callback}")
+
         try:
-            # Endpoint correct
-            url = f"{self.base_url}/pay/v01/redirect/checkout-invoice/create"
+            # Séparer prénom et nom
+            parts = nom_client.split(' ', 1)
+            prenom = parts[0] if parts else nom_client
+            nom = parts[1] if len(parts) > 1 else nom_client
 
-            # ============================================
-            # PAYLOAD CORRIGÉ selon la documentation LigdiCash
-            # ============================================
+            # Convertir le montant en string (sans décimales pour XOF)
+            montant_str = str(int(float(montant)))
+
+            # CORRECTION CRITIQUE: Structure selon la doc officielle LigdiCash
+            # Les URLs doivent être dans "actions" avec les BONS noms de clés
             payload = {
-                'commande': {
-                    'invoice': {
-                        'items': [
-                            {
-                                'name': description[:100],  # Limiter la longueur
-                                'description': description[:200],
-                                'quantity': 1,
-                                'unit_price': str(int(montant)),
-                                'total_price': str(int(montant))
-                            }
-                        ],
-                        'total_amount': str(int(montant)),
-                        'devise': 'XOF',
-                        'description': description[:200],
-                        'customer': nom_client[:100],
-                        'customer_firstname': nom_client.split()[0][:50] if ' ' in nom_client else nom_client[:50],
-                        'customer_lastname': nom_client.split()[-1][:50] if ' ' in nom_client else nom_client[:50],
-                        'customer_email': email_client
+                "commande": {
+                    "invoice": {
+                        "items": [{
+                            "name": description,
+                            "description": description,
+                            "quantity": 1,
+                            "unit_price": montant_str,
+                            "total_price": montant_str
+                        }],
+                        "total_amount": montant_str,
+                        "devise": "XOF",
+                        "description": description,
+                        "customer": nom_client,
+                        "customer_firstname": prenom,
+                        "customer_lastname": nom,
+                        "customer_email": email_client,
+                        "external_id": str(paiement_id)
                     }
                 },
-                'store': {
-                    'name': getattr(settings, 'SITE_NAME', 'FORMIS')[:100],
-                    'website_url': getattr(settings, 'SITE_URL', 'http://localhost:8000')
+                "store": {
+                    "name": self.store_name,
+                    "website_url": self.store_website or url_retour_succes.split('/payments')[0]
                 },
-                'actions': {
-                    'cancel_url': url_retour_echec,
-                    'return_url': url_retour_succes,
-                    'callback_url': url_callback if url_callback else url_retour_succes
+                # CORRECTION: Clés exactes selon la doc LigdiCash
+                "actions": {
+                    "cancel_url": url_retour_echec,  # URL en cas d'annulation
+                    "return_url": url_retour_succes,  # URL de retour après paiement
+                    "callback_url": url_callback  # URL de notification serveur
                 },
-                'custom_data': {
-                    'paiement_id': str(paiement_id),
-                    'timestamp': timezone.now().isoformat()
+                "custom_data": {
+                    "paiement_id": str(paiement_id),
+                    "timestamp": str(timezone.now().isoformat())
                 }
             }
 
-            logger.info(f"[API] Creation paiement LigdiCash: {paiement_id} - {montant} XOF")
-            logger.debug(f"URL: {url}")
-            logger.debug(f"Payload: {json.dumps(payload, indent=2, ensure_ascii=False)}")
+            logger.info("[PAYLOAD] Payload construit")
+            logger.info("-" * 60)
+            logger.info(json.dumps(payload, indent=2, ensure_ascii=False))
+            logger.info("-" * 60)
 
-            # Appel à l'API
+            # VÉRIFICATION: S'assurer que la section actions existe
+            if "actions" not in payload or not payload["actions"]:
+                logger.error("[ERROR] Section 'actions' manquante dans le payload!")
+                return False, {
+                    'error': 'Configuration invalide',
+                    'error_code': 'payload_error',
+                    'description': 'Section actions manquante'
+                }
+
+            # Vérifier chaque URL
+            logger.info("[ACTIONS] Verification section actions:")
+            logger.info(f"  - cancel_url: {payload['actions'].get('cancel_url')}")
+            logger.info(f"  - return_url: {payload['actions'].get('return_url')}")
+            logger.info(f"  - callback_url: {payload['actions'].get('callback_url')}")
+
+            # S'assurer qu'aucune URL n'est None ou vide
+            for key in ['cancel_url', 'return_url', 'callback_url']:
+                if not payload['actions'].get(key):
+                    logger.error(f"[ERROR] {key} est vide ou None!")
+                    return False, {
+                        'error': f'{key} manquant',
+                        'error_code': 'missing_url',
+                        'description': f'L\'URL {key} est requise'
+                    }
+
+            logger.info("[ACTIONS] OK - Toutes les URLs sont presentes")
+
+            # Headers
+            headers = {
+                'Authorization': f'Bearer {self.auth_token}',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+
+            # Appel API
+            logger.info(f"[API] POST vers: {self.base_url}")
+            logger.info(f"[API] Envoi...")
+
             response = requests.post(
-                url,
-                headers=self.headers,
+                self.base_url,
                 json=payload,
+                headers=headers,
                 timeout=30
             )
 
-            logger.info(f"[API] Status Code: {response.status_code}")
+            logger.info(f"[API] Reponse recue - Status: {response.status_code}")
 
             # Parser la réponse
             try:
-                response_data = response.json()
-                logger.debug(f"Response: {json.dumps(response_data, indent=2, ensure_ascii=False)}")
-            except json.JSONDecodeError as e:
-                logger.error(f"[ERROR] Decode JSON: {e}")
-                logger.error(f"Response content: {response.text}")
-
-                if response.status_code == 404:
-                    return False, {
-                        'error': 'Endpoint LigdiCash incorrect',
-                        'error_code': 'invalid_endpoint',
-                        'suggestion': 'Verifiez LIGDICASH_API_KEY et LIGDICASH_AUTH_TOKEN'
-                    }
-
+                result = response.json()
+                logger.info("[RESPONSE] JSON parse OK")
+            except json.JSONDecodeError:
+                logger.error("[RESPONSE] JSON parse FAILED")
+                logger.error(f"[RESPONSE] Raw: {response.text[:500]}")
                 return False, {
-                    'error': 'Reponse invalide du serveur',
-                    'error_code': 'json_decode_error',
-                    'status_code': response.status_code
+                    'error': 'Réponse invalide de LigdiCash',
+                    'error_code': 'invalid_response',
+                    'description': 'La réponse n\'est pas du JSON valide'
                 }
 
-            # ============================================
-            # VÉRIFIER LE CODE DE RÉPONSE LIGDICASH
-            # ============================================
-            response_code = response_data.get('response_code', '')
-            response_text = response_data.get('response_text', '')
+            logger.info("-" * 60)
+            logger.info(json.dumps(result, indent=2, ensure_ascii=False))
+            logger.info("-" * 60)
 
-            # Code 00 = Succès
+            response_code = result.get('response_code')
+            logger.info(f"[RESPONSE] response_code: {response_code}")
+            logger.info(f"[RESPONSE] response_text: {result.get('response_text')}")
+            logger.info(f"[RESPONSE] description: {result.get('description')}")
+
+            # Vérifier le succès
             if response_code == '00':
-                payment_url = (
-                        response_data.get('response_url') or
-                        response_data.get('url') or
-                        response_data.get('redirect_url') or
-                        response_data.get('payment_url')
-                )
+                # Succès
+                payment_url = result.get('response_text')  # L'URL de paiement
+                token = result.get('token')
 
-                transaction_id = (
-                        response_data.get('token') or
-                        response_data.get('transaction_id') or
-                        str(paiement_id)
-                )
-
-                if not payment_url:
-                    logger.error("[ERROR] URL de paiement manquante")
-                    logger.error(f"Response data: {response_data}")
-                    return False, {
-                        'error': 'URL de paiement non fournie',
-                        'response_code': response_code,
-                        'response_text': response_text,
-                        'raw_response': response_data
-                    }
-
-                logger.info(f"[OK] Paiement LigdiCash cree: {transaction_id}")
+                logger.info(f"[SUCCESS] Token: {token}")
+                logger.info(f"[SUCCESS] Payment URL: {payment_url}")
 
                 return True, {
+                    'transaction_id': token,
                     'payment_url': payment_url,
-                    'transaction_id': transaction_id,
-                    'status': 'created',
-                    'raw_response': response_data
+                    'raw_response': result
                 }
-
-            # Erreur de LigdiCash
             else:
-                error_message = response_text or 'Erreur inconnue'
-
-                # Messages d'erreur détaillés
-                error_details = {
-                    '01': 'Erreur dans la requete',
-                    '02': 'Authentification invalide',
-                    '03': 'Montant invalide',
-                    '04': 'Devise invalide',
-                    '05': 'Merchant non trouve',
-                    '08': 'Donnees manquantes (Empty command actions)',
-                }
-
-                detailed_error = error_details.get(response_code, error_message)
-
-                logger.error(f"[ERROR] LigdiCash: {response_code} - {detailed_error}")
-                logger.error(f"Response: {json.dumps(response_data, indent=2)}")
+                # Échec
+                logger.error("=" * 60)
+                logger.error("ERROR")
+                logger.error("=" * 60)
+                logger.error(f"[ERROR] Code: {response_code}")
+                logger.error(f"[ERROR] Message: {result.get('response_text', 'Erreur inconnue')}")
+                logger.error(f"[ERROR] Description: {result.get('description', '')}")
+                logger.error(f"[ERROR] Wiki: {result.get('wiki', '')}")
 
                 return False, {
-                    'error': detailed_error,
+                    'error': result.get('response_text', 'Erreur inconnue'),
                     'error_code': f'ligdicash_{response_code}',
-                    'response_code': response_code,
-                    'response_text': response_text,
-                    'raw_response': response_data,
-                    'wiki': response_data.get('wiki', '')
+                    'description': result.get('description', ''),
+                    'wiki': result.get('wiki', ''),
+                    'raw_response': result
                 }
 
         except requests.exceptions.Timeout:
-            logger.error("[ERROR] Timeout connexion LigdiCash")
+            logger.error("[ERROR] Timeout lors de l'appel API")
             return False, {
-                'error': 'Delai d\'attente depasse',
-                'error_code': 'timeout_error'
+                'error': 'Délai d\'attente dépassé',
+                'error_code': 'timeout'
             }
-        except requests.exceptions.ConnectionError as e:
-            logger.error(f"[ERROR] Connexion LigdiCash: {str(e)}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"[ERROR] Erreur réseau: {str(e)}")
             return False, {
-                'error': 'Impossible de se connecter au serveur',
-                'error_code': 'connection_error'
+                'error': f'Erreur réseau: {str(e)}',
+                'error_code': 'network_error'
             }
         except Exception as e:
-            logger.error(f"[ERROR] Inattendu: {str(e)}", exc_info=True)
+            logger.error(f"[ERROR] Erreur inattendue: {str(e)}", exc_info=True)
             return False, {
                 'error': f'Erreur inattendue: {str(e)}',
                 'error_code': 'unexpected_error'
             }
 
-    def verifier_statut_paiement(self, transaction_id: str) -> Tuple[bool, Dict[str, Any]]:
-        """Vérifie le statut d'un paiement"""
-        try:
-            logger.info(f"[API] Verification statut: {transaction_id}")
-
-            url = f"{self.base_url}/pay/v01/redirect/checkout-invoice/confirm/"
-
-            response = requests.post(
-                url,
-                headers=self.headers,
-                json={'token': transaction_id},
-                timeout=30
-            )
-
-            try:
-                response_data = response.json()
-            except json.JSONDecodeError:
-                logger.error(f"[ERROR] Decode JSON: {response.text}")
-                return False, {'error': 'Reponse invalide'}
-
-            if response.status_code == 200:
-                status = str(response_data.get('status', '')).lower()
-                response_code = response_data.get('response_code', '')
-
-                # Mapper les statuts
-                if response_code == '00' or status == 'completed':
-                    notre_statut = 'CONFIRME'
-                elif status in ['failed', 'error']:
-                    notre_statut = 'ECHEC'
-                elif status in ['cancelled', 'canceled']:
-                    notre_statut = 'ANNULE'
-                else:
-                    notre_statut = 'EN_ATTENTE'
-
-                logger.info(f"[OK] Statut: {status} -> {notre_statut}")
-
-                return True, {
-                    'status': notre_statut,
-                    'ligdicash_status': status,
-                    'response_code': response_code,
-                    'amount': response_data.get('montant') or response_data.get('amount'),
-                    'raw_response': response_data
-                }
-            else:
-                error_message = response_data.get('message', 'Erreur verification')
-                logger.error(f"[ERROR] Verification: {error_message}")
-
-                return False, {
-                    'error': error_message,
-                    'raw_response': response_data
-                }
-
-        except Exception as e:
-            logger.error(f"[ERROR] Verification: {str(e)}")
-            return False, {'error': f'Erreur: {str(e)}'}
+    def verifier_statut_paiement(self, transaction_id):
+        """Vérifier le statut d'un paiement"""
+        # À implémenter selon votre besoin
+        pass
 
 
-# Instance globale
+# Instance unique
 ligdicash_service = LigdiCashService()
 
 
@@ -284,72 +233,32 @@ ligdicash_service = LigdiCashService()
 # FONCTION HELPER POUR DEBUG
 # ============================================
 
-def test_ligdicash_connection():
-    """Teste la connexion et configuration LigdiCash"""
-    print("\n" + "=" * 60)
-    print("TEST CONFIGURATION LIGDICASH")
-    print("=" * 60)
-
-    print(f"\n1. Configuration:")
-    print(f"   - API Key: {'✓ OK' if ligdicash_service.api_key else '✗ Manquante'}")
-    print(f"   - Auth Token: {'✓ OK' if ligdicash_service.auth_token else '✗ Manquant'}")
-    print(f"   - Platform: {ligdicash_service.platform}")
-    print(f"   - Base URL: {ligdicash_service.base_url}")
-
-    if not ligdicash_service.api_key or not ligdicash_service.auth_token:
-        print("\n❌ Configuration incomplete!")
-        print("\nPour corriger:")
-        print("1. Allez sur https://ligdicash.com")
-        print("2. Connectez-vous a votre compte")
-        print("3. Allez dans Parametres > API")
-        print("4. Copiez votre API Key et Auth Token")
-        print("5. Ajoutez-les dans settings.py:")
-        print("   LIGDICASH_API_KEY = 'votre_api_key'")
-        print("   LIGDICASH_AUTH_TOKEN = 'votre_auth_token'")
-        return False
-
-    print("\n2. Test de creation de paiement:")
-
-    success, response = ligdicash_service.creer_paiement_redirection(
-        paiement_id='TEST-123',
-        montant=Decimal('100'),
-        description='Test de paiement',
-        email_client='test@example.com',
-        nom_client='Test User',
-        url_retour_succes='http://localhost:8000/success',
-        url_retour_echec='http://localhost:8000/error',
-        url_callback='http://localhost:8000/callback'
-    )
-
-    if success:
-        print("   ✓ Paiement cree avec succes!")
-        print(f"   - URL: {response.get('payment_url')}")
-        print(f"   - Token: {response.get('transaction_id')}")
-        return True
-    else:
-        print("   ✗ Echec de creation")
-        print(f"   - Erreur: {response.get('error')}")
-        print(f"   - Code: {response.get('error_code')}")
-        if response.get('response_code'):
-            print(f"   - Response code: {response.get('response_code')}")
-            print(f"   - Response text: {response.get('response_text')}")
-        if response.get('wiki'):
-            print(f"   - Doc: {response.get('wiki')}")
-        return False
-
-    print("=" * 60 + "\n")
 
 # Fonctions utilitaires
-def creer_urls_retour(request, paiement_id: str) -> Dict[str, str]:
+def creer_urls_retour(request, paiement_id):
     """
-    Crée les URLs de retour pour LigdiCash
+    Créer les URLs de retour pour LigdiCash
+    FORCE HTTPS pour ngrok et domaines publics
     """
-    base_url = f"{request.scheme}://{request.get_host()}"
+    host = request.get_host()
+
+    # FORCER HTTPS si domaine public
+    if 'ngrok' in host or 'herokuapp' in host or not ('localhost' in host or '127.0.0.1' in host):
+        scheme = 'https'
+    else:
+        scheme = request.scheme
+
+    base_url = f"{scheme}://{host}"
+
+    # Construire les URLs (sans token pour les paiements authentifiés)
+    success_url = f"{base_url}{reverse('payments:callback_success', kwargs={'paiement_id': paiement_id})}"
+    error_url = f"{base_url}{reverse('payments:callback_error', kwargs={'paiement_id': paiement_id})}"
+    callback_url = f"{base_url}{reverse('payments:webhook_ligdicash')}"
 
     return {
-        'success': f"{base_url}/payments/callback/success/{paiement_id}/",
-        'error': f"{base_url}/payments/callback/error/{paiement_id}/",
-        'callback': f"{base_url}/payments/webhook/ligdicash/"
+        'success': success_url,
+        'error': error_url,
+        'callback': callback_url
     }
 
 def formater_montant_ligdicash(montant: Decimal) -> str:

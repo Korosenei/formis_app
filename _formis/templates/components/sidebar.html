@@ -33,6 +33,15 @@
       </li>
 
       <li class="nav-item">
+        <a href="{% url 'dashboard:admin_comptables' %}"
+           class="nav-link"
+           data-url-key="/dashboard/admin/comptables/">
+          <i class="fas fa-receipt"></i>
+          <span class="nav-text">Comptables</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
         <a href="{% url 'dashboard:admin_department_heads' %}"
            class="nav-link"
            data-url-key="/dashboard/admin/department_heads/">
@@ -218,6 +227,100 @@
         <a href="{% url 'dashboard:admin_settings' %}"
            class="nav-link"
            data-url-key="/dashboard/admin/settings/"
+           data-status="disabled">
+          <i class="fas fa-cog"></i>
+          <span class="nav-text">Paramètres</span>
+        </a>
+      </li>
+    </ul>
+
+    <!-- COMPTABLE MENU -->
+    {% elif user.role == 'COMPTABLE' %}
+    <ul class="nav-menu">
+      <li class="nav-item">
+        <a href="{% url 'dashboard:comptable' %}"
+           class="nav-link"
+           data-url-key="/dashboard/comptable/">
+          <i class="fas fa-tachometer-alt"></i>
+          <span class="nav-text">Tableau de bord</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:comptable_paiements' %}"
+           class="nav-link"
+           data-url-key="/dashboard/comptable/paiements/">
+          <i class="fas fa-credit-card"></i>
+          <span class="nav-text">Paiements</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:comptable_factures' %}"
+           class="nav-link"
+           data-url-key="/dashboard/comptable/factures/">
+          <i class="fas fa-file-invoice-dollar"></i>
+          <span class="nav-text">Factures</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:comptable_depenses' %}"
+           class="nav-link"
+           data-url-key="/dashboard/comptable/depenses/">
+          <i class="fas fa-receipt"></i>
+          <span class="nav-text">Dépenses</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:comptable_ecritures' %}"
+           class="nav-link"
+           data-url-key="/dashboard/comptable/ecritures/">
+          <i class="fas fa-book"></i>
+          <span class="nav-text">Écritures comptables</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:comptable_comptes' %}"
+           class="nav-link"
+           data-url-key="/dashboard/comptable/comptes/">
+          <i class="fas fa-list-ol"></i>
+          <span class="nav-text">Plan comptable</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:comptable_rapports' %}"
+           class="nav-link"
+           data-url-key="/dashboard/comptable/rapports/">
+          <i class="fas fa-chart-line"></i>
+          <span class="nav-text">Rapports financiers</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:comptable_budget' %}"
+           class="nav-link"
+           data-url-key="/dashboard/comptable/budget/">
+          <i class="fas fa-chart-pie"></i>
+          <span class="nav-text">Budget prévisionnel</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a href="{% url 'dashboard:comptable_exercices' %}"
+           class="nav-link"
+           data-url-key="/dashboard/comptable/exercices/">
+          <i class="fas fa-calendar-check"></i>
+          <span class="nav-text">Exercices comptables</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a href="#"
+           class="nav-link"
            data-status="disabled">
           <i class="fas fa-cog"></i>
           <span class="nav-text">Paramètres</span>

@@ -1,5 +1,5 @@
 # apps/payments/views.py
-
+import json
 import logging
 from decimal import Decimal
 from django.shortcuts import render, get_object_or_404, redirect
@@ -529,56 +529,153 @@ def callback_error(request, paiement_id):
 
 
 @csrf_exempt
+@require_http_methods(["POST"])
 def webhook_ligdicash(request):
     """
-    Webhook pour recevoir les notifications de LigdiCash
+    🔔 WEBHOOK LIGDICASH
+    Reçoit les notifications automatiques de LigdiCash
+    CRÉE LE COMPTE UTILISATEUR après paiement confirmé
     """
-    if request.method != 'POST':
-        return HttpResponse(status=405)
+    logger.info("=" * 60)
+    logger.info("🔔 RÉCEPTION WEBHOOK LIGDICASH")
+    logger.info("=" * 60)
 
     try:
-        import json
+        # Vérifier le type de contenu
+        content_type = request.content_type or ''
+        logger.info(f"📋 Content-Type: {content_type}")
 
-        # Parser les données
-        if request.content_type == 'application/json':
-            data = json.loads(request.body)
+        # Gérer différents formats de données
+        if 'application/json' in content_type:
+            try:
+                data = json.loads(request.body)
+                logger.info("📦 Données reçues (JSON):")
+            except json.JSONDecodeError:
+                try:
+                    body_str = request.body.decode('utf-8')
+                    data = json.loads(body_str)
+                    logger.info("📦 Données reçues (JSON string):")
+                except:
+                    data = request.POST.dict()
+                    logger.info("📦 Données reçues (FORM):")
         else:
             data = request.POST.dict()
+            logger.info("📦 Données reçues (FORM):")
 
-        logger.info(f"[WEBHOOK] Notification LigdiCash reçue: {data}")
+        logger.info(json.dumps(data, indent=2, ensure_ascii=False))
 
-        # Traiter la notification
-        success, result = ligdicash_service.traiter_callback(data)
+        # Extraire l'ID du paiement
+        paiement_id = (
+                data.get('paiement_id') or
+                data.get('external_id') or
+                (data.get('custom_data', {}).get('paiement_id') if isinstance(data.get('custom_data'), dict) else None)
+        )
 
-        if success:
-            paiement_id = result.get('paiement_id')
-            status = result.get('status')
+        logger.info(f"🆔 Paiement ID extrait: {paiement_id}")
 
-            if paiement_id:
-                try:
-                    paiement = Paiement.objects.get(id=paiement_id)
+        if not paiement_id:
+            logger.error("❌ Paiement ID non trouvé dans les données")
+            return HttpResponse("Payment ID missing", status=400)
 
-                    # Mettre à jour le statut
-                    if status == 'CONFIRME':
-                        paiement.confirmer(
-                            reference_externe=result.get('transaction_id'),
-                            frais=result.get('fees', 0)
-                        )
-                        logger.info(f"[WEBHOOK] Paiement confirmé: {paiement.numero_transaction}")
-                    elif status == 'ECHEC':
-                        paiement.echec(motif=result.get('ligdicash_status'))
-                        logger.info(f"[WEBHOOK] Paiement échoué: {paiement.numero_transaction}")
+        try:
+            paiement = Paiement.objects.select_related(
+                'inscription_paiement__inscription__candidature'
+            ).get(id=paiement_id)
 
-                    return JsonResponse({'status': 'ok'})
+            inscription_paiement = paiement.inscription_paiement
+            inscription = inscription_paiement.inscription
+            candidature = inscription.candidature
 
-                except Paiement.DoesNotExist:
-                    logger.error(f"[WEBHOOK] Paiement non trouvé: {paiement_id}")
+            logger.info(f"💾 Paiement trouvé: {paiement.numero_transaction}")
+            logger.info(f"📧 Candidature: {candidature.email}")
 
-        return JsonResponse({'status': 'ok'})
+            old_status = paiement.statut
+
+            # Mapper les statuts LigdiCash
+            status = str(data.get('status', '')).lower()
+            response_code = data.get('response_code', '')
+
+            logger.info(f"📊 Statut LigdiCash: {status} (code: {response_code})")
+
+            # ============================================
+            # SI PAIEMENT CONFIRMÉ → CRÉER LE COMPTE
+            # ============================================
+            if status in ['completed', 'success', 'successful'] or response_code == '00':
+                logger.info("✅ PAIEMENT CONFIRMÉ - Création du compte utilisateur...")
+
+                with transaction.atomic():
+                    # 1. Mettre à jour le paiement
+                    paiement.statut = 'CONFIRME'
+                    paiement.date_confirmation = timezone.now()
+                    paiement.callback_data = data
+                    paiement.save()
+
+                    logger.info(f"✅ Statut paiement mis à jour: {old_status} → CONFIRME")
+
+                    # 2. Mettre à jour l'inscription_paiement
+                    inscription_paiement.mettre_a_jour_statut()
+
+                    # 3. Vérifier si le compte existe déjà
+                    if not inscription.apprenant:
+                        logger.info("👤 Création du compte utilisateur...")
+
+                        # CRÉER LE COMPTE
+                        apprenant = create_user_from_candidature(candidature)
+
+                        if apprenant:
+                            # Lier l'apprenant à l'inscription
+                            inscription.apprenant = apprenant
+                            inscription.statut = 'ACTIVE'
+                            inscription.save()
+
+                            logger.info(f"[OK] Compte créé: {apprenant.email} - Matricule: {apprenant.matricule}")
+                            logger.info(f"[OK] Inscription activée: {inscription.numero_inscription}")
+
+                            # Envoyer email de confirmation
+                            try:
+                                EmailCandidatureManager.send_inscription_confirmee(inscription)
+                                logger.info(f"[OK] Email confirmation envoyé à {apprenant.email}")
+                            except Exception as e:
+                                logger.error(f"[ERROR] Envoi email: {str(e)}")
+                        else:
+                            logger.error("[ERROR] Échec création compte utilisateur")
+                    else:
+                        logger.info(f"[INFO] Compte déjà existant: {inscription.apprenant.email}")
+
+            # ============================================
+            # SI PAIEMENT ÉCHOUÉ
+            # ============================================
+            elif status in ['failed', 'error']:
+                paiement.statut = 'ECHEC'
+                paiement.callback_data = data
+                paiement.save()
+                logger.warning(f"❌ Statut mis à jour: {old_status} → ECHEC")
+
+            # ============================================
+            # SI PAIEMENT ANNULÉ
+            # ============================================
+            elif status in ['cancelled', 'canceled']:
+                paiement.statut = 'ANNULE'
+                paiement.callback_data = data
+                paiement.save()
+                logger.warning(f"🚫 Statut mis à jour: {old_status} → ANNULE")
+
+            else:
+                logger.info(f"📊 Statut non traité: {status}")
+                paiement.callback_data = data
+                paiement.save()
+
+        except Paiement.DoesNotExist:
+            logger.error(f"❌ Paiement non trouvé: {paiement_id}")
+            return HttpResponse("Payment not found", status=404)
+
+        logger.info("✅ Webhook traité avec succès")
+        logger.info("=" * 60)
+        return HttpResponse("OK")
 
     except Exception as e:
-        logger.error(f"[WEBHOOK] Erreur: {str(e)}", exc_info=True)
-        return HttpResponse(status=500)
+        logger.error(f"❌ Erreur lors du traitement du webhook: {str(e)}", exc_info=True)
+        return HttpResponse(f"Error: {str(e)}", status=500)
 
 
 @login_required
@@ -905,35 +1002,68 @@ def payer_ligdicash_public(request, paiement_id, token):
             return redirect('enrollment:candidature_create')
 
         # ============================================
-        # CONSTRUIRE LES URLs DE RETOUR COMPLÈTES
+        # CONSTRUIRE LES URLs - AVEC HTTPS FORCÉ
         # ============================================
 
-        # IMPORTANT: Utiliser request.build_absolute_uri() pour obtenir des URLs COMPLÈTES
-        base_url = f"{request.scheme}://{request.get_host()}"
+        logger.info("=" * 60)
+        logger.info("[DEBUG] CONSTRUCTION DES URLs DE CALLBACK")
+        logger.info("=" * 60)
 
-        # URLs de callback
-        url_succes = request.build_absolute_uri(
-            reverse('payments:callback_success_public', kwargs={
-                'paiement_id': paiement_id,
-                'token': token
-            })
-        )
+        # Informations de la requête
+        host = request.get_host()
+        logger.info(f"[DEBUG] request.scheme: {request.scheme}")
+        logger.info(f"[DEBUG] request.get_host(): {host}")
 
-        url_echec = request.build_absolute_uri(
-            reverse('payments:callback_error_public', kwargs={
-                'paiement_id': paiement_id,
-                'token': token
-            })
-        )
+        # FORCER HTTPS si ngrok ou domaine public
+        if 'ngrok' in host or 'herokuapp' in host or not ('localhost' in host or '127.0.0.1' in host):
+            scheme = 'https'
+            logger.info("[DEBUG] HTTPS forcé (ngrok ou domaine public détecté)")
+        else:
+            scheme = request.scheme
+            logger.info(f"[DEBUG] Scheme local: {scheme}")
 
-        url_callback = request.build_absolute_uri(
-            reverse('payments:webhook_ligdicash')
-        )
+        base_url = f"{scheme}://{host}"
+        logger.info(f"[DEBUG] base_url construit: {base_url}")
 
-        logger.info(f"URLs de retour publiques créées pour paiement {paiement.numero_transaction}")
-        logger.debug(f"URL succès: {url_succes}")
-        logger.debug(f"URL échec: {url_echec}")
-        logger.debug(f"URL callback: {url_callback}")
+        # Construire les URLs de callback
+        url_succes_path = reverse('payments:callback_success_public', kwargs={
+            'paiement_id': paiement_id,
+            'token': token
+        })
+        url_succes = f"{base_url}{url_succes_path}"
+        logger.info(f"[DEBUG] url_succes: {url_succes}")
+
+        url_echec_path = reverse('payments:callback_error_public', kwargs={
+            'paiement_id': paiement_id,
+            'token': token
+        })
+        url_echec = f"{base_url}{url_echec_path}"
+        logger.info(f"[DEBUG] url_echec: {url_echec}")
+
+        url_callback_path = reverse('payments:webhook_ligdicash')
+        url_callback = f"{base_url}{url_callback_path}"
+        logger.info(f"[DEBUG] url_callback: {url_callback}")
+
+        logger.info("=" * 60)
+        logger.info("[DEBUG] RÉSUMÉ DES URLs")
+        logger.info("=" * 60)
+        logger.info(f"URL Succès : {url_succes}")
+        logger.info(f"URL Échec  : {url_echec}")
+        logger.info(f"URL Callback: {url_callback}")
+        logger.info("=" * 60)
+
+        # Vérifier que les URLs sont complètes
+        if not url_succes.startswith('http'):
+            logger.error(f"[ERROR] URL succès incomplète: {url_succes}")
+            raise ValueError("URL de succès mal formée")
+
+        if not url_echec.startswith('http'):
+            logger.error(f"[ERROR] URL échec incomplète: {url_echec}")
+            raise ValueError("URL d'échec mal formée")
+
+        if not url_callback.startswith('http'):
+            logger.error(f"[ERROR] URL callback incomplète: {url_callback}")
+            raise ValueError("URL de callback mal formée")
 
         # ============================================
         # APPELER L'API LIGDICASH
@@ -942,6 +1072,12 @@ def payer_ligdicash_public(request, paiement_id, token):
         # Préparer les informations
         nom_client = candidature.nom_complet()
         email_client = candidature.email
+
+        logger.info("[DEBUG] Informations client:")
+        logger.info(f"  - Nom: {nom_client}")
+        logger.info(f"  - Email: {email_client}")
+        logger.info(f"  - Montant: {paiement.montant} XOF")
+        logger.info(f"  - Description: {paiement.description}")
 
         success, response = ligdicash_service.creer_paiement_redirection(
             paiement_id=str(paiement.id),
@@ -961,16 +1097,20 @@ def payer_ligdicash_public(request, paiement_id, token):
             paiement.donnees_transaction = response.get('raw_response', {})
             paiement.save()
 
-            logger.info(f"[OK] Redirection vers LigdiCash: {response.get('payment_url')}")
+            payment_url = response.get('payment_url')
+            logger.info(f"[OK] Redirection vers LigdiCash: {payment_url}")
 
             # Rediriger vers LigdiCash
-            return redirect(response.get('payment_url'))
+            return redirect(payment_url)
         else:
             # Erreur lors de la création du paiement
             error_message = response.get('error', 'Erreur inconnue')
             error_code = response.get('error_code', 'unknown')
+            description = response.get('description', '')
 
             logger.error(f"[ERROR] Création paiement LigdiCash: {error_message}")
+            logger.error(f"[ERROR] Code: {error_code}")
+            logger.error(f"[ERROR] Description: {description}")
 
             # Marquer le paiement comme échoué
             paiement.statut = 'ECHEC'
@@ -978,17 +1118,18 @@ def payer_ligdicash_public(request, paiement_id, token):
             paiement.donnees_transaction = response
             paiement.save()
 
-            # Messages d'erreur selon le code
+            # Messages d'erreur détaillés
             if error_code == 'ligdicash_02':
                 messages.error(
                     request,
-                    "Erreur d'authentification avec le service de paiement. "
+                    "Erreur d'authentification avec LigdiCash. "
                     "Veuillez contacter l'établissement."
                 )
             elif error_code == 'ligdicash_08':
                 messages.error(
                     request,
-                    "Erreur de configuration du paiement. "
+                    f"Erreur de configuration du paiement: {description}. "
+                    "Les URLs de callback sont invalides. "
                     "Veuillez contacter l'établissement."
                 )
             else:
@@ -999,7 +1140,7 @@ def payer_ligdicash_public(request, paiement_id, token):
                 )
 
             # Retour à la page d'inscription
-            return redirect('enrollment:inscription_nouvelle', token=token)
+            return redirect('enrollment:inscription_avec_token', token=token)
 
     except Exception as e:
         logger.error(f"[ERROR] payer_ligdicash_public: {str(e)}", exc_info=True)

@@ -1,0 +1,823 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Détails Comptable - {{ comptable.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="comptable-detail-page">
+    <!-- Header -->
+    <div class="page-header-compact">
+        <div class="header-content">
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right"></i>
+                <span>Administration</span>
+                <i class="fas fa-chevron-right"></i>
+                <a href="{% url 'dashboard:admin_comptables' %}">Comptables</a>
+                <i class="fas fa-chevron-right"></i>
+                <span class="current">{{ comptable.get_full_name }}</span>
+            </div>
+            <h1>
+                <i class="fas fa-calculator"></i>
+                Profil du Comptable
+            </h1>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'dashboard:admin_comptables' %}" class="btn btn-outline btn-sm">
+                <i class="fas fa-arrow-left"></i> Retour
+            </a>
+            <a href="{% url 'accounts:comptable_edit' comptable.id %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-edit"></i> Modifier
+            </a>
+        </div>
+    </div>
+
+    <div class="detail-grid">
+        <!-- Carte principale -->
+        <div class="main-card">
+            <!-- En-tête profil -->
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    {% if comptable.photo_profil %}
+                        <img src="{{ comptable.photo_profil.url }}" alt="">
+                    {% else %}
+                        <i class="fas fa-calculator"></i>
+                    {% endif %}
+                </div>
+                <div class="profile-info">
+                    <h2>{{ comptable.get_full_name }}</h2>
+                    <div class="profile-badges">
+                        <span class="badge badge-comptable">
+                            <i class="fas fa-calculator"></i> Comptable
+                        </span>
+                        {% if comptable.est_actif %}
+                            <span class="badge badge-success">
+                                <i class="fas fa-check-circle"></i> Actif
+                            </span>
+                        {% else %}
+                            <span class="badge badge-danger">
+                                <i class="fas fa-times-circle"></i> Inactif
+                            </span>
+                        {% endif %}
+                    </div>
+                    <div class="profile-meta">
+                        <span><i class="fas fa-id-badge"></i> {{ comptable.matricule }}</span>
+                        <span><i class="fas fa-calendar"></i> Créé le {{ comptable.date_creation|date:"d/m/Y" }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informations personnelles -->
+            <div class="detail-section">
+                <div class="section-title">
+                    <i class="fas fa-user"></i> Informations Personnelles
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Prénom</span>
+                        <span class="info-value">{{ comptable.prenom }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Nom</span>
+                        <span class="info-value">{{ comptable.nom }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Genre</span>
+                        <span class="info-value">
+                            {% if comptable.genre == 'M' %}Masculin
+                            {% elif comptable.genre == 'F' %}Féminin
+                            {% else %}-{% endif %}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Date de naissance</span>
+                        <span class="info-value">
+                            {% if comptable.date_naissance %}
+                                {{ comptable.date_naissance|date:"d/m/Y" }}
+                            {% else %}-{% endif %}
+                        </span>
+                    </div>
+                    <div class="info-item full-width">
+                        <span class="info-label">Lieu de naissance</span>
+                        <span class="info-value">{{ comptable.lieu_naissance|default:"-" }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact -->
+            <div class="detail-section">
+                <div class="section-title">
+                    <i class="fas fa-address-book"></i> Contact
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Email</span>
+                        <span class="info-value">
+                            <a href="mailto:{{ comptable.email }}">{{ comptable.email }}</a>
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Téléphone</span>
+                        <span class="info-value">
+                            {% if comptable.telephone %}
+                                <a href="tel:{{ comptable.telephone }}">{{ comptable.telephone }}</a>
+                            {% else %}-{% endif %}
+                        </span>
+                    </div>
+                    <div class="info-item full-width">
+                        <span class="info-label">Adresse</span>
+                        <span class="info-value">{{ comptable.adresse|default:"-" }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informations professionnelles -->
+            {% if profil %}
+            <div class="detail-section">
+                <div class="section-title">
+                    <i class="fas fa-briefcase"></i> Informations Professionnelles
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">ID Employé</span>
+                        <span class="info-value">{{ profil.id_employe|default:"-" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Date d'embauche</span>
+                        <span class="info-value">
+                            {% if profil.date_embauche %}
+                                {{ profil.date_embauche|date:"d/m/Y" }}
+                            {% else %}-{% endif %}
+                        </span>
+                    </div>
+                    <div class="info-item full-width">
+                        <span class="info-label">Spécialisation</span>
+                        <span class="info-value">{{ profil.specialisation|default:"-" }}</span>
+                    </div>
+                    {% if profil.certifications %}
+                    <div class="info-item full-width">
+                        <span class="info-label">Certifications</span>
+                        <span class="info-value">
+                            <div class="certifications-list">
+                                {{ profil.certifications|linebreaks }}
+                            </div>
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Permissions -->
+            <div class="detail-section">
+                <div class="section-title">
+                    <i class="fas fa-shield-alt"></i> Permissions
+                </div>
+                <div class="permissions-list">
+                    <div class="permission-card {% if profil.peut_valider_paiements %}active{% endif %}">
+                        <div class="perm-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="perm-info">
+                            <strong>Valider les paiements</strong>
+                            <span>
+                                {% if profil.peut_valider_paiements %}
+                                    <i class="fas fa-check text-success"></i> Activé
+                                {% else %}
+                                    <i class="fas fa-times text-danger"></i> Désactivé
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="permission-card {% if profil.peut_generer_factures %}active{% endif %}">
+                        <div class="perm-icon">
+                            <i class="fas fa-file-invoice"></i>
+                        </div>
+                        <div class="perm-info">
+                            <strong>Générer les factures</strong>
+                            <span>
+                                {% if profil.peut_generer_factures %}
+                                    <i class="fas fa-check text-success"></i> Activé
+                                {% else %}
+                                    <i class="fas fa-times text-danger"></i> Désactivé
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="permission-card {% if profil.peut_voir_rapports_financiers %}active{% endif %}">
+                        <div class="perm-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="perm-info">
+                            <strong>Rapports financiers</strong>
+                            <span>
+                                {% if profil.peut_voir_rapports_financiers %}
+                                    <i class="fas fa-check text-success"></i> Activé
+                                {% else %}
+                                    <i class="fas fa-times text-danger"></i> Désactivé
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Barre latérale -->
+        <div class="sidebar-card">
+            <!-- Actions rapides -->
+            <div class="quick-actions">
+                <h3>Actions Rapides</h3>
+                <button class="action-btn action-edit" onclick="window.location.href='{% url 'accounts:comptable_edit' comptable.id %}'">
+                    <i class="fas fa-edit"></i>
+                    Modifier le profil
+                </button>
+                <button class="action-btn action-password" onclick="resetPassword()">
+                    <i class="fas fa-key"></i>
+                    Réinitialiser mot de passe
+                </button>
+                {% if comptable.est_actif %}
+                <button class="action-btn action-deactivate" onclick="toggleStatus(false)">
+                    <i class="fas fa-pause-circle"></i>
+                    Désactiver le compte
+                </button>
+                {% else %}
+                <button class="action-btn action-activate" onclick="toggleStatus(true)">
+                    <i class="fas fa-play-circle"></i>
+                    Activer le compte
+                </button>
+                {% endif %}
+                <button class="action-btn action-delete" onclick="deleteComptable()">
+                    <i class="fas fa-trash"></i>
+                    Supprimer
+                </button>
+            </div>
+
+            <!-- Informations système -->
+            <div class="system-info">
+                <h3>Informations Système</h3>
+                <div class="sys-info-item">
+                    <i class="fas fa-building"></i>
+                    <div>
+                        <strong>Établissement</strong>
+                        <span>{{ comptable.etablissement.nom }}</span>
+                    </div>
+                </div>
+                <div class="sys-info-item">
+                    <i class="fas fa-user-plus"></i>
+                    <div>
+                        <strong>Créé par</strong>
+                        <span>
+                            {% if comptable.cree_par %}
+                                {{ comptable.cree_par.get_full_name }}
+                            {% else %}Système{% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="sys-info-item">
+                    <i class="fas fa-calendar-plus"></i>
+                    <div>
+                        <strong>Date de création</strong>
+                        <span>{{ comptable.date_creation|date:"d/m/Y H:i" }}</span>
+                    </div>
+                </div>
+                <div class="sys-info-item">
+                    <i class="fas fa-clock"></i>
+                    <div>
+                        <strong>Dernière modification</strong>
+                        <span>{{ comptable.date_mise_a_jour|date:"d/m/Y H:i" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.comptable-detail-page {
+    padding: 15px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.page-header-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    background: white;
+    padding: 15px;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+}
+
+.breadcrumb-nav {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.breadcrumb-nav a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.breadcrumb-nav .current {
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.header-content h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-content h1 i {
+    color: #10b981;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-outline {
+    background: white;
+    color: #1f2937;
+    border: 1px solid #d1d5db;
+}
+
+.btn-outline:hover {
+    background: #f3f4f6;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 20px;
+}
+
+.main-card, .sidebar-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e5e7eb;
+}
+
+.profile-header {
+    padding: 25px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border-bottom: 1px solid #e5e7eb;
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+}
+
+.profile-avatar {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 38px;
+    color: #10b981;
+    border: 3px solid #10b981;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-info h2 {
+    margin: 0 0 10px 0;
+    font-size: 22px;
+    color: #1f2937;
+}
+
+.profile-badges {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.badge-comptable {
+    background: #10b981;
+    color: white;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.profile-meta {
+    display: flex;
+    gap: 15px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.profile-meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.detail-section {
+    padding: 20px 25px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.detail-section:last-child {
+    border-bottom: none;
+}
+
+.section-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title i {
+    color: #10b981;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.info-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.info-label {
+    font-size: 11px;
+    color: #6b7280;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.info-value {
+    font-size: 14px;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.info-value a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.info-value a:hover {
+    text-decoration: underline;
+}
+
+.certifications-list {
+    background: #f9fafb;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.permissions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.permission-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: #f9fafb;
+}
+
+.permission-card.active {
+    background: #f0fdf4;
+    border-color: #10b981;
+}
+
+.perm-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 18px;
+    color: #6b7280;
+}
+
+.permission-card.active .perm-icon {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
+}
+
+.perm-info {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.perm-info strong {
+    font-size: 13px;
+    color: #1f2937;
+}
+
+.perm-info span {
+    font-size: 12px;
+}
+
+.text-success {
+    color: #10b981;
+}
+
+.text-danger {
+    color: #ef4444;
+}
+
+.quick-actions, .system-info {
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.quick-actions:last-child, .system-info:last-child {
+    border-bottom: none;
+}
+
+.quick-actions h3, .system-info h3 {
+    margin: 0 0 15px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.action-btn {
+    width: 100%;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    transition: all 0.3s;
+}
+
+.action-edit {
+    background: #2563eb;
+    color: white;
+}
+
+.action-edit:hover {
+    background: #1d4ed8;
+}
+
+.action-password {
+    background: #f59e0b;
+    color: white;
+}
+
+.action-password:hover {
+    background: #d97706;
+}
+
+.action-activate {
+    background: #10b981;
+    color: white;
+}
+
+.action-activate:hover {
+    background: #059669;
+}
+
+.action-deactivate {
+    background: #f59e0b;
+    color: white;
+}
+
+.action-deactivate:hover {
+    background: #d97706;
+}
+
+.action-delete {
+    background: #ef4444;
+    color: white;
+}
+
+.action-delete:hover {
+    background: #dc2626;
+}
+
+.sys-info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.sys-info-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.sys-info-item > i {
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    border-radius: 6px;
+    color: #10b981;
+    flex-shrink: 0;
+}
+
+.sys-info-item > div {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sys-info-item strong {
+    font-size: 11px;
+    color: #6b7280;
+    text-transform: uppercase;
+}
+
+.sys-info-item span {
+    font-size: 13px;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+@media (max-width: 1024px) {
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar-card {
+        order: -1;
+    }
+}
+</style>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+const comptableId = '{{ comptable.id }}';
+
+function toggleStatus(activate) {
+    const message = activate ? 'Activer ce comptable ?' : 'Désactiver ce comptable ?';
+    if (confirm(message)) {
+        fetch(`/accounts/comptables/${comptableId}/toggle-status/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.error || 'Erreur');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur de connexion');
+        });
+    }
+}
+
+function resetPassword() {
+    if (confirm('Voulez-vous réinitialiser le mot de passe de ce comptable ?')) {
+        fetch(`/accounts/comptables/${comptableId}/reset-password/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+            } else {
+                alert(data.error || 'Erreur');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur de connexion');
+        });
+    }
+}
+
+function deleteComptable() {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce comptable ? Cette action est irréversible.')) {
+        window.location.href = `/accounts/comptables/${comptableId}/delete/`;
+    }
+}
+</script>
+{% endblock %}

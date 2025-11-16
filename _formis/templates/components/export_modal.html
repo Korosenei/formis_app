@@ -1,0 +1,441 @@
+<!-- templates/components/export_modal.html -->
+<!-- Modal d'exportation réutilisable -->
+
+<div id="exportModal" class="modal-export">
+    <div class="modal-export-content">
+        <div class="modal-export-header">
+            <h3>
+                <i class="fas fa-download"></i>
+                Choisir le format d'export
+            </h3>
+            <button class="modal-export-close" onclick="closeExportModal()">&times;</button>
+        </div>
+
+        <div class="modal-export-body">
+            <p class="export-description">
+                Sélectionnez le format dans lequel vous souhaitez exporter les données.
+            </p>
+
+            <div class="export-options">
+                <!-- Option CSV -->
+                <button class="export-option-card" onclick="exportData('csv')">
+                    <div class="export-icon csv">
+                        <i class="fas fa-file-csv"></i>
+                    </div>
+                    <div class="export-details">
+                        <h4>Format CSV</h4>
+                        <p>Fichier tableur compatible Excel, Google Sheets</p>
+                        <ul class="export-features">
+                            <li><i class="fas fa-check"></i> Facilement éditable</li>
+                            <li><i class="fas fa-check"></i> Import dans d'autres logiciels</li>
+                            <li><i class="fas fa-check"></i> Encodage UTF-8</li>
+                        </ul>
+                    </div>
+                    <div class="export-action">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </button>
+
+                <!-- Option PDF -->
+                <button class="export-option-card" onclick="exportData('pdf')">
+                    <div class="export-icon pdf">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <div class="export-details">
+                        <h4>Format PDF</h4>
+                        <p>Document professionnel prêt à imprimer</p>
+                        <ul class="export-features">
+                            <li><i class="fas fa-check"></i> Mise en page soignée</li>
+                            <li><i class="fas fa-check"></i> Logo et en-tête</li>
+                            <li><i class="fas fa-check"></i> Prêt pour impression</li>
+                        </ul>
+                    </div>
+                    <div class="export-action">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </button>
+            </div>
+
+            <div class="export-info">
+                <i class="fas fa-info-circle"></i>
+                <span>Les filtres et recherches actifs seront appliqués à l'export</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.modal-export {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 3000;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(3px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.modal-export.show {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-export-content {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-export-header {
+    padding: 20px 25px;
+    border-bottom: 2px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-export-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-export-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    color: white;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-export-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+.modal-export-body {
+    padding: 25px;
+}
+
+.export-description {
+    color: #6b7280;
+    font-size: 14px;
+    margin: 0 0 20px 0;
+    text-align: center;
+}
+
+.export-options {
+    display: grid;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.export-option-card {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 15px;
+    align-items: center;
+    padding: 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: left;
+}
+
+.export-option-card:hover {
+    border-color: #2563eb;
+    background: #f8faff;
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+}
+
+.export-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: white;
+}
+
+.export-icon.csv {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.export-icon.pdf {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.export-details h4 {
+    margin: 0 0 5px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.export-details p {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.export-features {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.export-features li {
+    font-size: 12px;
+    color: #4b5563;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.export-features i {
+    color: #10b981;
+    font-size: 10px;
+}
+
+.export-action {
+    font-size: 20px;
+    color: #2563eb;
+    transition: transform 0.3s;
+}
+
+.export-option-card:hover .export-action {
+    transform: translateX(5px);
+}
+
+.export-info {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 12px 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: #1e40af;
+}
+
+.export-info i {
+    font-size: 16px;
+    color: #2563eb;
+}
+
+/* Loading state */
+.export-option-card.loading {
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.export-option-card.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #2563eb;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .modal-export-content {
+        width: 95%;
+        margin: 10px;
+    }
+
+    .export-option-card {
+        grid-template-columns: 1fr;
+        text-align: center;
+        justify-items: center;
+    }
+
+    .export-details {
+        text-align: center;
+    }
+
+    .export-features {
+        align-items: center;
+    }
+
+    .export-action {
+        display: none;
+    }
+}
+</style>
+
+<script>
+// Variables globales pour l'export
+let currentExportType = '';
+let currentExportUrl = '';
+
+/**
+ * Ouvre le modal d'export
+ * @param {string} exportType - Type d'export (users, teachers, students, etc.)
+ */
+function openExportModal(exportType) {
+    currentExportType = exportType;
+    const modal = document.getElementById('exportModal');
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+/**
+ * Ferme le modal d'export
+ */
+function closeExportModal() {
+    const modal = document.getElementById('exportModal');
+    modal.classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+/**
+ * Exécute l'export dans le format choisi
+ * @param {string} format - Format d'export (csv ou pdf)
+ */
+function exportData(format) {
+    if (!currentExportType) {
+        console.error('Type d\'export non défini');
+        return;
+    }
+
+    // Construire l'URL d'export
+    const params = new URLSearchParams(window.location.search);
+    let exportUrl = '';
+
+    switch(currentExportType) {
+        case 'users':
+            exportUrl = format === 'csv'
+                ? `/accounts/users/export/csv/?${params.toString()}`
+                : `/accounts/users/export/pdf/?${params.toString()}`;
+            break;
+        case 'teachers':
+            exportUrl = format === 'csv'
+                ? `/accounts/teachers/export/csv/?${params.toString()}`
+                : `/accounts/teachers/export/pdf/?${params.toString()}`;
+            break;
+        case 'students':
+            exportUrl = format === 'csv'
+                ? `/accounts/students/export/csv/?${params.toString()}`
+                : `/accounts/students/export/pdf/?${params.toString()}`;
+            break;
+        case 'comptables':
+            exportUrl = format === 'csv'
+                ? `/accounts/comptables/export/csv/`
+                : `/accounts/comptables/export/pdf/`;
+            break;
+        case 'department_heads':
+            exportUrl = format === 'csv'
+                ? `/accounts/department-heads/export/csv/`
+                : `/accounts/department-heads/export/pdf/`;
+            break;
+        default:
+            console.error('Type d\'export inconnu:', currentExportType);
+            return;
+    }
+
+    // Afficher un indicateur de chargement
+    showExportLoading(format);
+
+    // Déclencher le téléchargement
+    window.location.href = exportUrl;
+
+    // Fermer le modal après un court délai
+    setTimeout(() => {
+        closeExportModal();
+        hideExportLoading();
+    }, 1000);
+}
+
+/**
+ * Affiche un indicateur de chargement sur le bouton d'export
+ */
+function showExportLoading(format) {
+    const cards = document.querySelectorAll('.export-option-card');
+    cards.forEach(card => {
+        if (card.onclick.toString().includes(`'${format}'`)) {
+            card.classList.add('loading');
+        }
+    });
+}
+
+/**
+ * Masque l'indicateur de chargement
+ */
+function hideExportLoading() {
+    const cards = document.querySelectorAll('.export-option-card');
+    cards.forEach(card => card.classList.remove('loading'));
+}
+
+// Fermer le modal avec la touche Echap
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeExportModal();
+    }
+});
+
+// Fermer le modal en cliquant en dehors
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('exportModal');
+    if (e.target === modal) {
+        closeExportModal();
+    }
+});
+</script>

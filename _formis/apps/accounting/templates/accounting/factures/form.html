@@ -1,0 +1,462 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}{% if object %}Modifier{% else %}Nouvelle{% endif %} Facture{% endblock %}
+
+{% block breadcrumb %}
+Dashboard > Comptabilité > Factures > {% if object %}Modification{% else %}Création{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.facture-form {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.form-card {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.form-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 30px;
+}
+
+.form-section {
+    margin-bottom: 30px;
+    padding-bottom: 30px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.form-label.required::after {
+    content: " *";
+    color: #ef4444;
+}
+
+.form-control, .form-select {
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+textarea.form-control {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Table des lignes */
+.lignes-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.lignes-table th {
+    background: #f8fafc;
+    padding: 12px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.lignes-table td {
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+.lignes-table input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+}
+
+.btn-add-line {
+    padding: 8px 16px;
+    background: #10b981;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-remove-line {
+    padding: 4px 8px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.totaux-section {
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.total-ligne {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 15px;
+}
+
+.total-ligne.grand-total {
+    font-size: 20px;
+    font-weight: 700;
+    color: #3b82f6;
+    padding-top: 15px;
+    margin-top: 10px;
+    border-top: 2px solid #e2e8f0;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+}
+
+.btn-secondary {
+    background: white;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.error {
+    color: #ef4444;
+    font-size: 13px;
+    margin-top: 4px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="facture-form">
+    <div class="form-card">
+        <h1 class="form-title">
+            <i class="fas fa-file-invoice"></i>
+            {% if object %}Modifier la facture {{ object.numero_facture }}{% else %}Nouvelle facture{% endif %}
+        </h1>
+
+        <form method="post" id="factureForm">
+            {% csrf_token %}
+
+            <!-- Section Informations générales -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-info-circle"></i>
+                    Informations générales
+                </h3>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label required">Client (Apprenant)</label>
+                        {{ form.apprenant }}
+                        {% if form.apprenant.errors %}
+                            <span class="error">{{ form.apprenant.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Inscription</label>
+                        {{ form.inscription }}
+                        {% if form.inscription.errors %}
+                            <span class="error">{{ form.inscription.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label required">Type de facture</label>
+                        {{ form.type_facture }}
+                        {% if form.type_facture.errors %}
+                            <span class="error">{{ form.type_facture.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label required">Date d'émission</label>
+                        {{ form.date_emission }}
+                        {% if form.date_emission.errors %}
+                            <span class="error">{{ form.date_emission.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label required">Date d'échéance</label>
+                        {{ form.date_echeance }}
+                        {% if form.date_echeance.errors %}
+                            <span class="error">{{ form.date_echeance.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">TVA (%)</label>
+                        {{ form.taux_tva }}
+                        {% if form.taux_tva.errors %}
+                            <span class="error">{{ form.taux_tva.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label class="form-label">Description</label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                            <span class="error">{{ form.description.errors.0 }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Lignes de facture -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-list"></i>
+                    Détails de la facture
+                </h3>
+
+                <table class="lignes-table" id="lignesTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">Description</th>
+                            <th style="width: 15%;">Quantité</th>
+                            <th style="width: 20%;">Prix unitaire</th>
+                            <th style="width: 20%;">Montant</th>
+                            <th style="width: 5%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="lignesBody">
+                        {% if object %}
+                            {% for ligne in object.lignes.all %}
+                            <tr class="ligne-row">
+                                <td><input type="text" name="ligne_description[]" value="{{ ligne.description }}" required></td>
+                                <td><input type="number" name="ligne_quantite[]" value="{{ ligne.quantite }}" step="0.01" min="0" required class="qte-input"></td>
+                                <td><input type="number" name="ligne_prix[]" value="{{ ligne.prix_unitaire }}" step="0.01" min="0" required class="prix-input"></td>
+                                <td><input type="number" name="ligne_montant[]" value="{{ ligne.montant }}" readonly class="montant-input"></td>
+                                <td><button type="button" class="btn-remove-line" onclick="removeLigne(this)"><i class="fas fa-times"></i></button></td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                        <tr class="ligne-row">
+                            <td><input type="text" name="ligne_description[]" placeholder="Description" required></td>
+                            <td><input type="number" name="ligne_quantite[]" value="1" step="0.01" min="0" required class="qte-input"></td>
+                            <td><input type="number" name="ligne_prix[]" value="0" step="0.01" min="0" required class="prix-input"></td>
+                            <td><input type="number" name="ligne_montant[]" value="0" readonly class="montant-input"></td>
+                            <td><button type="button" class="btn-remove-line" onclick="removeLigne(this)"><i class="fas fa-times"></i></button></td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+
+                <button type="button" class="btn-add-line" onclick="addLigne()">
+                    <i class="fas fa-plus"></i>
+                    Ajouter une ligne
+                </button>
+            </div>
+
+            <!-- Section Totaux -->
+            <div class="totaux-section">
+                <div class="total-ligne">
+                    <span>Montant HT :</span>
+                    <span id="totalHT">0 FCFA</span>
+                </div>
+                <div class="total-ligne">
+                    <span>TVA (<span id="tauxTVA">0</span>%) :</span>
+                    <span id="totalTVA">0 FCFA</span>
+                </div>
+                <div class="total-ligne grand-total">
+                    <span>TOTAL TTC :</span>
+                    <span id="totalTTC">0 FCFA</span>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="form-actions">
+                <button type="submit" name="action" value="draft" class="btn btn-secondary">
+                    <i class="fas fa-save"></i>
+                    Enregistrer en brouillon
+                </button>
+                <button type="submit" name="action" value="issue" class="btn btn-success">
+                    <i class="fas fa-paper-plane"></i>
+                    Émettre la facture
+                </button>
+                <a href="{% url 'dashboard:comptable_factures' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i>
+                    Annuler
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Calculer les montants
+function calculerMontants() {
+    let totalHT = 0;
+
+    document.querySelectorAll('.ligne-row').forEach(row => {
+        const qte = parseFloat(row.querySelector('.qte-input').value) || 0;
+        const prix = parseFloat(row.querySelector('.prix-input').value) || 0;
+        const montant = qte * prix;
+
+        row.querySelector('.montant-input').value = montant.toFixed(2);
+        totalHT += montant;
+    });
+
+    const tauxTVA = parseFloat(document.querySelector('[name="taux_tva"]').value) || 0;
+    const totalTVA = totalHT * (tauxTVA / 100);
+    const totalTTC = totalHT + totalTVA;
+
+    document.getElementById('totalHT').textContent = totalHT.toLocaleString('fr-FR') + ' FCFA';
+    document.getElementById('totalTVA').textContent = totalTVA.toLocaleString('fr-FR') + ' FCFA';
+    document.getElementById('totalTTC').textContent = totalTTC.toLocaleString('fr-FR') + ' FCFA';
+    document.getElementById('tauxTVA').textContent = tauxTVA;
+}
+
+// Ajouter une ligne
+function addLigne() {
+    const tbody = document.getElementById('lignesBody');
+    const newRow = document.createElement('tr');
+    newRow.className = 'ligne-row';
+    newRow.innerHTML = `
+        <td><input type="text" name="ligne_description[]" placeholder="Description" required></td>
+        <td><input type="number" name="ligne_quantite[]" value="1" step="0.01" min="0" required class="qte-input"></td>
+        <td><input type="number" name="ligne_prix[]" value="0" step="0.01" min="0" required class="prix-input"></td>
+        <td><input type="number" name="ligne_montant[]" value="0" readonly class="montant-input"></td>
+        <td><button type="button" class="btn-remove-line" onclick="removeLigne(this)"><i class="fas fa-times"></i></button></td>
+    `;
+    tbody.appendChild(newRow);
+
+    // Attacher les événements
+    attachRowEvents(newRow);
+}
+
+// Supprimer une ligne
+function removeLigne(btn) {
+    const rows = document.querySelectorAll('.ligne-row');
+    if (rows.length > 1) {
+        btn.closest('tr').remove();
+        calculerMontants();
+    } else {
+        alert('Il doit y avoir au moins une ligne');
+    }
+}
+
+// Attacher les événements aux inputs
+function attachRowEvents(row) {
+    row.querySelector('.qte-input').addEventListener('input', calculerMontants);
+    row.querySelector('.prix-input').addEventListener('input', calculerMontants);
+}
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', function() {
+    // Attacher les événements aux lignes existantes
+    document.querySelectorAll('.ligne-row').forEach(attachRowEvents);
+
+    // Événement sur le taux de TVA
+    document.querySelector('[name="taux_tva"]').addEventListener('input', calculerMontants);
+
+    // Calculer les montants initiaux
+    calculerMontants();
+
+    // Validation du formulaire
+    document.getElementById('factureForm').addEventListener('submit', function(e) {
+        if (document.querySelectorAll('.ligne-row').length === 0) {
+            e.preventDefault();
+            alert('Ajoutez au moins une ligne à la facture');
+        }
+    });
+});
+</script>
+{% endblock %}

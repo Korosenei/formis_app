@@ -12,10 +12,13 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_POST
+from django.http import JsonResponse, HttpResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 import json
 import csv
 from decimal import Decimal
+from decimal import Decimal
+import datetime
 from io import StringIO
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
@@ -31,6 +34,8 @@ from apps.courses.models import Module, Matiere, StatutCours, TypeCours, Cours, 
 from apps.enrollment.models import Candidature, Inscription
 from apps.evaluations.models import Evaluation, Note
 from apps.payments.models import Paiement, PlanPaiement, InscriptionPaiement
+from apps.accounting.models import CompteComptable, Depense, Facture, BudgetPrevisionnel, EcritureComptable, ExerciceComptable
+from apps.accounting.utils import RapportComptablePDF, ComptabiliteUtils
 from apps.documents.models import DemandeDocument
 
 import logging
@@ -48,6 +53,8 @@ class DashboardRedirectView(LoginRequiredMixin, TemplateView):
             return redirect('dashboard:superadmin')
         elif user.role == 'ADMIN':
             return redirect('dashboard:admin')
+        elif user.role == 'COMPTABLE':
+            return redirect('dashboard:comptable')
         elif user.role == 'CHEF_DEPARTEMENT':
             return redirect('dashboard:department_head')
         elif user.role == 'ENSEIGNANT':
@@ -249,6 +256,88 @@ class AdminUsersView(LoginRequiredMixin, ListView):
             'current_filters': {
                 'role': self.request.GET.get('role', ''),
                 'departement': self.request.GET.get('departement', ''),
+                'search': self.request.GET.get('search', ''),
+            },
+        })
+
+        return context
+
+class AdminComptablesView(LoginRequiredMixin, ListView):
+    """Gestion des comptables par l'admin"""
+    template_name = 'dashboard/admin/comptables.html'
+    context_object_name = 'comptables'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'ADMIN':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_paginate_by(self, queryset):
+        """Permet de modifier dynamiquement le nombre d'éléments par page"""
+        per_page = self.request.GET.get('per_page', 20)
+        try:
+            per_page = int(per_page)
+            # Limiter entre 10 et 100
+            if per_page not in [10, 20, 50, 100]:
+                per_page = 20
+        except (ValueError, TypeError):
+            per_page = 20
+        return per_page
+
+    def get_queryset(self):
+        etablissement = self.request.user.etablissement
+        queryset = Utilisateur.objects.filter(
+            etablissement=etablissement,
+            role='COMPTABLE'
+        ).select_related('profil_comptable')
+
+        # Filtres
+        statut = self.request.GET.get('statut')
+        if statut == 'actif':
+            queryset = queryset.filter(est_actif=True)
+        elif statut == 'inactif':
+            queryset = queryset.filter(est_actif=False)
+
+        specialisation = self.request.GET.get('specialisation')
+        if specialisation:
+            queryset = queryset.filter(profil_comptable__specialisation__icontains=specialisation)
+
+        search = self.request.GET.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(prenom__icontains=search) |
+                Q(nom__icontains=search) |
+                Q(matricule__icontains=search) |
+                Q(email__icontains=search)
+            )
+
+        return queryset.order_by('-date_creation')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        etablissement = self.request.user.etablissement
+
+        # Statistiques
+        total_comptables = Utilisateur.objects.filter(
+            etablissement=etablissement,
+            role='COMPTABLE'
+        ).count()
+
+        comptables_actifs = Utilisateur.objects.filter(
+            etablissement=etablissement,
+            role='COMPTABLE',
+            est_actif=True
+        ).count()
+
+        context.update({
+            'total_comptables': total_comptables,
+            'comptables_actifs': comptables_actifs,
+            'comptables_inactifs': total_comptables - comptables_actifs,
+            'current_filters': {
+                'statut': self.request.GET.get('statut', ''),
+                'specialisation': self.request.GET.get('specialisation', ''),
                 'search': self.request.GET.get('search', ''),
             },
         })
@@ -1862,6 +1951,726 @@ class AdminReportsView(LoginRequiredMixin, TemplateView):
                 cours__matiere__modules__filiere__departement__etablissement=etablissement
             ).count(),
         }
+
+# ================================
+# VUES COMPTABLE
+# ================================
+class ComptableDashboardView(LoginRequiredMixin, TemplateView):
+    """Tableau de bord du comptable"""
+    template_name = 'dashboard/comptable/index.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'COMPTABLE':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        etablissement = self.request.user.etablissement
+
+        # Période actuelle (mois en cours)
+        today = timezone.now().date()
+        debut_mois = today.replace(day=1)
+
+        context.update({
+            # Statistiques générales
+            'total_recettes_mois': self.get_recettes_mois(etablissement, debut_mois),
+            'total_depenses_mois': self.get_depenses_mois(etablissement, debut_mois),
+            'solde_tresorerie': self.get_solde_tresorerie(etablissement),
+            'factures_impayees': self.get_factures_impayees(etablissement),
+            'depenses_en_attente': self.get_depenses_en_attente(etablissement),
+
+            # Paiements en attente de validation
+            'paiements_en_attente': self.get_paiements_en_attente(etablissement),
+
+            # Graphiques
+            'evolution_recettes_depenses': self.get_evolution_recettes_depenses(etablissement),
+            'repartition_depenses': self.get_repartition_depenses(etablissement),
+            'top_payeurs': self.get_top_payeurs(etablissement),
+
+            # Activités récentes
+            'paiements_recents': self.get_paiements_recents(etablissement),
+            'depenses_recentes': self.get_depenses_recentes(etablissement),
+            'factures_recentes': self.get_factures_recentes(etablissement),
+        })
+
+        return context
+
+    def get_recettes_mois(self, etablissement, debut_mois):
+        return Paiement.objects.filter(
+            inscription_paiement__inscription__apprenant__etablissement=etablissement,
+            date_paiement__gte=debut_mois,
+            statut='CONFIRME'
+        ).aggregate(total=models.Sum('montant'))['total'] or Decimal('0.00')
+
+    def get_depenses_mois(self, etablissement, debut_mois):
+        return Depense.objects.filter(
+            etablissement=etablissement,
+            date_depense__gte=debut_mois,
+            statut='PAYEE'
+        ).aggregate(total=models.Sum('montant'))['total'] or Decimal('0.00')
+
+    def get_solde_tresorerie(self, etablissement):
+
+        comptes_tresorerie = CompteComptable.objects.filter(
+            etablissement=etablissement,
+            categorie='TRESORERIE',
+            est_actif=True
+        )
+        return comptes_tresorerie.aggregate(
+            total=models.Sum('solde_actuel')
+        )['total'] or Decimal('0.00')
+
+    def get_factures_impayees(self, etablissement):
+        return Facture.objects.filter(
+            etablissement=etablissement,
+            statut__in=['EMISE', 'PARTIELLE']
+        ).count()
+
+    def get_depenses_en_attente(self, etablissement):
+        return Depense.objects.filter(
+            etablissement=etablissement,
+            statut='EN_ATTENTE'
+        ).count()
+
+    def get_paiements_en_attente(self, etablissement):
+        return Paiement.objects.filter(
+            inscription_paiement__inscription__apprenant__etablissement=etablissement,
+            statut='EN_ATTENTE'
+        ).select_related(
+            'inscription_paiement__inscription__apprenant'
+        ).order_by('-date_paiement')[:10]
+
+    def get_evolution_recettes_depenses(self, etablissement):
+
+        # 12 derniers mois
+        today = timezone.now().date()
+        debut_periode = today - timedelta(days=365)
+
+        # Recettes par mois
+        recettes = Paiement.objects.filter(
+            inscription_paiement__inscription__apprenant__etablissement=etablissement,
+            date_paiement__gte=debut_periode,
+            statut='CONFIRME'
+        ).annotate(
+            mois=ExtractMonth('date_paiement')
+        ).values('mois').annotate(
+            total=models.Sum('montant')
+        ).order_by('mois')
+
+        # Dépenses par mois
+        depenses = Depense.objects.filter(
+            etablissement=etablissement,
+            date_depense__gte=debut_periode,
+            statut='PAYEE'
+        ).annotate(
+            mois=ExtractMonth('date_depense')
+        ).values('mois').annotate(
+            total=models.Sum('montant')
+        ).order_by('mois')
+
+        recettes_par_mois = [0] * 12
+        depenses_par_mois = [0] * 12
+
+        for r in recettes:
+            recettes_par_mois[int(r['mois']) - 1] = float(r['total'])
+
+        for d in depenses:
+            depenses_par_mois[int(d['mois']) - 1] = float(d['total'])
+
+        return {
+            'recettes': recettes_par_mois,
+            'depenses': depenses_par_mois
+        }
+
+    def get_repartition_depenses(self, etablissement):
+
+        return list(
+            Depense.objects.filter(
+                etablissement=etablissement,
+                statut='PAYEE'
+            ).values('categorie').annotate(
+                total=models.Sum('montant')
+            ).order_by('-total')[:10]
+        )
+
+    def get_top_payeurs(self, etablissement):
+
+        today = timezone.now().date()
+        debut_annee = today.replace(month=1, day=1)
+
+        return list(
+            Paiement.objects.filter(
+                inscription_paiement__inscription__apprenant__etablissement=etablissement,
+                date_paiement__gte=debut_annee,
+                statut='CONFIRME'
+            ).values(
+                'inscription_paiement__inscription__apprenant__prenom',
+                'inscription_paiement__inscription__apprenant__nom'
+            ).annotate(
+                total=models.Sum('montant')
+            ).order_by('-total')[:10]
+        )
+
+    def get_paiements_recents(self, etablissement):
+        return Paiement.objects.filter(
+            inscription_paiement__inscription__apprenant__etablissement=etablissement
+        ).select_related(
+            'inscription_paiement__inscription__apprenant'
+        ).order_by('-date_paiement')[:10]
+
+    def get_depenses_recentes(self, etablissement):
+        return Depense.objects.filter(
+            etablissement=etablissement
+        ).order_by('-date_depense')[:10]
+
+    def get_factures_recentes(self, etablissement):
+        return Facture.objects.filter(
+            etablissement=etablissement
+        ).select_related('apprenant').order_by('-date_emission')[:10]
+
+class ComptablePaiementsView(LoginRequiredMixin, ListView):
+    """Liste des paiements à valider"""
+    template_name = 'dashboard/comptable/paiements.html'
+    context_object_name = 'paiements'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'COMPTABLE':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        qs = Paiement.objects.filter(
+            inscription_paiement__inscription__apprenant__etablissement=self.request.user.etablissement
+        ).select_related(
+            'inscription_paiement__inscription__apprenant',
+            'tranche'
+        )
+
+        # Filtres
+        statut = self.request.GET.get('statut')
+        if statut:
+            qs = qs.filter(statut=statut)
+        else:
+            # Par défaut, afficher les paiements en attente
+            qs = qs.filter(statut='EN_ATTENTE')
+
+        return qs.order_by('-date_paiement')
+
+class ComptableFacturesView(LoginRequiredMixin, ListView):
+    model = Facture
+    template_name = 'dashboard/comptable/factures.html'
+    context_object_name = 'factures'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'COMPTABLE':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        qs = Facture.objects.filter(
+            etablissement=self.request.user.etablissement
+        ).select_related('apprenant', 'inscription')
+
+        # Filtres
+        statut = self.request.GET.get('statut')
+        if statut:
+            qs = qs.filter(statut=statut)
+
+        type_facture = self.request.GET.get('type')
+        if type_facture:
+            qs = qs.filter(type_facture=type_facture)
+
+        search = self.request.GET.get('search')
+        if search:
+            qs = qs.filter(
+                Q(numero_facture__icontains=search) |
+                Q(apprenant__nom__icontains=search) |
+                Q(apprenant__prenom__icontains=search)
+            )
+
+        return qs.order_by('-date_emission')
+
+class ComptableDepensesView(LoginRequiredMixin, ListView):
+    """Liste des dépenses"""
+    model = Depense
+    template_name = 'dashboard/comptable/depenses.html'
+    context_object_name = 'depenses'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'COMPTABLE':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        qs = Depense.objects.filter(
+            etablissement=self.request.user.etablissement
+        )
+
+        # Filtres
+        statut = self.request.GET.get('statut')
+        if statut:
+            qs = qs.filter(statut=statut)
+
+        categorie = self.request.GET.get('categorie')
+        if categorie:
+            qs = qs.filter(categorie=categorie)
+
+        search = self.request.GET.get('search')
+        if search:
+            qs = qs.filter(
+                Q(numero_depense__icontains=search) |
+                Q(fournisseur__icontains=search) |
+                Q(description__icontains=search)
+            )
+
+        return qs.order_by('-date_depense')
+
+class ComptableEcrituresView(LoginRequiredMixin, ListView):
+    """Liste des écritures comptables"""
+    template_name = 'dashboard/comptable/ecritures.html'
+    context_object_name = 'ecritures'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'COMPTABLE':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        qs = EcritureComptable.objects.filter(
+            etablissement=self.request.user.etablissement
+        ).select_related('journal').order_by('-date_ecriture')
+
+        # Filtres
+        statut = self.request.GET.get('statut')
+        if statut:
+            qs = qs.filter(statut=statut)
+
+        journal = self.request.GET.get('journal')
+        if journal:
+            qs = qs.filter(journal_id=journal)
+
+        date_debut = self.request.GET.get('date_debut')
+        date_fin = self.request.GET.get('date_fin')
+        if date_debut and date_fin:
+            qs = qs.filter(date_ecriture__range=[date_debut, date_fin])
+
+        return qs
+
+class ComptableComptesView(LoginRequiredMixin, ListView):
+    """Liste des comptes comptables"""
+    template_name = 'dashboard/comptable/comptes.html'
+    context_object_name = 'comptes'
+    paginate_by = 50
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'COMPTABLE':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        qs = CompteComptable.objects.filter(
+            etablissement=self.request.user.etablissement
+        ).order_by('numero_compte')
+
+        # Filtres
+        categorie = self.request.GET.get('categorie')
+        if categorie:
+            qs = qs.filter(categorie=categorie)
+
+        search = self.request.GET.get('search')
+        if search:
+            qs = qs.filter(
+                Q(numero_compte__icontains=search) |
+                Q(libelle__icontains=search)
+            )
+
+        return qs
+
+class ComptableRapportBalanceView(LoginRequiredMixin, TemplateView):
+    """Rapport balance détaillée"""
+    template_name = 'dashboard/comptable/balance.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'COMPTABLE':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        date_debut = self.request.GET.get('date_debut')
+        date_fin = self.request.GET.get('date_fin')
+
+        if date_debut and date_fin:
+            from datetime import datetime
+            date_debut = datetime.strptime(date_debut, '%Y-%m-%d').date()
+            date_fin = datetime.strptime(date_fin, '%Y-%m-%d').date()
+
+            balance = ComptabiliteUtils.generer_balance(
+                self.request.user.etablissement,
+                date_debut,
+                date_fin
+            )
+
+            context['balance'] = balance
+            context['date_debut'] = date_debut
+            context['date_fin'] = date_fin
+
+        return context
+
+class ComptableRapportsView(LoginRequiredMixin, TemplateView):
+    """Rapports comptables"""
+    template_name = 'dashboard/comptable/rapports.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'COMPTABLE':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        etablissement = self.request.user.etablissement
+
+        # Période sélectionnée
+        date_debut = self.request.GET.get('date_debut')
+        date_fin = self.request.GET.get('date_fin')
+
+        if not date_debut or not date_fin:
+            # Par défaut : mois en cours
+            today = timezone.now().date()
+            date_debut = today.replace(day=1)
+            date_fin = today
+        else:
+            date_debut = datetime.strptime(date_debut, '%Y-%m-%d').date()
+            date_fin = datetime.strptime(date_fin, '%Y-%m-%d').date()
+
+        context.update({
+            'date_debut': date_debut,
+            'date_fin': date_fin,
+            'rapport_recettes': self.get_rapport_recettes(etablissement, date_debut, date_fin),
+            'rapport_depenses': self.get_rapport_depenses(etablissement, date_debut, date_fin),
+            'rapport_tresorerie': self.get_rapport_tresorerie(etablissement),
+            'rapport_impayés': self.get_rapport_impayes(etablissement),
+        })
+
+        return context
+
+    def get_rapport_recettes(self, etablissement, date_debut, date_fin):
+
+        paiements = Paiement.objects.filter(
+            inscription_paiement__inscription__apprenant__etablissement=etablissement,
+            date_paiement__range=[date_debut, date_fin],
+            statut='CONFIRME'
+        )
+
+        return {
+            'total': paiements.aggregate(total=models.Sum('montant'))['total'] or Decimal('0.00'),
+            'nombre': paiements.count(),
+            'par_methode': list(
+                paiements.values('methode_paiement').annotate(
+                    total=models.Sum('montant'),
+                    nombre=Count('id')
+                )
+            )
+        }
+
+    def get_rapport_depenses(self, etablissement, date_debut, date_fin):
+
+        depenses = Depense.objects.filter(
+            etablissement=etablissement,
+            date_depense__range=[date_debut, date_fin],
+            statut='PAYEE'
+        )
+
+        return {
+            'total': depenses.aggregate(total=models.Sum('montant'))['total'] or Decimal('0.00'),
+            'nombre': depenses.count(),
+            'par_categorie': list(
+                depenses.values('categorie').annotate(
+                    total=models.Sum('montant'),
+                    nombre=Count('id')
+                ).order_by('-total')
+            )
+        }
+
+    def get_rapport_tresorerie(self, etablissement):
+
+        comptes = CompteComptable.objects.filter(
+            etablissement=etablissement,
+            categorie='TRESORERIE',
+            est_actif=True
+        )
+
+        return {
+            'solde_total': comptes.aggregate(total=models.Sum('solde_actuel'))['total'] or Decimal('0.00'),
+            'par_compte': list(comptes.values('numero_compte', 'libelle', 'solde_actuel'))
+        }
+
+    def get_rapport_impayes(self, etablissement):
+
+        factures_impayees = Facture.objects.filter(
+            etablissement=etablissement,
+            statut__in=['EMISE', 'PARTIELLE']
+        )
+
+        return {
+            'nombre': factures_impayees.count(),
+            'montant_total': factures_impayees.aggregate(
+                total=models.Sum(F('montant_ttc') - F('montant_paye'))
+            )['total'] or Decimal('0.00'),
+            'par_apprenant': list(
+                factures_impayees.values(
+                    'apprenant__nom',
+                    'apprenant__prenom'
+                ).annotate(
+                    total_impaye=models.Sum(F('montant_ttc') - F('montant_paye')),
+                    nombre_factures=Count('id')
+                ).order_by('-total_impaye')[:20]
+            )
+        }
+
+@login_required
+def comptable_rapport_bilan(request):
+    """Génère le bilan comptable"""
+    if request.user.role != 'COMPTABLE':
+        return HttpResponseForbidden()
+
+    date_debut = request.GET.get('date_debut')
+    date_fin = request.GET.get('date_fin')
+    format_export = request.GET.get('format', 'view')
+
+    # Vérification dates
+    if not date_debut or not date_fin:
+        messages.error(request, "Dates requises")
+        return redirect('dashboard:comptable_rapports')
+
+    # Conversion dates
+    import datetime
+
+    date_debut = datetime.datetime.strptime(date_debut, '%Y-%m-%d').date()
+    date_fin = datetime.datetime.strptime(date_fin, '%Y-%m-%d').date()
+
+    # Récupération comptes
+    comptes_actif = CompteComptable.objects.filter(
+        etablissement=request.user.etablissement,
+        categorie='ACTIF',
+        est_actif=True
+    )
+
+    comptes_passif = CompteComptable.objects.filter(
+        etablissement=request.user.etablissement,
+        categorie='PASSIF',
+        est_actif=True
+    )
+
+    # Structure du bilan
+    bilan_data = {
+        'actif': [],
+        'passif': [],
+        'total_actif': Decimal('0.00'),
+        'total_passif': Decimal('0.00'),
+    }
+
+    # ACTIF
+    for compte in comptes_actif:
+        solde = ComptabiliteUtils.calculer_solde_compte(compte, date_debut, date_fin)
+        if solde != 0:
+            bilan_data['actif'].append({
+                'compte': compte,
+                'solde': solde,
+                'solde_abs': abs(solde)
+            })
+            bilan_data['total_actif'] += solde
+
+    # PASSIF
+    for compte in comptes_passif:
+        solde = ComptabiliteUtils.calculer_solde_compte(compte, date_debut, date_fin)
+        if solde != 0:
+            bilan_data['passif'].append({
+                'compte': compte,
+                'solde': solde,
+                'solde_abs': abs(solde)
+            })
+            bilan_data['total_passif'] += solde
+
+    # Calcul écart en valeur absolue
+    ecart = bilan_data['total_actif'] - bilan_data['total_passif']
+    bilan_data['ecart'] = abs(ecart)
+
+    context = {
+        'bilan': bilan_data,
+        'date_debut': date_debut,
+        'date_fin': date_fin,
+    }
+
+    # Export PDF
+    if format_export == 'pdf':
+        messages.info(request, "Export PDF en développement")
+        return redirect('dashboard:comptable_rapports')
+
+    return render(request, 'dashboard/comptable/bilan.html', context)
+
+@login_required
+def comptable_rapport_resultat(request):
+    """Génère le compte de résultat"""
+    if request.user.role != 'COMPTABLE':
+        return HttpResponseForbidden()
+
+    date_debut = request.GET.get('date_debut')
+    date_fin = request.GET.get('date_fin')
+
+    if not date_debut or not date_fin:
+        messages.error(request, "Dates requises")
+        return redirect('dashboard:comptable_rapports')
+
+    # Conversion dates
+    import datetime
+
+    date_debut = datetime.datetime.strptime(date_debut, '%Y-%m-%d').date()
+    date_fin = datetime.datetime.strptime(date_fin, '%Y-%m-%d').date()
+
+    # Charges
+    comptes_charges = CompteComptable.objects.filter(
+        etablissement=request.user.etablissement,
+        categorie='CHARGES',
+        est_actif=True
+    )
+
+    # Produits
+    comptes_produits = CompteComptable.objects.filter(
+        etablissement=request.user.etablissement,
+        categorie='PRODUITS',
+        est_actif=True
+    )
+
+    resultat_data = {
+        'charges': [],
+        'produits': [],
+        'total_charges': Decimal('0.00'),
+        'total_produits': Decimal('0.00')
+    }
+
+    for compte in comptes_charges:
+        solde = ComptabiliteUtils.calculer_solde_compte(compte, date_debut, date_fin)
+        if solde != 0:
+            montant_abs = abs(solde)
+            resultat_data['charges'].append({
+                'compte': compte,
+                'montant': montant_abs
+            })
+            resultat_data['total_charges'] += montant_abs
+
+    for compte in comptes_produits:
+        solde = ComptabiliteUtils.calculer_solde_compte(compte, date_debut, date_fin)
+        if solde != 0:
+            montant_abs = abs(solde)
+            resultat_data['produits'].append({
+                'compte': compte,
+                'montant': montant_abs
+            })
+            resultat_data['total_produits'] += montant_abs
+
+    # Résultat net
+    resultat_data['resultat'] = resultat_data['total_produits'] - resultat_data['total_charges']
+
+    context = {
+        'resultat': resultat_data,
+        'date_debut': date_debut,
+        'date_fin': date_fin,
+    }
+
+    return render(request, 'dashboard/comptable/resultat.html', context)
+
+@login_required
+def comptable_rapport_tresorerie(request):
+    """État de trésorerie"""
+    if request.user.role != 'COMPTABLE':
+        return HttpResponseForbidden()
+
+    date_debut = request.GET.get('date_debut')
+    date_fin = request.GET.get('date_fin')
+
+    if not date_debut or not date_fin:
+        messages.error(request, "Dates requises")
+        return redirect('dashboard:comptable_rapports')
+
+
+    import datetime
+    date_debut = datetime.datetime.strptime(date_debut, '%Y-%m-%d').date()
+    date_fin = datetime.datetime.strptime(date_fin, '%Y-%m-%d').date()
+
+    comptes_tresorerie = CompteComptable.objects.filter(
+        etablissement=request.user.etablissement,
+        categorie='TRESORERIE',
+        est_actif=True
+    )
+
+    tresorerie_data = {
+        'comptes': [],
+        'total': Decimal('0.00')
+    }
+
+    for compte in comptes_tresorerie:
+        solde = ComptabiliteUtils.calculer_solde_compte(compte, date_debut, date_fin)
+        tresorerie_data['comptes'].append({
+            'compte': compte,
+            'solde': solde
+        })
+        tresorerie_data['total'] += solde
+
+    context = {
+        'tresorerie': tresorerie_data,
+        'date_debut': date_debut,
+        'date_fin': date_fin,
+    }
+
+    return render(request, 'dashboard/comptable/tresorerie.html', context)
+
+class ComptableBudgetView(LoginRequiredMixin, ListView):
+    """Gestion du budget"""
+    template_name = 'dashboard/comptable/budget.html'
+    context_object_name = 'budgets'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'COMPTABLE':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return BudgetPrevisionnel.objects.filter(
+            etablissement=self.request.user.etablissement
+        ).select_related('exercice').order_by('-exercice__date_debut', 'type_budget')
+
+class ComptableExercicesView(LoginRequiredMixin, ListView):
+    """Liste des exercices comptables"""
+    template_name = 'dashboard/comptable/exercices.html'
+    context_object_name = 'exercices'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role != 'COMPTABLE':
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return ExerciceComptable.objects.filter(
+            etablissement=self.request.user.etablissement
+        ).order_by('-date_debut')
+
 
 # ================================
 # VUES CHEF DEPARTEMENT

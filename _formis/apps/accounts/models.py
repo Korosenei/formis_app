@@ -13,6 +13,7 @@ class Utilisateur(AbstractUser):
     ROLES_UTILISATEUR = (
         ('SUPERADMIN', 'Super Administrateur'),
         ('ADMIN', 'Administrateur d\'établissement'),
+        ('COMPTABLE', 'Comptable'),
         ('CHEF_DEPARTEMENT', 'Chef de département'),
         ('ENSEIGNANT', 'Enseignant'),
         ('APPRENANT', 'Apprenant'),
@@ -119,6 +120,7 @@ class Utilisateur(AbstractUser):
         urls_tableau_de_bord = {
             'SUPERADMIN': '/dashboard/superadmin/',
             'ADMIN': '/dashboard/admin/',
+            'COMPTABLE': '/dashboard/comptable/',
             'CHEF_DEPARTEMENT': '/dashboard/department_head/',
             'ENSEIGNANT': '/dashboard/teacher/',
             'APPRENANT': '/dashboard/student/',
@@ -145,29 +147,26 @@ class Utilisateur(AbstractUser):
 
         Règles:
         - ADMIN: peut gérer tous les utilisateurs de son établissement (SAUF APPRENANT)
+        - COMPTABLE: peut uniquement consulter, pas de gestion
         - CHEF_DEPARTEMENT: peut gérer enseignants de son département uniquement
-        - Personne ne peut créer/modifier/supprimer des APPRENANTS via l'interface admin
         """
-        # Personne ne peut se gérer soi-même (sauf changement de profil personnel)
         if self.id == utilisateur_cible.id:
             return False
 
-        # Les APPRENANTS ne peuvent pas être gérés via l'interface utilisateurs
         if utilisateur_cible.role == 'APPRENANT':
             return False
 
-        # SUPERADMIN peut tout gérer
         if self.role == 'SUPERADMIN':
             return True
 
-        # ADMIN peut gérer les utilisateurs de son établissement (sauf APPRENANTS)
         if self.role == 'ADMIN':
             if utilisateur_cible.etablissement == self.etablissement:
-                # ADMIN peut gérer: ADMIN, CHEF_DEPARTEMENT, ENSEIGNANT
-                return utilisateur_cible.role in ['ADMIN', 'CHEF_DEPARTEMENT', 'ENSEIGNANT']
+                return utilisateur_cible.role in ['ADMIN', 'COMPTABLE', 'CHEF_DEPARTEMENT', 'ENSEIGNANT']
             return False
 
-        # CHEF_DEPARTEMENT peut gérer uniquement les ENSEIGNANTS de son département
+        if self.role == 'COMPTABLE':
+            return False
+
         if self.role == 'CHEF_DEPARTEMENT':
             if utilisateur_cible.departement == self.departement:
                 return utilisateur_cible.role == 'ENSEIGNANT'
@@ -180,11 +179,10 @@ class Utilisateur(AbstractUser):
         Vérifie si l'utilisateur peut créer un utilisateur avec le rôle spécifié
 
         Règles:
-        - ADMIN: peut créer ADMIN, CHEF_DEPARTEMENT, ENSEIGNANT
+        - ADMIN: peut créer ADMIN, COMPTABLE, CHEF_DEPARTEMENT, ENSEIGNANT
+        - COMPTABLE: ne peut créer aucun utilisateur
         - CHEF_DEPARTEMENT: peut créer ENSEIGNANT uniquement
-        - APPRENANT: ne peut JAMAIS être créé via l'interface utilisateurs
         """
-        # Les APPRENANTS ne peuvent pas être créés via cette interface
         if role_cible == 'APPRENANT':
             return False
 
@@ -192,7 +190,10 @@ class Utilisateur(AbstractUser):
             return True
 
         if self.role == 'ADMIN':
-            return role_cible in ['ADMIN', 'CHEF_DEPARTEMENT', 'ENSEIGNANT']
+            return role_cible in ['ADMIN', 'COMPTABLE', 'CHEF_DEPARTEMENT', 'ENSEIGNANT']
+
+        if self.role == 'COMPTABLE':
+            return False
 
         if self.role == 'CHEF_DEPARTEMENT':
             return role_cible == 'ENSEIGNANT'
@@ -428,3 +429,49 @@ class ProfilEnseignant(models.Model):
 
     def __str__(self):
         return f"Profil enseignant de {self.utilisateur.get_full_name()}"
+
+class ProfilComptable(models.Model):
+    """Profil spécifique aux comptables"""
+    utilisateur = models.OneToOneField(
+        Utilisateur,
+        on_delete=models.CASCADE,
+        related_name='profil_comptable',
+        limit_choices_to={'role': 'COMPTABLE'}
+    )
+
+    # Informations professionnelles
+    id_employe = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    date_embauche = models.DateField(null=True, blank=True)
+    specialisation = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="Ex: Comptabilité générale, Trésorerie, etc."
+    )
+    certifications = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Certifications professionnelles (une par ligne)"
+    )
+
+    # Permissions spécifiques
+    peut_valider_paiements = models.BooleanField(
+        default=True,
+        verbose_name="Peut valider les paiements"
+    )
+    peut_generer_factures = models.BooleanField(
+        default=True,
+        verbose_name="Peut générer les factures"
+    )
+    peut_voir_rapports_financiers = models.BooleanField(
+        default=True,
+        verbose_name="Peut consulter les rapports financiers"
+    )
+
+    class Meta:
+        db_table = 'comptes_profil_comptable'
+        verbose_name = "Profil comptable"
+        verbose_name_plural = "Profils comptables"
+
+    def __str__(self):
+        return f"Profil comptable de {self.utilisateur.get_full_name()}"

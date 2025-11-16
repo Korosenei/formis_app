@@ -1,196 +1,321 @@
 <!-- templates/enrollment/inscription/success_public.html -->
-{% extends 'base.html' %}
 {% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✅ Paiement réussi - {{ candidature.etablissement.nom }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-{% block title %}Inscription réussie{% endblock %}
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1cc88a 0%, #17a2b8 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
 
-{% block extra_css %}
-<style>
-    .success-container {
-        max-width: 800px;
-        margin: 50px auto;
-    }
+        .container {
+            width: 100%;
+            max-width: 700px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            animation: slideUp 0.5s ease;
+        }
 
-    .success-icon {
-        font-size: 80px;
-        color: #28a745;
-        animation: pulse 1.5s ease-in-out infinite;
-    }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
 
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-    }
+        .header {
+            padding: 50px 30px;
+            background: linear-gradient(135deg, #1cc88a 0%, #17a2b8 100%);
+            color: white;
+            text-align: center;
+            position: relative;
+        }
 
-    .info-card {
-        background: #f8f9fa;
-        border-left: 4px solid #28a745;
-        padding: 20px;
-        margin: 20px 0;
-    }
+        .success-icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            color: #1cc88a;
+            animation: scaleIn 0.5s ease 0.2s both;
+        }
 
-    .credentials-box {
-        background: #fff3cd;
-        border: 2px dashed #ffc107;
-        padding: 20px;
-        margin: 20px 0;
-        border-radius: 10px;
-    }
+        @keyframes scaleIn {
+            from {
+                transform: scale(0);
+            }
+            to {
+                transform: scale(1);
+            }
+        }
 
-    .btn-dashboard {
-        padding: 15px 40px;
-        font-size: 18px;
-    }
-</style>
-{% endblock %}
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
 
-{% block content %}
-<div class="container success-container">
-    <div class="text-center">
-        <div class="success-icon">
-            <i class="fas fa-check-circle"></i>
+        .header p {
+            font-size: 18px;
+            opacity: 0.95;
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .success-message {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .success-message h2 {
+            font-size: 24px;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+
+        .success-message p {
+            font-size: 16px;
+            color: #718096;
+            line-height: 1.6;
+        }
+
+        .info-box {
+            background: #f7fafc;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border-left: 4px solid #1cc88a;
+        }
+
+        .info-box h5 {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            font-weight: 700;
+            color: #2d3748;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .info-item label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-item span {
+            font-size: 15px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .alert-info {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            color: #1565c0;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .alert-info i {
+            font-size: 24px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .alert-info ul {
+            margin: 10px 0 0 0;
+            padding-left: 20px;
+        }
+
+        .alert-info li {
+            margin: 5px 0;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            text-align: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                border-radius: 0;
+            }
+
+            .header {
+                padding: 40px 20px;
+            }
+
+            .header h1 {
+                font-size: 26px;
+            }
+
+            .content {
+                padding: 30px 20px;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="success-icon">
+                <i class="fas fa-check"></i>
+            </div>
+            <h1>🎉 Paiement confirmé !</h1>
+            <p>Votre inscription est maintenant active</p>
         </div>
 
-        <h1 class="display-4 text-success mb-4">
-            🎉 Félicitations !
-        </h1>
-
-        <p class="lead">
-            Votre inscription a été confirmée avec succès.
-        </p>
-    </div>
-
-    <!-- Informations de l'inscription -->
-    <div class="info-card">
-        <h4>📋 Informations de votre inscription</h4>
-        <hr>
-        <div class="row">
-            <div class="col-md-6">
-                <p><strong>Nom complet:</strong> {{ candidature.prenom }} {{ candidature.nom }}</p>
-                <p><strong>Email:</strong> {{ candidature.email }}</p>
-                <p><strong>Numéro d'inscription:</strong> {{ inscription.numero_inscription }}</p>
-            </div>
-            <div class="col-md-6">
-                <p><strong>Formation:</strong> {{ candidature.filiere.nom }}</p>
-                <p><strong>Niveau:</strong> {{ candidature.niveau.nom }}</p>
-                <p><strong>Établissement:</strong> {{ candidature.etablissement.nom }}</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Paiement confirmé -->
-    <div class="info-card">
-        <h4>💳 Paiement confirmé</h4>
-        <hr>
-        <div class="row">
-            <div class="col-md-6">
-                <p><strong>Numéro de transaction:</strong> {{ paiement.numero_transaction }}</p>
-                <p><strong>Montant payé:</strong> {{ paiement.montant }} FCFA</p>
-            </div>
-            <div class="col-md-6">
-                <p><strong>Date:</strong> {{ paiement.date_confirmation|date:"d/m/Y H:i" }}</p>
-                <p><strong>Statut:</strong> <span class="badge bg-success">Confirmé</span></p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Identifiants de connexion -->
-    {% if user %}
-    <div class="credentials-box">
-        <h4 class="text-warning">
-            <i class="fas fa-key"></i> Vos identifiants de connexion
-        </h4>
-        <hr>
-        <div class="alert alert-warning">
-            <strong>⚠️ IMPORTANT:</strong> Un email contenant vos identifiants de connexion
-            a été envoyé à <strong>{{ user.email }}</strong>
-        </div>
-
-        <div class="row">
-            <div class="col-md-6">
-                <p><strong>📧 Email de connexion:</strong><br>
-                   <code class="fs-5">{{ user.email }}</code>
+        <div class="content">
+            <div class="success-message">
+                <h2>Félicitations {{ apprenant.prenom }} !</h2>
+                <p>
+                    Votre paiement a été confirmé avec succès et votre compte a été créé.<br>
+                    Vous allez recevoir vos identifiants de connexion par email dans quelques instants.
                 </p>
             </div>
-            <div class="col-md-6">
-                <p><strong>🎫 Matricule:</strong><br>
-                   <code class="fs-5">{{ user.matricule }}</code>
-                </p>
+
+            <!-- Informations du paiement -->
+            <div class="info-box">
+                <h5><i class="fas fa-receipt"></i> Détails du paiement</h5>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>N° Transaction</label>
+                        <span>{{ paiement.numero_transaction }}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Montant payé</label>
+                        <span>{{ paiement.montant|floatformat:0 }} XOF</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Date</label>
+                        <span>{{ paiement.date_confirmation|date:"d/m/Y à H:i" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Statut</label>
+                        <span style="color: #1cc88a;">✓ Confirmé</span>
+                    </div>
+                </div>
             </div>
+
+            <!-- Informations du compte -->
+            <div class="info-box">
+                <h5><i class="fas fa-user-circle"></i> Votre compte</h5>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Nom complet</label>
+                        <span>{{ apprenant.get_full_name }}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Matricule</label>
+                        <span>{{ apprenant.matricule }}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Email</label>
+                        <span>{{ apprenant.email }}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Formation</label>
+                        <span>{{ candidature.filiere.nom }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informations importantes -->
+            <div class="alert-info">
+                <i class="fas fa-info-circle"></i>
+                <div>
+                    <strong>📧 Prochaines étapes :</strong>
+                    <ul>
+                        <li>Consultez votre boîte email ({{ apprenant.email }})</li>
+                        <li>Vérifiez aussi vos spams si besoin</li>
+                        <li>Vous recevrez vos identifiants de connexion</li>
+                        <li>Vous pourrez ensuite accéder à votre espace étudiant</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Bouton de connexion -->
+            {% if show_login_link %}
+            <a href="{% url 'accounts:login' %}" class="btn btn-primary">
+                <i class="fas fa-sign-in-alt"></i>
+                Se connecter maintenant
+            </a>
+            {% endif %}
         </div>
-
-        <p class="mb-0 text-muted">
-            <i class="fas fa-info-circle"></i>
-            Vérifiez votre boîte email (et les spams) pour récupérer votre mot de passe temporaire.
-        </p>
     </div>
-    {% endif %}
-
-    <!-- Prochaines étapes -->
-    <div class="card mt-4">
-        <div class="card-body">
-            <h5 class="card-title">
-                <i class="fas fa-list-check"></i> Prochaines étapes
-            </h5>
-            <ol class="mt-3">
-                <li class="mb-2">
-                    <strong>Vérifiez votre email</strong> pour récupérer vos identifiants de connexion
-                </li>
-                <li class="mb-2">
-                    <strong>Connectez-vous</strong> à votre espace étudiant avec vos identifiants
-                </li>
-                <li class="mb-2">
-                    <strong>Changez votre mot de passe</strong> temporaire lors de votre première connexion
-                </li>
-                <li class="mb-2">
-                    <strong>Complétez votre profil</strong> avec vos informations personnelles
-                </li>
-                <li class="mb-2">
-                    <strong>Consultez votre emploi du temps</strong> et vos cours
-                </li>
-            </ol>
-        </div>
-    </div>
-
-    <!-- Boutons d'action -->
-    <div class="text-center mt-4 mb-5">
-        <a href="{% url 'accounts:login' %}" class="btn btn-success btn-dashboard">
-            <i class="fas fa-sign-in-alt"></i> Accéder à mon espace étudiant
-        </a>
-
-        <p class="mt-3 text-muted">
-            <i class="fas fa-envelope"></i>
-            Un email de confirmation a été envoyé à {{ candidature.email }}
-        </p>
-    </div>
-
-    <!-- Support -->
-    <div class="alert alert-info">
-        <h6><i class="fas fa-question-circle"></i> Besoin d'aide ?</h6>
-        <p class="mb-0">
-            Si vous rencontrez des difficultés pour vous connecter ou si vous n'avez pas reçu
-            l'email avec vos identifiants, contactez le support de votre établissement.
-        </p>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-// Auto-scroll vers le haut
-window.scrollTo(0, 0);
-
-// Confetti animation (optionnel)
-document.addEventListener('DOMContentLoaded', function() {
-    // Ajouter une petite animation de célébration
-    const successIcon = document.querySelector('.success-icon');
-
-    setTimeout(() => {
-        successIcon.style.transform = 'scale(1.2)';
-        setTimeout(() => {
-            successIcon.style.transform = 'scale(1)';
-        }, 300);
-    }, 500);
-});
-</script>
-{% endblock %}
+</body>
+</html>

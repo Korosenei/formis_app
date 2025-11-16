@@ -1,0 +1,387 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block page_title %}Balance générale{% endblock %}
+
+{% block breadcrumb %}
+Dashboard > Comptabilité > Rapports > Balance
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.balance-page {
+    padding: 20px;
+}
+
+.header-section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 20px;
+}
+
+.filter-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    align-items: end;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748b;
+}
+
+.form-control {
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-left: 4px solid;
+}
+
+.stat-card.debit { border-color: #10b981; }
+.stat-card.credit { border-color: #ef4444; }
+
+.stat-label {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.balance-table-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.table-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.export-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.balance-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.balance-table thead {
+    background: #f8fafc;
+}
+
+.balance-table th {
+    padding: 16px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.balance-table th.text-right {
+    text-align: right;
+}
+
+.balance-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+}
+
+.balance-table td.text-right {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+}
+
+.balance-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+.balance-table tfoot {
+    background: #f8fafc;
+    font-weight: 700;
+}
+
+.balance-table tfoot td {
+    padding: 16px;
+    border-top: 2px solid #3b82f6;
+    color: #1e293b;
+}
+
+.compte-numero {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: #3b82f6;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #94a3b8;
+}
+
+.empty-state i {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="balance-page">
+    <!-- Filtres de période -->
+    <div class="header-section">
+        <h1 class="page-title">Balance générale</h1>
+
+        <form method="get" class="filter-form">
+            <div class="form-group">
+                <label class="form-label">Date de début</label>
+                <input type="date"
+                       name="date_debut"
+                       class="form-control"
+                       value="{{ date_debut|date:'Y-m-d' }}"
+                       required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Date de fin</label>
+                <input type="date"
+                       name="date_fin"
+                       class="form-control"
+                       value="{{ date_fin|date:'Y-m-d' }}"
+                       required>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sync"></i>
+                    Générer
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% if balance %}
+    <!-- Statistiques -->
+    <div class="stats-grid">
+        {% with total_debit=balance|sum_attr:"debit" total_credit=balance|sum_attr:"credit" %}
+        <div class="stat-card debit">
+            <div class="stat-label">Total Débit</div>
+            <div class="stat-value">{{ total_debit|floatformat:0|intcomma }} FCFA</div>
+        </div>
+        <div class="stat-card credit">
+            <div class="stat-label">Total Crédit</div>
+            <div class="stat-value">{{ total_credit|floatformat:0|intcomma }} FCFA</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Équilibre</div>
+            <div class="stat-value" style="color: {% if total_debit == total_credit %}#10b981{% else %}#ef4444{% endif %};">
+                {{ total_debit|subtract:total_credit|abs|floatformat:0|intcomma }} FCFA
+            </div>
+        </div>
+        {% endwith %}
+    </div>
+
+    <!-- Tableau de la balance -->
+    <div class="balance-table-card">
+        <div class="table-header">
+            <h3 class="table-title">
+                Balance du {{ date_debut|date:"d/m/Y" }} au {{ date_fin|date:"d/m/Y" }}
+            </h3>
+            <div class="export-actions">
+                <a href="{% url 'dashboard:comptable_balance_export_excel' %}?date_debut={{ date_debut|date:'Y-m-d' }}&date_fin={{ date_fin|date:'Y-m-d' }}"
+                   class="btn btn-success"
+                   title="Exporter en Excel">
+                    <i class="fas fa-file-excel"></i>
+                    Excel
+                </a>
+                <a href="{% url 'dashboard:comptable_balance_export_pdf' %}?date_debut={{ date_debut|date:'Y-m-d' }}&date_fin={{ date_fin|date:'Y-m-d' }}"
+                   class="btn btn-primary"
+                   target="_blank"
+                   title="Exporter en PDF">
+                    <i class="fas fa-file-pdf"></i>
+                    PDF
+                </a>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="balance-table">
+                <thead>
+                    <tr>
+                        <th>Compte</th>
+                        <th>Libellé</th>
+                        <th class="text-right">Débit</th>
+                        <th class="text-right">Crédit</th>
+                        <th class="text-right">Solde Débiteur</th>
+                        <th class="text-right">Solde Créditeur</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ligne in balance %}
+                    <tr>
+                        <td>
+                            <span class="compte-numero">{{ ligne.numero_compte }}</span>
+                        </td>
+                        <td>{{ ligne.libelle }}</td>
+                        <td class="text-right">
+                            {% if ligne.debit > 0 %}
+                                {{ ligne.debit|floatformat:0|intcomma }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            {% if ligne.credit > 0 %}
+                                {{ ligne.credit|floatformat:0|intcomma }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            {% if ligne.solde_debiteur > 0 %}
+                                {{ ligne.solde_debiteur|floatformat:0|intcomma }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            {% if ligne.solde_crediteur > 0 %}
+                                {{ ligne.solde_crediteur|floatformat:0|intcomma }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2">TOTAL</td>
+                        <td class="text-right">
+                            {% widthratio balance|sum_attr:"debit" 1 1|floatformat:0|intcomma %}
+                        </td>
+                        <td class="text-right">
+                            {% widthratio balance|sum_attr:"credit" 1 1|floatformat:0|intcomma %}
+                        </td>
+                        <td class="text-right">
+                            {% widthratio balance|sum_attr:"solde_debiteur" 1 1|floatformat:0|intcomma %}
+                        </td>
+                        <td class="text-right">
+                            {% widthratio balance|sum_attr:"solde_crediteur" 1 1|floatformat:0|intcomma %}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="balance-table-card">
+        <div class="empty-state">
+            <i class="fas fa-chart-bar"></i>
+            <h3>Aucune donnée</h3>
+            <p>Sélectionnez une période pour générer la balance</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Validation des dates
+document.querySelector('form').addEventListener('submit', function(e) {
+    const dateDebut = new Date(document.querySelector('[name="date_debut"]').value);
+    const dateFin = new Date(document.querySelector('[name="date_fin"]').value);
+
+    if (dateFin < dateDebut) {
+        e.preventDefault();
+        alert('La date de fin doit être postérieure à la date de début');
+    }
+});
+</script>
+{% endblock %}
