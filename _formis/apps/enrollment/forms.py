@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from .models import (
     PeriodeCandidature, DocumentRequis, Candidature, DocumentCandidature,
-    Inscription, Transfert, Abandon
+    Inscription
 )
 
 User = get_user_model()
@@ -628,131 +628,6 @@ class InscriptionForm(forms.ModelForm):
             if date_debut >= date_fin_prevue:
                 raise ValidationError({
                     'date_fin_prevue': 'La date de fin doit être postérieure à la date de début.'
-                })
-
-        return cleaned_data
-
-
-class TransfertForm(forms.ModelForm):
-    """Formulaire pour les transferts"""
-
-    class Meta:
-        model = Transfert
-        fields = [
-            'inscription', 'classe_origine', 'classe_destination',
-            'date_transfert', 'date_effet', 'motif'
-        ]
-        widgets = {
-            'inscription': forms.Select(attrs={'class': 'form-select'}),
-            'classe_origine': forms.Select(attrs={'class': 'form-select'}),
-            'classe_destination': forms.Select(attrs={'class': 'form-select'}),
-            'date_transfert': DateInput(attrs={'class': 'form-control'}),
-            'date_effet': DateInput(attrs={'class': 'form-control'}),
-            'motif': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 5,
-                'placeholder': 'Motif détaillé du transfert...',
-                'required': True
-            })
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Filtrer les inscriptions actives
-        self.fields['inscription'].queryset = Inscription.objects.filter(
-            statut='ACTIVE'
-        ).select_related('apprenant', 'classe_assignee')
-
-    def clean(self):
-        cleaned_data = super().clean()
-        inscription = cleaned_data.get('inscription')
-        classe_origine = cleaned_data.get('classe_origine')
-        classe_destination = cleaned_data.get('classe_destination')
-        date_transfert = cleaned_data.get('date_transfert')
-        date_effet = cleaned_data.get('date_effet')
-
-        if inscription and classe_origine:
-            if inscription.classe_assignee != classe_origine:
-                raise ValidationError({
-                    'classe_origine': 'La classe d\'origine doit être la classe actuelle de l\'étudiant.'
-                })
-
-        if classe_origine and classe_destination:
-            if classe_origine == classe_destination:
-                raise ValidationError({
-                    'classe_destination': 'La classe de destination doit être différente de la classe d\'origine.'
-                })
-
-        if date_transfert and date_effet:
-            if date_effet < date_transfert:
-                raise ValidationError({
-                    'date_effet': 'La date d\'effet ne peut pas être antérieure à la date de transfert.'
-                })
-
-        return cleaned_data
-
-
-class AbandonForm(forms.ModelForm):
-    """Formulaire pour les abandons"""
-
-    class Meta:
-        model = Abandon
-        fields = [
-            'inscription', 'date_abandon', 'date_effet', 'type_abandon',
-            'motif', 'eligible_remboursement', 'montant_remboursable'
-        ]
-        widgets = {
-            'inscription': forms.Select(attrs={'class': 'form-select'}),
-            'date_abandon': DateInput(attrs={'class': 'form-control'}),
-            'date_effet': DateInput(attrs={'class': 'form-control'}),
-            'type_abandon': forms.Select(attrs={'class': 'form-select'}),
-            'motif': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 6,
-                'placeholder': 'Décrivez en détail les raisons de l\'abandon...',
-                'required': True
-            }),
-            'eligible_remboursement': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'montant_remboursable': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'step': '0.01',
-                'min': '0'
-            })
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Filtrer les inscriptions actives ou suspendues
-        self.fields['inscription'].queryset = Inscription.objects.filter(
-            statut__in=['ACTIVE', 'SUSPENDED']
-        ).select_related('apprenant')
-
-    def clean(self):
-        cleaned_data = super().clean()
-        inscription = cleaned_data.get('inscription')
-        date_abandon = cleaned_data.get('date_abandon')
-        date_effet = cleaned_data.get('date_effet')
-        eligible_remboursement = cleaned_data.get('eligible_remboursement')
-        montant_remboursable = cleaned_data.get('montant_remboursable')
-
-        if date_abandon and date_effet:
-            if date_effet < date_abandon:
-                raise ValidationError({
-                    'date_effet': 'La date d\'effet ne peut pas être antérieure à la date d\'abandon.'
-                })
-
-        if eligible_remboursement:
-            if not montant_remboursable or montant_remboursable <= 0:
-                raise ValidationError({
-                    'montant_remboursable': 'Veuillez spécifier un montant remboursable valide.'
-                })
-
-        if montant_remboursable and inscription:
-            if montant_remboursable > inscription.total_paye:
-                raise ValidationError({
-                    'montant_remboursable': 'Le montant remboursable ne peut pas dépasser le montant payé.'
                 })
 
         return cleaned_data

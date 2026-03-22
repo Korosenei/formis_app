@@ -1,3 +1,4 @@
+# apps/enrollment/url.py
 from django.urls import path, include
 from django.views.generic import TemplateView
 from . import views
@@ -13,14 +14,12 @@ urlpatterns = [
     path('candidature/nouvelle/', views.CandidatureCreateView.as_view(), name='candidature_create'),
     path('candidature/success/', views.CandidatureSuccessView.as_view(), name='candidature_success'),
     path('candidature/<uuid:pk>/soumettre/', views.CandidatureSoumettreView.as_view(), name='candidature_soumettre'),
+    path('candidature/<uuid:pk>/', views.CandidatureDetailView.as_view(), name='candidature_details'),
 
     # Documents publics (pour les candidats)
     path('candidature/<uuid:pk>/documents/', views.candidature_documents, name='candidature_documents_public'),
     path('candidature/<uuid:candidature_pk>/documents/<uuid:document_pk>/delete/', views.document_delete,
          name='document_delete'),
-
-    # ========== GESTION DES CANDIDATURES (Admin/Chef Département) ==========
-    path('candidature/<uuid:pk>/evaluer/', views.CandidatureEvaluerView.as_view(), name='candidature_evaluer'),
 
     # AJAX endpoints pour les modals
     path('candidature/<uuid:pk>/details-ajax/', views.candidature_details_ajax, name='candidature_details_ajax'),
@@ -28,8 +27,7 @@ urlpatterns = [
 
     # Actions sur les candidatures
     path('candidature/<uuid:pk>/start-exam/', views.candidature_start_exam, name='candidature_start_exam'),
-    path('candidature/<uuid:pk>/approve/', views.candidature_approve, name='candidature_approve'),
-    path('candidature/<uuid:pk>/reject/', views.candidature_reject, name='candidature_reject'),
+    path('candidature/<uuid:pk>/evaluer/', views.candidature_evaluer, name='candidature_evaluer'),
 
     # Export
     path('candidatures/export/', views.export_candidatures, name='export_candidatures'),
@@ -42,15 +40,12 @@ urlpatterns = [
              views.api_documents_requis_by_niveauId_publics, name='api_documents_requis_niveau'),
     ])),
 
+    path('candidatures/<uuid:pk>/create-inscription/', views.InscriptionCreateView.as_view(),
+         name='admin_create_inscription'),
     # Inscriptions
     path('inscription/nouvelle/<str:token>/', views.InscriptionAvecPaiementView.as_view(), name='inscription_avec_token'),
     path('inscriptions/', views.InscriptionListView.as_view(), name='inscription_list'),
     path('inscriptions/<uuid:pk>/', views.InscriptionDetailView.as_view(), name='inscription_detail'),
     path('inscriptions/create/', views.InscriptionCreateView.as_view(), name='inscription_create'),
     path('inscriptions/export/', views.export_inscriptions, name='export_inscriptions'),
-
-    # Transferts
-    path('transferts/', views.TransfertListView.as_view(), name='transfert_list'),
-    path('transferts/create/', views.TransfertCreateView.as_view(), name='transfert_create'),
-    path('transferts/<uuid:pk>/approve/', views.transfert_approve, name='transfert_approve'),
 ]

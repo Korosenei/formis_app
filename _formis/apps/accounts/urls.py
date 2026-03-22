@@ -2,6 +2,7 @@
 from django.urls import path
 from . import views
 from . import exports
+from . import dashboard_views
 
 app_name = 'accounts'
 
@@ -18,6 +19,16 @@ urlpatterns = [
     path('profile/edit/', views.EditProfileView.as_view(), name='edit_profile'),
     path('profile/change-password/', views.ChangePasswordView.as_view(), name='change_password'),
     path('upload-profile-photo/', views.upload_profile_photo, name='upload_profile_photo'),
+
+    # ============================================
+    # DASHBOARD REDIRECTS
+    # ============================================
+    path('', dashboard_views.DashboardRedirect.as_view(), name='redirect'),
+    path('dashboard/admin/', dashboard_views.AdminDashboard.as_view(), name='admin_dashboard'),
+    path('dashboard/comptable/', dashboard_views.ComptableDashboard.as_view(), name='comptable_dashboard'),
+    path('dashboard/chef_de_departement/', dashboard_views.DepartmentHeadDashboard.as_view(), name='chef_de_departement_dashboard'),
+    path('dashboard/enseignant/', dashboard_views.TeacherDashboard.as_view(), name='enseignant_dashboard'),
+    path('dashboard/apprenant/', dashboard_views.StudentDashboard.as_view(), name='apprenant_dashboard'),
 
     # === GESTION DES UTILISATEURS (Admin/Chef de département) ===
     path('users/', views.UserListView.as_view(), name='user_list'),

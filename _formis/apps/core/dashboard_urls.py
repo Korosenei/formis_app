@@ -34,6 +34,7 @@ urlpatterns = [
         # Candidatures et Inscriptions
         path('candidatures/', dashboard_views.AdminCandidaturesView.as_view(), name='admin_candidatures'),
         path('inscriptions/', dashboard_views.AdminInscriptionsView.as_view(), name='admin_inscriptions'),
+        path('inscriptions/<uuid:inscription_id>/details-ajax/', dashboard_views.inscription_detail_view, name='inscription_detail'),
 
         # Paiements
         path('paiements/', include([
@@ -41,6 +42,28 @@ urlpatterns = [
             path('<uuid:pk>/validate/', dashboard_views.admin_validate_payment, name='admin_payment_validate'),
             path('<uuid:pk>/reject/', dashboard_views.admin_reject_payment, name='admin_payment_reject'),
         ])),
+
+        # Détail candidature
+        path('candidatures/<uuid:pk>/', dashboard_views.AdminCandidatureDetailView.as_view(), name='admin_candidature_detail'),
+
+        # # Création inscription à partir d'une candidature
+        # path('candidatures/<uuid:pk>/create-inscription/', dashboard_views.AdminCreateInscriptionView.as_view(), name='admin_create_inscription'),
+
+        # Gestion paiements étudiant
+        path('students/<uuid:pk>/payments/',  dashboard_views.AdminStudentPaymentsView.as_view(),  name='admin_student_payments'),
+
+        path('students/<uuid:student_id>/initier-paiement/', dashboard_views.admin_initier_paiement_pour_etudiant, name='admin_initier_paiement'),
+
+        path('students/<uuid:student_id>/valider-paiement-especes/', dashboard_views.admin_valider_paiement_especes,  name='admin_valider_paiement_especes'),
+
+        path('students/<uuid:student_id>/valider-paiement-cheque/', dashboard_views.admin_valider_paiement_cheque, name='admin_valider_paiement_cheque'),
+        #
+        path('students/<uuid:student_id>/global-receipt/', dashboard_views.admin_generate_global_receipt, name='admin_global_receipt'),
+
+        # Confirmation/Annulation paiements
+        path('paiements/<uuid:pk>/confirm/', dashboard_views.admin_confirm_payment,  name='admin_payment_confirm'),
+        #
+        path('paiements/<uuid:pk>/cancel/',  dashboard_views.admin_cancel_payment,  name='admin_payment_cancel'),
 
         # Structure académique
         path('departments/', dashboard_views.AdminDepartementsView.as_view(), name='admin_departments'),

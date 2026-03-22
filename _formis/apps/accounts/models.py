@@ -85,11 +85,12 @@ class Utilisateur(AbstractUser):
         super().save(*args, **kwargs)
 
     def generer_matricule(self):
-        """Génère un matricule unique"""
+        """Génère un matricule unique avec vérification d'existence"""
         annee = timezone.now().year
         prefixe_role = {
             'SUPERADMIN': 'SA',
             'ADMIN': 'AD',
+            'COMPTABLE': 'CO',  # Ajout du préfixe manquant
             'CHEF_DEPARTEMENT': 'CD',
             'ENSEIGNANT': 'EN',
             'APPRENANT': 'AP',
@@ -110,7 +111,25 @@ class Utilisateur(AbstractUser):
         else:
             nouveau_numero = 1
 
-        return f"{prefixe_role}{annee}{nouveau_numero:04d}"
+        # Boucle pour garantir l'unicité (max 100 tentatives)
+        max_tentatives = 100
+        tentative = 0
+
+        while tentative < max_tentatives:
+            matricule_genere = f"{prefixe_role}{annee}{nouveau_numero:04d}"
+
+            # Vérifier si le matricule existe déjà
+            if not Utilisateur.objects.filter(matricule=matricule_genere).exists():
+                return matricule_genere
+
+            # Si existe, incrémenter et réessayer
+            nouveau_numero += 1
+            tentative += 1
+
+        # Si échec après 100 tentatives, lever une exception
+        raise ValueError(
+            f"Impossible de générer un matricule unique après {max_tentatives} tentatives"
+        )
 
     def get_full_name(self):
         return f"{self.prenom} {self.nom}".strip()

@@ -71,16 +71,6 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="filter-group">
-                <select name="annee_academique" class="form-select-sm" onchange="this.form.submit()">
-                    <option value="">Toutes années</option>
-                    {% for annee in annees_academiques %}
-                        <option value="{{ annee.id }}" {% if current_filters.annee_academique == annee.id|stringformat:"s" %}selected{% endif %}>
-                            {{ annee.nom }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
             <div class="filter-actions">
                 <button type="submit" class="btn btn-sm btn-primary">
                     <i class="fas fa-search"></i>
@@ -92,48 +82,26 @@
         </form>
     </div>
 
-    <!-- Actions en lot -->
-    <div class="bulk-actions-bar" id="bulkActionsBar" style="display: none;">
-        <div class="bulk-info">
-            <i class="fas fa-check-square"></i>
-            <span id="selectedCount">0</span> sélectionné(s)
-        </div>
-        <div class="bulk-buttons">
-            <button class="btn btn-sm btn-success" onclick="bulkStartExam()">
-                <i class="fas fa-search"></i> Examiner
-            </button>
-            <button class="btn btn-sm btn-warning" onclick="bulkExport()">
-                <i class="fas fa-file-export"></i> Exporter
-            </button>
-        </div>
-    </div>
-
     <!-- Tableau optimisé -->
     <div class="candidatures-table-container">
         <div class="table-wrapper">
             <table class="candidatures-table">
                 <thead>
                     <tr>
-                        <th width="30">
-                            <input type="checkbox" class="select-all-header" id="selectAllCandidatures">
-                        </th>
                         <th width="120">N° Candidature</th>
                         <th width="200">Candidat</th>
                         <th width="150">Filière</th>
                         <th width="100">Niveau</th>
                         <th width="150">Contact</th>
                         <th width="100">Date soumission</th>
-                        <th width="60">Documents</th>
+                        <th width="60">Docs</th>
                         <th width="100">Statut</th>
-                        <th width="100">Actions</th>
+                        <th width="120">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for candidature in candidatures %}
                     <tr class="candidature-row" data-candidature-id="{{ candidature.id }}">
-                        <td>
-                            <input type="checkbox" class="candidature-checkbox" value="{{ candidature.id }}">
-                        </td>
                         <td>
                             <code class="numero-badge">{{ candidature.numero_candidature }}</code>
                         </td>
@@ -143,7 +111,6 @@
                                 <small class="candidat-details">
                                     <i class="fas fa-{% if candidature.genre == 'M' %}mars{% else %}venus{% endif %}"></i>
                                     {{ candidature.date_naissance|date:"d/m/Y" }}
-                                    <span class="ml-1">- {{ candidature.lieu_naissance|truncatechars:15 }}</span>
                                 </small>
                             </div>
                         </td>
@@ -215,7 +182,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="10" class="empty-state">
+                        <td colspan="9" class="empty-state">
                             <div class="empty-content">
                                 <i class="fas fa-user-graduate fa-3x text-muted mb-3"></i>
                                 <p class="mt-2">Aucune candidature trouvée</p>
@@ -281,51 +248,113 @@
     </div>
 </div>
 
-<!-- Modal Évaluation -->
+<!-- ⭐ Modal Évaluation - VERSION COMPLÈTE AVEC AUTO-CRÉATION DE COMPTE -->
 <div class="modal-overlay" id="evaluationModal">
-    <div class="modal-container modal-md">
+    <div class="modal-container modal-evaluation">
         <div class="modal-header">
-            <h3><i class="fas fa-clipboard-check"></i> Évaluation de la candidature</h3>
+            <h3>
+                <i class="fas fa-clipboard-check"></i>
+                Évaluation de la candidature
+            </h3>
             <button class="modal-close" onclick="closeModal('evaluationModal')">
                 <i class="fas fa-times"></i>
             </button>
         </div>
+
         <div class="modal-body">
+            <!-- Résumé candidature -->
+            <div class="candidature-summary" id="evaluationCandidatSummary">
+                <div class="summary-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Chargement...</p>
+                </div>
+            </div>
+
+            <!-- Formulaire d'évaluation -->
             <form id="evaluationForm" onsubmit="submitEvaluation(event)">
                 <input type="hidden" id="evaluation_candidature_id" name="candidature_id">
 
+                <!-- Décision -->
                 <div class="form-group">
-                    <label class="form-label">Décision *</label>
+                    <label class="form-label required">Décision</label>
                     <div class="decision-buttons">
                         <label class="decision-option">
                             <input type="radio" name="decision" value="APPROUVEE" required>
                             <div class="decision-card decision-approve">
-                                <i class="fas fa-check-circle"></i>
-                                <span>Approuver</span>
+                                <div class="decision-icon">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="decision-content">
+                                    <h4>Approuver</h4>
+                                    <p>La candidature est acceptée</p>
+                                    <small>✅ Compte apprenant créé automatiquement</small>
+                                </div>
                             </div>
                         </label>
                         <label class="decision-option">
                             <input type="radio" name="decision" value="REJETEE" required>
                             <div class="decision-card decision-reject">
-                                <i class="fas fa-times-circle"></i>
-                                <span>Rejeter</span>
+                                <div class="decision-icon">
+                                    <i class="fas fa-times-circle"></i>
+                                </div>
+                                <div class="decision-content">
+                                    <h4>Rejeter</h4>
+                                    <p>La candidature n'est pas acceptée</p>
+                                    <small>Le candidat sera notifié par email</small>
+                                </div>
                             </div>
                         </label>
                     </div>
                 </div>
 
+                <!-- Motif de rejet (si REJETEE) -->
                 <div class="form-group" id="rejectReasonGroup" style="display: none;">
-                    <label class="form-label required">Motif de rejet</label>
-                    <textarea name="motif_rejet" class="form-textarea" rows="4"
-                              placeholder="Expliquez les raisons du rejet..."></textarea>
+                    <label class="form-label required">Motif du rejet</label>
+                    <textarea
+                        name="motif_rejet"
+                        class="form-textarea"
+                        rows="5"
+                        placeholder="Expliquez clairement les raisons du rejet de cette candidature...&#10;&#10;Exemple: Documents incomplets, niveau académique insuffisant, etc."
+                    ></textarea>
+                    <small class="form-help">
+                        <i class="fas fa-info-circle"></i>
+                        Ce motif sera communiqué au candidat par email
+                    </small>
                 </div>
 
+                <!-- Notes d'approbation (si APPROUVEE) -->
                 <div class="form-group" id="approvalNotesGroup" style="display: none;">
                     <label class="form-label">Notes d'approbation (optionnel)</label>
-                    <textarea name="notes_approbation" class="form-textarea" rows="3"
-                              placeholder="Remarques ou conditions d'approbation..."></textarea>
+                    <textarea
+                        name="notes_approbation"
+                        class="form-textarea"
+                        rows="4"
+                        placeholder="Remarques ou conditions d'approbation (optionnel)...&#10;&#10;Exemple: Admis sous réserve de fourniture du certificat médical."
+                    ></textarea>
+                    <small class="form-help">
+                        <i class="fas fa-info-circle"></i>
+                        Ces notes sont à usage interne uniquement
+                    </small>
                 </div>
 
+                <!-- ⭐ Informations automatiques -->
+                <div class="alert alert-info" id="approvalInfoAlert" style="display: none;">
+                    <i class="fas fa-robot"></i>
+                    <div>
+                        <strong>🤖 Actions automatiques après approbation :</strong>
+                        <ul>
+                            <li>✅ Création automatique du compte apprenant</li>
+                            <li>✅ Génération du matricule (ex: AP20250001)</li>
+                            <li>✅ Génération du mot de passe sécurisé</li>
+                            <li>✅ Création du profil apprenant complet</li>
+                            <li>✅ Envoi des identifiants par email</li>
+                            <li>✅ Notification du candidat par email</li>
+                        </ul>
+                        <p class="mt-2"><strong>Aucune action manuelle requise !</strong></p>
+                    </div>
+                </div>
+
+                <!-- Actions -->
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline" onclick="closeModal('evaluationModal')">
                         <i class="fas fa-times"></i> Annuler
@@ -338,6 +367,9 @@
         </div>
     </div>
 </div>
+
+<!-- Notification Toast -->
+<div id="toast" class="toast"></div>
 
 <style>
 .dept-head-candidatures {
@@ -1199,7 +1231,9 @@
 </style>
 
 <script>
-// Utility functions
+// ========================================
+// UTILITAIRES
+// ========================================
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -1225,239 +1259,259 @@ function closeModal(modalId) {
     document.body.style.overflow = 'auto';
 }
 
-function showLoading(message = 'Chargement...') {
-    return `
-        <div class="loading-spinner">
-            <i class="fas fa-spinner fa-spin fa-2x"></i>
-            <p>${message}</p>
-        </div>
-    `;
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast toast-${type} show`;
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 5000);
 }
 
-function showError(message) {
-    return `
-        <div class="alert alert-danger">
-            <i class="fas fa-exclamation-circle"></i> ${message}
-        </div>
-    `;
-}
-
-// Selection management
-document.addEventListener('DOMContentLoaded', function() {
-    const selectAll = document.getElementById('selectAllCandidatures');
-    const checkboxes = document.querySelectorAll('.candidature-checkbox');
-    const bulkBar = document.getElementById('bulkActionsBar');
-    const selectedCount = document.getElementById('selectedCount');
-
-    selectAll?.addEventListener('change', function() {
-        checkboxes.forEach(checkbox => checkbox.checked = this.checked);
-        updateBulkActions();
-    });
-
-    checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', updateBulkActions);
-    });
-
-    function updateBulkActions() {
-        const selected = document.querySelectorAll('.candidature-checkbox:checked').length;
-        selectedCount.textContent = selected;
-        bulkBar.style.display = selected > 0 ? 'flex' : 'none';
-
-        if (selectAll) {
-            selectAll.indeterminate = selected > 0 && selected < checkboxes.length;
-            selectAll.checked = selected === checkboxes.length;
-        }
-    }
-});
-
-// Refresh page
 function refreshPage() {
     location.reload();
 }
 
-// Export candidatures
-function exportCandidatures() {
-    const params = new URLSearchParams(window.location.search);
-    window.location.href = `/dashboard/department_head/candidatures/export/?${params.toString()}`;
-}
-
-// View candidature details
-async function viewCandidatureDetails(candidatureId) {
-    showModal('detailsModal');
-    const modalBody = document.getElementById('detailsModalBody');
-    modalBody.innerHTML = showLoading('Chargement des détails...');
+// ========================================
+// DÉMARRER L'EXAMEN
+// ========================================
+async function startExam(candidatureId) {
+    if (!confirm('Commencer l\'examen de cette candidature ?')) return;
 
     try {
-        const response = await fetch(`/enrollment/candidature/${candidatureId}/details-ajax/`, {
+        const response = await fetch(`/enrollment/candidature/${candidatureId}/start-exam/`, {
+            method: 'POST',
             headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
             }
         });
 
-        if (!response.ok) throw new Error('Erreur de chargement');
+        const data = await response.json();
 
+        if (data.success) {
+            showToast('Examen démarré avec succès', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(data.message || 'Une erreur est survenue', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Erreur lors du démarrage de l\'examen', 'error');
+    }
+}
+
+// ========================================
+// MODAL D'ÉVALUATION
+// ========================================
+function showEvaluationModal(candidatureId) {
+    document.getElementById('evaluation_candidature_id').value = candidatureId;
+    showModal('evaluationModal');
+
+    // Reset form
+    document.getElementById('evaluationForm').reset();
+    document.getElementById('rejectReasonGroup').style.display = 'none';
+    document.getElementById('approvalNotesGroup').style.display = 'none';
+    document.getElementById('approvalInfoAlert').style.display = 'none';
+
+    // Charger le résumé
+    loadCandidatureSummary(candidatureId);
+
+    // Gérer les changements de décision
+    setupDecisionHandlers();
+}
+
+async function loadCandidatureSummary(candidatureId) {
+    const summaryDiv = document.getElementById('evaluationCandidatSummary');
+
+    try {
+        const response = await fetch(`/enrollment/candidature/${candidatureId}/details-ajax/`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+
+        if (!response.ok) throw new Error('Erreur chargement');
+
+        const data = await response.json();
+        const c = data.candidature;
+
+        summaryDiv.innerHTML = `
+            <div class="summary-content">
+                <div class="summary-row">
+                    <div class="summary-icon"><i class="fas fa-user-graduate"></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label">Candidat</div>
+                        <div class="summary-value">${c.prenom} ${c.nom}</div>
+                    </div>
+                </div>
+                <div class="summary-row">
+                    <div class="summary-icon"><i class="fas fa-graduation-cap"></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label">Formation</div>
+                        <div class="summary-value">${c.filiere} - ${c.niveau}</div>
+                    </div>
+                </div>
+                <div class="summary-row">
+                    <div class="summary-icon"><i class="fas fa-hashtag"></i></div>
+                    <div class="summary-info">
+                        <div class="summary-label">Numéro</div>
+                        <div class="summary-value">${c.numero_candidature}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error:', error);
+        summaryDiv.innerHTML = '<div class="summary-loading"><i class="fas fa-exclamation-circle"></i><p>Erreur</p></div>';
+    }
+}
+
+function setupDecisionHandlers() {
+    const decisionInputs = document.querySelectorAll('input[name="decision"]');
+    const rejectGroup = document.getElementById('rejectReasonGroup');
+    const approvalGroup = document.getElementById('approvalNotesGroup');
+    const infoAlert = document.getElementById('approvalInfoAlert');
+
+    decisionInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            if (this.value === 'REJETEE') {
+                rejectGroup.style.display = 'block';
+                approvalGroup.style.display = 'none';
+                infoAlert.style.display = 'none';
+                rejectGroup.querySelector('textarea').required = true;
+                approvalGroup.querySelector('textarea').required = false;
+            } else if (this.value === 'APPROUVEE') {
+                rejectGroup.style.display = 'none';
+                approvalGroup.style.display = 'block';
+                infoAlert.style.display = 'flex';
+                rejectGroup.querySelector('textarea').required = false;
+                approvalGroup.querySelector('textarea').required = false;
+            }
+        });
+    });
+}
+
+// ========================================
+// ⭐ SOUMETTRE L'ÉVALUATION
+// ========================================
+async function submitEvaluation(event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const submitBtn = document.getElementById('submitEvaluationBtn');
+    const formData = new FormData(form);
+    const candidatureId = formData.get('candidature_id');
+
+    const data = {
+        decision: formData.get('decision'),
+        motif_rejet: formData.get('motif_rejet') || '',
+        notes_approbation: formData.get('notes_approbation') || ''
+    };
+
+    // Validation
+    if (data.decision === 'REJETEE' && !data.motif_rejet.trim()) {
+        showToast('Le motif de rejet est obligatoire', 'error');
+        return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Traitement en cours...';
+
+    try {
+        const response = await fetch(`/enrollment/candidature/${candidatureId}/evaluer/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: new URLSearchParams(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            closeModal('evaluationModal');
+
+            // Message personnalisé selon le résultat
+            let message = result.message;
+
+            if (result.decision === 'APPROUVEE' && result.compte_cree) {
+                message = `✅ Candidature approuvée avec succès !\n\n` +
+                          `🎓 Compte apprenant créé automatiquement\n` +
+                          `📧 Matricule : ${result.matricule}\n` +
+                          `📬 Identifiants envoyés à : ${result.email}`;
+            }
+
+            alert(message);
+
+            // Recharger la page
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast(result.message || 'Une erreur est survenue', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-check"></i> Valider l\'évaluation';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Erreur lors de l\'évaluation', 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-check"></i> Valider l\'évaluation';
+    }
+}
+
+// ========================================
+// VOIR DÉTAILS ET DOCUMENTS (code existant)
+// ========================================
+async function viewCandidatureDetails(candidatureId) {
+    showModal('detailsModal');
+    const modalBody = document.getElementById('detailsModalBody');
+    modalBody.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Chargement...</p></div>';
+
+    try {
+        const response = await fetch(`/enrollment/candidature/${candidatureId}/details-ajax/`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+
+        if (!response.ok) throw new Error('Erreur');
         const data = await response.json();
         modalBody.innerHTML = renderCandidatureDetails(data);
     } catch (error) {
         console.error('Error:', error);
-        modalBody.innerHTML = showError('Impossible de charger les détails');
+        modalBody.innerHTML = '<div class="alert alert-danger">Impossible de charger les détails</div>';
     }
 }
 
 function renderCandidatureDetails(data) {
-    const candidature = data.candidature;
+    const c = data.candidature;
     return `
         <div class="candidature-details">
             <div class="details-section">
                 <h4><i class="fas fa-user"></i> Informations personnelles</h4>
                 <div class="details-grid">
-                    <div class="detail-item">
-                        <label>Nom complet</label>
-                        <div>${candidature.prenom} ${candidature.nom}</div>
-                    </div>
-                    <div class="detail-item">
-                        <label>Date de naissance</label>
-                        <div>${candidature.date_naissance}</div>
-                    </div>
-                    <div class="detail-item">
-                        <label>Lieu de naissance</label>
-                        <div>${candidature.lieu_naissance}</div>
-                    </div>
-                    <div class="detail-item">
-                        <label>Genre</label>
-                        <div>${candidature.genre === 'M' ? 'Masculin' : 'Féminin'}</div>
-                    </div>
+                    <div class="detail-item"><label>Nom complet</label><div>${c.prenom} ${c.nom}</div></div>
+                    <div class="detail-item"><label>Date de naissance</label><div>${c.date_naissance}</div></div>
+                    <div class="detail-item"><label>Lieu de naissance</label><div>${c.lieu_naissance}</div></div>
+                    <div class="detail-item"><label>Genre</label><div>${c.genre === 'M' ? 'Masculin' : 'Féminin'}</div></div>
                 </div>
             </div>
-
             <div class="details-section">
                 <h4><i class="fas fa-phone"></i> Contact</h4>
                 <div class="details-grid">
-                    <div class="detail-item">
-                        <label>Email</label>
-                        <div>${candidature.email}</div>
-                    </div>
-                    <div class="detail-item">
-                        <label>Téléphone</label>
-                        <div>${candidature.telephone}</div>
-                    </div>
-                    <div class="detail-item full-width">
-                        <label>Adresse</label>
-                        <div>${candidature.adresse}</div>
-                    </div>
+                    <div class="detail-item"><label>Email</label><div>${c.email}</div></div>
+                    <div class="detail-item"><label>Téléphone</label><div>${c.telephone}</div></div>
+                    <div class="detail-item full-width"><label>Adresse</label><div>${c.adresse}</div></div>
                 </div>
             </div>
-
             <div class="details-section">
                 <h4><i class="fas fa-graduation-cap"></i> Formation</h4>
                 <div class="details-grid">
-                    <div class="detail-item">
-                        <label>Filière</label>
-                        <div>${candidature.filiere}</div>
-                    </div>
-                    <div class="detail-item">
-                        <label>Niveau</label>
-                        <div>${candidature.niveau}</div>
-                    </div>
-                    <div class="detail-item">
-                        <label>Année académique</label>
-                        <div>${candidature.annee_academique}</div>
-                    </div>
-                </div>
-            </div>
-
-            ${candidature.ecole_precedente ? `
-            <div class="details-section">
-                <h4><i class="fas fa-school"></i> Parcours académique</h4>
-                <div class="details-grid">
-                    ${candidature.ecole_precedente ? `
-                    <div class="detail-item">
-                        <label>École précédente</label>
-                        <div>${candidature.ecole_precedente}</div>
-                    </div>
-                    ` : ''}
-                    ${candidature.dernier_diplome ? `
-                    <div class="detail-item">
-                        <label>Dernier diplôme</label>
-                        <div>${candidature.dernier_diplome}</div>
-                    </div>
-                    ` : ''}
-                    ${candidature.annee_obtention ? `
-                    <div class="detail-item">
-                        <label>Année d'obtention</label>
-                        <div>${candidature.annee_obtention}</div>
-                    </div>
-                    ` : ''}
-                </div>
-            </div>
-            ` : ''}
-
-            <div class="details-section">
-                <h4><i class="fas fa-info-circle"></i> Statut de la candidature</h4>
-                <div class="details-grid">
-                    <div class="detail-item">
-                        <label>Numéro</label>
-                        <div><code>${candidature.numero_candidature}</code></div>
-                    </div>
-                    <div class="detail-item">
-                        <label>Statut</label>
-                        <div><span class="status-badge status-${candidature.statut.toLowerCase()}">${candidature.statut_display}</span></div>
-                    </div>
-                    ${candidature.date_soumission ? `
-                    <div class="detail-item">
-                        <label>Date de soumission</label>
-                        <div>${candidature.date_soumission}</div>
-                    </div>
-                    ` : ''}
+                    <div class="detail-item"><label>Filière</label><div>${c.filiere}</div></div>
+                    <div class="detail-item"><label>Niveau</label><div>${c.niveau}</div></div>
+                    <div class="detail-item"><label>Année académique</label><div>${c.annee_academique}</div></div>
                 </div>
             </div>
         </div>
-
-        <style>
-        .candidature-details {
-            max-width: 100%;
-        }
-        .details-section {
-            margin-bottom: 24px;
-            padding: 16px;
-            background: var(--light-gray);
-            border-radius: 8px;
-        }
-        .details-section h4 {
-            margin: 0 0 16px 0;
-            font-size: 16px;
-            color: var(--text-dark);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .details-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-        }
-        .detail-item {
-            background: white;
-            padding: 12px;
-            border-radius: 6px;
-        }
-        .detail-item.full-width {
-            grid-column: 1 / -1;
-        }
-        .detail-item label {
-            display: block;
-            font-size: 11px;
-            color: var(--text-light);
-            font-weight: 600;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-        }
-        .detail-item div {
-            font-size: 14px;
-            color: var(--text-dark);
-            font-weight: 500;
-        }
-        </style>
     `;
 }
 

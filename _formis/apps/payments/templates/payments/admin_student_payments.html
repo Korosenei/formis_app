@@ -1,0 +1,1481 @@
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Paiements - {{ student.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="student-payments">
+    <!-- Breadcrumb -->
+    <div class="breadcrumb-nav">
+        <a href="{% url 'dashboard:admin_students' %}">Étudiants</a>
+        <i class="fas fa-chevron-right"></i>
+        <span class="current">Paiements - {{ student.get_full_name }}</span>
+    </div>
+
+    <!-- Header avec info étudiant -->
+    <div class="payment-header">
+        <div class="student-card">
+            <div class="student-avatar">
+                {% if student.photo_profil %}
+                <img src="{{ student.photo_profil.url }}" alt="">
+                {% else %}
+                <i class="fas fa-user-graduate"></i>
+                {% endif %}
+            </div>
+            <div class="student-details">
+                <h1>{{ student.get_full_name }}</h1>
+                <div class="student-meta">
+                    <code class="matricule">{{ student.matricule }}</code>
+                    <span class="email">{{ student.email }}</span>
+                </div>
+                {% if inscription %}
+                <div class="formation-info">
+                    <span class="filiere">{{ inscription.candidature.filiere.nom }}</span>
+                    <span class="separator">•</span>
+                    <span class="niveau">{{ inscription.candidature.niveau.nom }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if inscription and inscription_paiement %}
+        <div class="payment-summary">
+            <div class="summary-item total">
+                <div class="label">Total à payer</div>
+                <div class="value">{{ stats.total_du|floatformat:0 }} FCFA</div>
+            </div>
+            <div class="summary-item paid">
+                <div class="label">Total payé</div>
+                <div class="value">{{ stats.total_paye|floatformat:0 }} FCFA</div>
+            </div>
+            <div class="summary-item remaining">
+                <div class="label">Solde restant</div>
+                <div class="value solde">{{ stats.solde|floatformat:0 }} FCFA</div>
+            </div>
+            <div class="summary-item progress">
+                <div class="label">Progression</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: {{ stats.pourcentage }}%"></div>
+                    <span class="progress-text">{{ stats.pourcentage|floatformat:0 }}%</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if not inscription %}
+    <!-- Pas d'inscription -->
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>Aucune inscription active</strong>
+        <p>Cet étudiant n'a pas encore d'inscription active.</p>
+    </div>
+    {% elif not inscription_paiement %}
+    <!-- Pas de plan de paiement -->
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>Aucun plan de paiement configuré</strong>
+        <p>Veuillez configurer un plan de paiement pour cette inscription.</p>
+    </div>
+    {% else %}
+    <!-- Section actions rapides -->
+    <div class="quick-actions">
+        <h3><i class="fas fa-bolt"></i> Actions Rapides</h3>
+        <div class="actions-grid">
+            {% if stats.solde > 0 %}
+            <button class="action-card primary" onclick="showPaymentModal('ligdicash')">
+                <div class="action-icon">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+                <div class="action-content">
+                    <div class="action-title">Payer via LigdiCash</div>
+                    <div class="action-desc">Paiement en ligne sécurisé</div>
+                </div>
+            </button>
+
+            <button class="action-card success" onclick="showPaymentModal('especes')">
+                <div class="action-icon">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+                <div class="action-content">
+                    <div class="action-title">Enregistrer paiement espèces</div>
+                    <div class="action-desc">Paiement reçu en cash</div>
+                </div>
+            </button>
+
+            <button class="action-card info" onclick="showPaymentModal('cheque')">
+                <div class="action-icon">
+                    <i class="fas fa-money-check"></i>
+                </div>
+                <div class="action-content">
+                    <div class="action-title">Enregistrer paiement chèque</div>
+                    <div class="action-desc">Paiement par chèque</div>
+                </div>
+            </button>
+            {% else %}
+            <div class="action-card disabled">
+                <div class="action-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="action-content">
+                    <div class="action-title">Paiement complet</div>
+                    <div class="action-desc">Tous les paiements sont à jour</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <button class="action-card outline" onclick="generateReceipt()">
+                <div class="action-icon">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <div class="action-content">
+                    <div class="action-title">Générer reçu global</div>
+                    <div class="action-desc">Tous les paiements</div>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Plan de paiement -->
+    <div class="payment-plan-section">
+        <div class="section-header">
+            <h3><i class="fas fa-calendar-alt"></i> Plan de Paiement</h3>
+            <span class="plan-type">
+                    {{ inscription_paiement.get_type_paiement_display }}
+                </span>
+        </div>
+
+
+        {% load custom_filters %} {# pour get_item #}
+
+        {% if inscription_paiement.type_paiement == 'ECHELONNE' %}
+        <div class="tranches-timeline">
+            {% for tranche in plan_paiement.tranches.all %}
+            {% with paiement_tranche=paiements_par_tranche|get_item:tranche.id %}
+            <div class="tranche-item {% if paiement_tranche and paiement_tranche.statut == 'CONFIRME' %}paid{% elif tranche == prochaine_tranche %}current{% endif %}">
+                <div class="tranche-marker">
+                    {% if paiement_tranche and paiement_tranche.statut == 'CONFIRME' %}
+                    <i class="fas fa-check-circle"></i>
+                    {% elif tranche == prochaine_tranche %}
+                    <i class="fas fa-circle"></i>
+                    {% else %}
+                    <i class="far fa-circle"></i>
+                    {% endif %}
+                </div>
+                <div class="tranche-content">
+                    <div class="tranche-header">
+                        <span class="tranche-name">{{ tranche.nom }}</span>
+                        <span class="tranche-montant">{{ tranche.montant|floatformat:0 }} FCFA</span>
+                    </div>
+                    {% if tranche.date_limite %}
+                    <div class="tranche-date">
+                        <i class="fas fa-calendar"></i>
+                        Date limite: {{ tranche.date_limite|date:"d/m/Y" }}
+                        {% if tranche.est_en_retard %}
+                        <span class="badge-danger">En retard</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% if paiement_tranche and paiement_tranche.statut == 'CONFIRME' %}
+                    <div class="tranche-paid-info">
+                        <i class="fas fa-check"></i>
+                        Payé le {{ paiement_tranche.date_confirmation|date:"d/m/Y" }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% if tranche == prochaine_tranche %}
+                <button class="btn btn-sm btn-primary" onclick="payTranche('{{ tranche.id }}')">
+                    <i class="fas fa-credit-card"></i> Payer
+                </button>
+                {% endif %}
+            </div>
+            {% endwith %}
+            {% endfor %}
+        </div>
+        {% endif %}
+        <div class="paiement-unique-info">
+            <div class="info-card">
+                <i class="fas fa-info-circle"></i>
+                <div class="info-content">
+                    <strong>Paiement unique</strong>
+                    <p>Montant : {{ inscription_paiement.montant_total_du|floatformat:0 }} FCFA</p>
+                    {% if stats.solde <= 0 %}
+                    <span class="badge-success">✓ Payé</span>
+                    {% else %}
+                    <span class="badge-warning">En attente</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Historique des paiements -->
+    <div class="payments-history">
+        <div class="section-header">
+            <h3><i class="fas fa-history"></i> Historique des Paiements</h3>
+            <span class="count-badge">{{ paiements.count }} paiement(s)</span>
+        </div>
+
+        {% if paiements %}
+        <div class="payments-list">
+            {% for paiement in paiements %}
+            <div class="payment-item status-{{ paiement.statut|lower }}">
+                <div class="payment-icon">
+                    {% if paiement.methode_paiement == 'LIGDICASH' %}
+                    <i class="fas fa-mobile-alt"></i>
+                    {% elif paiement.methode_paiement == 'ESPECES' %}
+                    <i class="fas fa-money-bill-wave"></i>
+                    {% elif paiement.methode_paiement == 'CHEQUE' %}
+                    <i class="fas fa-money-check"></i>
+                    {% else %}
+                    <i class="fas fa-credit-card"></i>
+                    {% endif %}
+                </div>
+
+                <div class="payment-details">
+                    <div class="payment-header">
+                        <span class="payment-numero">{{ paiement.numero_transaction }}</span>
+                        <span class="payment-status status-{{ paiement.statut|lower }}">
+                                    {{ paiement.get_statut_display }}
+                                </span>
+                    </div>
+
+                    <div class="payment-info">
+                        <div class="info-item">
+                            <i class="fas fa-wallet"></i>
+                            <span>{{ paiement.get_methode_paiement_display }}</span>
+                        </div>
+                        <div class="info-item">
+                            <i class="fas fa-calendar"></i>
+                            <span>{{ paiement.date_paiement|date:"d/m/Y H:i" }}</span>
+                        </div>
+                        {% if paiement.tranche %}
+                        <div class="info-item">
+                            <i class="fas fa-tag"></i>
+                            <span>{{ paiement.tranche.nom }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if paiement.description %}
+                    <div class="payment-description">
+                        {{ paiement.description }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="payment-amount">
+                    <div class="amount-value">{{ paiement.montant|floatformat:0 }} FCFA</div>
+                    {% if paiement.frais_transaction > 0 %}
+                    <div class="amount-fees">Frais: {{ paiement.frais_transaction|floatformat:0 }} FCFA</div>
+                    {% endif %}
+                </div>
+
+                <div class="payment-actions">
+                    <button class="btn-icon-sm btn-primary" onclick="viewPaymentDetails('{{ paiement.id }}')"
+                            title="Détails">
+                        <i class="fas fa-eye"></i>
+                    </button>
+
+                    {% if paiement.statut == 'CONFIRME' %}
+                    <button class="btn-icon-sm btn-success" onclick="printReceipt('{{ paiement.id }}')" title="Reçu">
+                        <i class="fas fa-receipt"></i>
+                    </button>
+                    {% endif %}
+
+                    {% if paiement.statut == 'EN_ATTENTE' and user.role == 'ADMIN' %}
+                    <button class="btn-icon-sm btn-success" onclick="confirmPayment('{{ paiement.id }}')"
+                            title="Confirmer">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button class="btn-icon-sm btn-danger" onclick="cancelPayment('{{ paiement.id }}')" title="Annuler">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox fa-3x"></i>
+            <p>Aucun paiement enregistré</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Paiement LigdiCash -->
+<div id="ligdicashModal" class="modal">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h4><i class="fas fa-mobile-alt"></i> Paiement via LigdiCash</h4>
+            <button class="modal-close" onclick="closeModal('ligdicashModal')">&times;</button>
+        </div>
+        <form id="ligdicashForm">
+            <div class="modal-body">
+                {% if prochaine_tranche %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Prochaine tranche : {{ prochaine_tranche.nom }}</strong>
+                    <p>Montant : {{ prochaine_tranche.get_montant_avec_penalite|floatformat:0 }} FCFA</p>
+                </div>
+                <input type="hidden" name="tranche_id" value="{{ prochaine_tranche.id }}">
+                <input type="hidden" name="montant" value="{{ prochaine_tranche.get_montant_avec_penalite }}">
+                {% else %}
+                <div class="form-group">
+                    <label>Montant *</label>
+                    <input type="number" name="montant" class="form-control"
+                           max="{{ stats.solde }}" step="100" required>
+                    <small class="form-text">Maximum: {{ stats.solde|floatformat:0 }} FCFA</small>
+                </div>
+                {% endif %}
+
+                <div class="payment-info-box">
+                    <h5>Informations</h5>
+                    <ul>
+                        <li>Vous serez redirigé vers la plateforme LigdiCash</li>
+                        <li>Le paiement est sécurisé</li>
+                        <li>Vous recevrez un reçu après confirmation</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('ligdicashModal')">Annuler</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-arrow-right"></i> Continuer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Paiement Espèces -->
+<div id="especesModal" class="modal">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h4><i class="fas fa-money-bill-wave"></i> Enregistrer paiement en espèces</h4>
+            <button class="modal-close" onclick="closeModal('especesModal')">&times;</button>
+        </div>
+        <form id="especesForm">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Montant reçu (FCFA) *</label>
+                    <input type="number" name="montant" class="form-control"
+                           max="{{ stats.solde }}" step="100" required>
+                    <small class="form-text">Solde restant: {{ stats.solde|floatformat:0 }} FCFA</small>
+                </div>
+
+                {% if inscription_paiement.type_paiement == 'ECHELONNE' and prochaine_tranche %}
+                <div class="form-group">
+                    <label>Tranche concernée</label>
+                    <select name="tranche_id" class="form-control">
+                        <option value="{{ prochaine_tranche.id }}" selected>
+                            {{ prochaine_tranche.nom }} - {{ prochaine_tranche.montant|floatformat:0 }} FCFA
+                        </option>
+                        {% for tranche in plan_paiement.tranches.all %}
+                        {% if tranche != prochaine_tranche %}
+                        <option value="{{ tranche.id }}">
+                            {{ tranche.nom }} - {{ tranche.montant|floatformat:0 }} FCFA
+                        </option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label>Description (optionnel)</label>
+                    <textarea name="description" class="form-control" rows="3"></textarea>
+                </div>
+
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Attention</strong>
+                    <p>Ce paiement sera confirmé immédiatement. Assurez-vous d'avoir reçu l'argent.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('especesModal')">Annuler</button>
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-check"></i> Enregistrer le paiement
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Paiement Chèque -->
+<div id="chequeModal" class="modal">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h4><i class="fas fa-money-check"></i> Enregistrer paiement par chèque</h4>
+            <button class="modal-close" onclick="closeModal('chequeModal')">&times;</button>
+        </div>
+        <form id="chequeForm">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Montant (FCFA) *</label>
+                    <input type="number" name="montant" class="form-control"
+                           max="{{ stats.solde }}" step="100" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Numéro du chèque *</label>
+                    <input type="text" name="numero_cheque" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Banque</label>
+                    <input type="text" name="banque" class="form-control">
+                </div>
+
+                {% if inscription_paiement.type_paiement == 'ECHELONNE' and prochaine_tranche %}
+                <div class="form-group">
+                    <label>Tranche concernée</label>
+                    <select name="tranche_id" class="form-control">
+                        <option value="{{ prochaine_tranche.id }}" selected>
+                            {{ prochaine_tranche.nom }}
+                        </option>
+                        {% for tranche in plan_paiement.tranches.all %}
+                        {% if tranche != prochaine_tranche %}
+                        <option value="{{ tranche.id }}">{{ tranche.nom }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea name="description" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('chequeModal')">Annuler</button>
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-check"></i> Enregistrer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    :root {
+        --primary: #2563eb;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --info: #3b82f6;
+        --gray: #6b7280;
+        --light-gray: #f3f4f6;
+        --border: #e5e7eb;
+    }
+
+    .student-payments {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .breadcrumb-nav {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--gray);
+        margin-bottom: 20px;
+    }
+
+    .breadcrumb-nav a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+
+    .payment-header {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .student-card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        display: flex;
+        gap: 20px;
+    }
+
+    .student-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: var(--light-gray);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        color: var(--gray);
+        flex-shrink: 0;
+        overflow: hidden;
+    }
+
+    .student-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .student-details h1 {
+        margin: 0 0 10px 0;
+        font-size: 20px;
+        color: #1f2937;
+    }
+
+    .student-meta {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .matricule {
+        background: var(--light-gray);
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+    }
+
+    .email {
+        font-size: 13px;
+        color: var(--gray);
+    }
+
+    .formation-info {
+        font-size: 13px;
+    }
+
+    .filiere {
+        color: var(--primary);
+        font-weight: 600;
+    }
+
+    .separator {
+        color: var(--gray);
+    }
+
+    .niveau {
+        color: var(--info);
+    }
+
+    .payment-summary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        border-radius: 8px;
+        color: white;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+
+    .summary-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .summary-item .label {
+        font-size: 12px;
+        opacity: 0.9;
+        margin-bottom: 5px;
+    }
+
+    .summary-item .value {
+        font-size: 20px;
+        font-weight: 700;
+    }
+
+    .summary-item.progress {
+        grid-column: 1 / -1;
+    }
+
+    .progress-bar-container {
+        position: relative;
+        width: 100%;
+        height: 24px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: white;
+        transition: width 0.5s ease;
+        border-radius: 12px;
+    }
+
+    .progress-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .alert {
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .alert-warning {
+        background: #fef3c7;
+        border: 1px solid #fbbf24;
+        color: #92400e;
+    }
+
+    .alert-info {
+        background: #dbeafe;
+        border: 1px solid #60a5fa;
+        color: #1e40af;
+    }
+
+    .quick-actions {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    .quick-actions h3 {
+        margin: 0 0 15px 0;
+        font-size: 16px;
+        color: #1f2937;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+    }
+
+    .action-card {
+        display: flex;
+        gap: 15px;
+        padding: 15px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .action-card:not(.disabled):hover {
+        border-color: var(--primary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .action-card.primary {
+        border-color: var(--primary);
+        background: #eff6ff;
+    }
+
+    .action-card.success {
+        border-color: var(--success);
+        background: #f0fdf4;
+    }
+
+    .action-card.info {
+        border-color: var(--info);
+        background: #dbeafe;
+    }
+
+    .action-card.disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background: var(--light-gray);
+    }
+
+    .action-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--primary);
+    }
+
+    .action-card.success .action-icon {
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--success);
+    }
+
+    .action-card.info .action-icon {
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--info);
+    }
+
+    .action-content {
+        flex: 1;
+    }
+
+    .action-title {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 4px;
+    }
+
+    .action-desc {
+        font-size: 12px;
+        color: var(--gray);
+    }
+
+    .payment-plan-section,
+    .payments-history {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--light-gray);
+    }
+
+    .section-header h3 {
+        margin: 0;
+        font-size: 18px;
+        color: #1f2937;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .plan-type, .count-badge {
+        background: var(--primary);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .tranches-timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .tranche-item {
+        display: flex;
+        gap: 15px;
+        align-items: flex-start;
+        padding: 15px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        transition: all 0.3s;
+    }
+
+    .tranche-item.paid {
+        background: #f0fdf4;
+        border-color: var(--success);
+    }
+
+    .tranche-item.current {
+        background: #eff6ff;
+        border-color: var(--primary);
+    }
+
+    .tranche-marker {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        background: var(--light-gray);
+        color: var(--gray);
+    }
+
+    .tranche-item.paid .tranche-marker {
+        background: var(--success);
+        color: white;
+    }
+
+    .tranche-item.current .tranche-marker {
+        background: var(--primary);
+        color: white;
+    }
+
+    .tranche-content {
+        flex: 1;
+    }
+
+    .tranche-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .tranche-name {
+        font-weight: 600;
+        color: #1f2937;
+        font-size: 15px;
+    }
+
+    .tranche-montant {
+        font-weight: 700;
+        color: var(--primary);
+        font-size: 16px;
+    }
+
+    .tranche-date {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--gray);
+        margin-bottom: 6px;
+    }
+
+    .badge-danger {
+        background: var(--danger);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        margin-left: 8px;
+    }
+
+    .tranche-paid-info {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--success);
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .paiement-unique-info {
+        padding: 20px 0;
+    }
+
+    .info-card {
+        display: flex;
+        gap: 15px;
+        padding: 20px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+    }
+
+    .info-card i {
+        font-size: 32px;
+        color: var(--info);
+    }
+
+    .info-content strong {
+        display: block;
+        margin-bottom: 8px;
+        color: #1f2937;
+    }
+
+    .badge-success {
+        background: var(--success);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+        margin-top: 8px;
+    }
+
+    .badge-warning {
+        background: var(--warning);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+        margin-top: 8px;
+    }
+
+    .payments-list {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .payment-item {
+        display: flex;
+        gap: 15px;
+        padding: 20px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        transition: all 0.3s;
+        align-items: flex-start;
+    }
+
+    .payment-item:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .payment-item.status-confirme {
+        border-left: 4px solid var(--success);
+    }
+
+    .payment-item.status-en_attente {
+        border-left: 4px solid var(--warning);
+    }
+
+    .payment-item.status-echec {
+        border-left: 4px solid var(--danger);
+    }
+
+    .payment-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--light-gray);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+
+    .payment-details {
+        flex: 1;
+    }
+
+    .payment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .payment-numero {
+        font-family: monospace;
+        font-size: 13px;
+        color: #1f2937;
+        font-weight: 600;
+    }
+
+    .payment-status {
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .payment-status.status-confirme {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .payment-status.status-en_attente {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .payment-status.status-echec {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .payment-info {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+
+    .info-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--gray);
+    }
+
+    .info-item i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .payment-description {
+        font-size: 13px;
+        color: var(--gray);
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--light-gray);
+    }
+
+    .payment-amount {
+        text-align: right;
+        flex-shrink: 0;
+    }
+
+    .amount-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--success);
+        margin-bottom: 4px;
+    }
+
+    .amount-fees {
+        font-size: 11px;
+        color: var(--danger);
+    }
+
+    .payment-actions {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--gray);
+    }
+
+    .empty-state i {
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-success { background: var(--success); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-info { background: var(--info); color: white; }
+    .btn-outline {
+        background: white;
+        border: 1px solid var(--border);
+        color: var(--gray);
+    }
+
+    .btn:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+
+    .btn-icon-sm {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .btn-icon-sm.btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-icon-sm.btn-success {
+        background: var(--success);
+        color: white;
+    }
+
+    .btn-icon-sm.btn-danger {
+        background: var(--danger);
+        color: white;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.show {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 8px;
+        max-width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-md {
+        width: 500px;
+    }
+
+    .modal-header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h4 {
+        margin: 0;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: var(--gray);
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .modal-footer {
+        padding: 15px 20px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+        color: #374151;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .form-text {
+        display: block;
+        margin-top: 5px;
+        font-size: 12px;
+        color: var(--gray);
+    }
+
+    .payment-info-box {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 6px;
+        padding: 15px;
+        margin-top: 15px;
+    }
+
+    .payment-info-box h5 {
+        margin: 0 0 10px 0;
+        color: var(--info);
+        font-size: 14px;
+    }
+
+    .payment-info-box ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+
+    .payment-info-box li {
+        margin-bottom: 5px;
+        font-size: 13px;
+        color: #1e40af;
+    }
+
+    @media (max-width: 768px) {
+        .payment-header {
+            grid-template-columns: 1fr;
+        }
+
+        .actions-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .payment-item {
+            flex-direction: column;
+        }
+
+        .payment-actions {
+            width: 100%;
+            justify-content: flex-end;
+        }
+    }
+</style>
+
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    const csrftoken = getCookie('csrftoken');
+    const studentId = '{{ student.id }}';
+
+    function showPaymentModal(type) {
+        if (type === 'ligdicash') {
+            document.getElementById('ligdicashModal').classList.add('show');
+        } else if (type === 'especes') {
+            document.getElementById('especesModal').classList.add('show');
+        } else if (type === 'cheque') {
+            document.getElementById('chequeModal').classList.add('show');
+        }
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('show');
+    }
+
+    // Paiement LigdiCash
+    document.getElementById('ligdicashForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const data = {
+            tranche_id: formData.get('tranche_id'),
+            montant: formData.get('montant')
+        };
+
+        fetch(`/dashboard/admin/students/${studentId}/initier-paiement/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Rediriger vers la page de paiement LigdiCash
+                window.location.href = data.redirect_url;
+            } else {
+                alert('Erreur: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur de connexion');
+        });
+    });
+
+    // Paiement Espèces
+    document.getElementById('especesForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const data = {
+            montant: formData.get('montant'),
+            tranche_id: formData.get('tranche_id'),
+            description: formData.get('description') || 'Paiement en espèces'
+        };
+
+        if (confirm('Confirmer le paiement de ' + data.montant + ' FCFA en espèces ?')) {
+            fetch(`/dashboard/admin/students/${studentId}/valider-paiement-especes/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Erreur: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Erreur de connexion');
+            });
+        }
+    });
+
+    // Paiement Chèque
+    document.getElementById('chequeForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const data = {
+            montant: formData.get('montant'),
+            tranche_id: formData.get('tranche_id'),
+            numero_cheque: formData.get('numero_cheque'),
+            banque: formData.get('banque'),
+            description: `Paiement par chèque n° ${formData.get('numero_cheque')} - ${formData.get('banque') || ''}`
+        };
+
+        if (confirm('Enregistrer ce paiement par chèque ?')) {
+            fetch(`/dashboard/admin/students/${studentId}/valider-paiement-cheque/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Erreur: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Erreur de connexion');
+            });
+        }
+    });
+
+    function payTranche(trancheId) {
+        showPaymentModal('ligdicash');
+    }
+
+    function viewPaymentDetails(paiementId) {
+        window.location.href = `/dashboard/admin/paiements/${paiementId}/`;
+    }
+
+    function printReceipt(paiementId) {
+        window.open(`/payments/paiement/${paiementId}/receipt/`, '_blank');
+    }
+
+    function confirmPayment(paiementId) {
+        if (confirm('Confirmer ce paiement ?')) {
+            fetch(`/dashboard/admin/paiements/${paiementId}/confirm/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Paiement confirmé');
+                    location.reload();
+                } else {
+                    alert('Erreur: ' + data.error);
+                }
+            });
+        }
+    }
+
+    function cancelPayment(paiementId) {
+        const motif = prompt('Motif d\'annulation:');
+        if (motif) {
+            fetch(`/dashboard/admin/paiements/${paiementId}/cancel/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({motif: motif})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Paiement annulé');
+                    location.reload();
+                } else {
+                    alert('Erreur: ' + data.error);
+                }
+            });
+        }
+    }
+
+    function generateReceipt() {
+        window.open(`/dashboard/admin/students/${studentId}/global-receipt/`, '_blank');
+    }
+
+    // Fermer modals avec Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.classList.remove('show');
+            });
+        }
+    });
+</script>
+{% endblock %}

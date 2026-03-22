@@ -1,0 +1,391 @@
+<!-- templates/dashboard/admin/certificate.html -->
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Certificat de Scolarité - {{ apprenant.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="print-document certificate-page">
+    <div class="no-print">
+        <div class="action-bar">
+            <a href="{% url 'dashboard:inscription_detail' inscription.id %}" class="btn btn-outline">
+                <i class="fas fa-arrow-left"></i> Retour
+            </a>
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="fas fa-print"></i> Imprimer
+            </button>
+        </div>
+    </div>
+
+    <div class="certificate-container">
+        <div class="certificate">
+            <!-- En-tête -->
+            <div class="certificate-header">
+                {% if etablissement.logo %}
+                    <img src="{{ etablissement.logo.url }}" alt="Logo" class="logo">
+                {% endif %}
+                <div class="header-text">
+                    <h1>{{ etablissement.nom }}</h1>
+                    <p>{{ etablissement.adresse }}</p>
+                    <p>Tél: {{ etablissement.telephone }} • Email: {{ etablissement.email }}</p>
+                </div>
+            </div>
+
+            <!-- Titre -->
+            <div class="certificate-title">
+                <h2>CERTIFICAT DE SCOLARITÉ</h2>
+                <p class="year">Année Académique {{ inscription.candidature.annee_academique.nom }}</p>
+            </div>
+
+            <!-- Corps -->
+            <div class="certificate-body">
+                <p class="intro">
+                    Le Directeur de <strong>{{ etablissement.nom }}</strong> certifie que :
+                </p>
+
+                <div class="student-info-box">
+                    <div class="info-item">
+                        <span class="label">Nom et Prénom(s)</span>
+                        <span class="value">{{ apprenant.get_full_name }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Né(e) le</span>
+                        <span class="value">{{ apprenant.date_naissance|date:"d/m/Y" }} à {{ apprenant.lieu_naissance }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Matricule</span>
+                        <span class="value">{{ apprenant.matricule }}</span>
+                    </div>
+                </div>
+
+                <p class="declaration">
+                    Est régulièrement inscrit(e) pour l'année académique {{ inscription.candidature.annee_academique.nom }}
+                    dans notre établissement en :
+                </p>
+
+                <div class="formation-box">
+                    <div class="formation-item">
+                        <span class="label">Filière:</span>
+                        <span class="value">{{ inscription.candidature.filiere.nom }}</span>
+                    </div>
+                    <div class="formation-item">
+                        <span class="label">Niveau:</span>
+                        <span class="value">{{ inscription.candidature.niveau.nom }}</span>
+                    </div>
+                    {% if inscription.classe_assignee %}
+                    <div class="formation-item">
+                        <span class="label">Classe:</span>
+                        <span class="value">{{ inscription.classe_assignee.nom }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <p class="purpose">
+                    Le présent certificat est délivré pour servir et valoir ce que de droit.
+                </p>
+            </div>
+
+            <!-- Pied -->
+            <div class="certificate-footer">
+                <div class="footer-left">
+                    <p class="issue-date">Fait à {{ etablissement.localite.nom }}, le {% now "d F Y" %}</p>
+                    <p class="certificate-number">N° {{ inscription.numero_inscription }}</p>
+                </div>
+
+                <div class="footer-right">
+                    <p class="signature-title">Le Directeur</p>
+                    <div class="signature-space"></div>
+                    {% if etablissement.nom_directeur %}
+                        <p class="director-name">{{ etablissement.nom_directeur }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Cachet -->
+            <div class="stamp-zone">
+                <div class="stamp">
+                    <p>Cachet de</p>
+                    <p>l'établissement</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+    }
+}
+
+.certificate-page {
+    padding: 20px;
+    min-height: 100vh;
+    background: #f3f4f6;
+}
+
+.action-bar {
+    background: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #d1d5db;
+    color: #6b7280;
+}
+
+.certificate-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.certificate {
+    background: white;
+    padding: 60px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border: 10px double #667eea;
+    position: relative;
+}
+
+.certificate-header {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid #667eea;
+}
+
+.certificate-header .logo {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+}
+
+.certificate-header .header-text h1 {
+    margin: 0 0 10px 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.certificate-header .header-text p {
+    margin: 3px 0;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.certificate-title {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.certificate-title h2 {
+    margin: 0 0 10px 0;
+    font-size: 32px;
+    font-weight: 700;
+    color: #667eea;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+}
+
+.certificate-title .year {
+    margin: 0;
+    font-size: 16px;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.certificate-body {
+    margin-bottom: 50px;
+}
+
+.certificate-body .intro,
+.certificate-body .declaration,
+.certificate-body .purpose {
+    text-align: justify;
+    font-size: 16px;
+    line-height: 1.8;
+    color: #1f2937;
+    margin-bottom: 25px;
+}
+
+.student-info-box {
+    background: #f9fafb;
+    border-left: 4px solid #667eea;
+    padding: 20px 30px;
+    margin: 30px 0;
+}
+
+.student-info-box .info-item {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    margin-bottom: 12px;
+    font-size: 15px;
+}
+
+.student-info-box .info-item:last-child {
+    margin-bottom: 0;
+}
+
+.student-info-box .label {
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.student-info-box .value {
+    color: #1f2937;
+    font-weight: 700;
+}
+
+.formation-box {
+    background: #eff6ff;
+    border: 2px solid #667eea;
+    border-radius: 8px;
+    padding: 20px 30px;
+    margin: 30px 0;
+}
+
+.formation-box .formation-item {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    margin-bottom: 10px;
+    font-size: 15px;
+}
+
+.formation-box .formation-item:last-child {
+    margin-bottom: 0;
+}
+
+.formation-box .label {
+    color: #3730a3;
+    font-weight: 600;
+}
+
+.formation-box .value {
+    color: #1f2937;
+    font-weight: 700;
+}
+
+.certificate-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 60px;
+}
+
+.footer-left .issue-date {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: #1f2937;
+    font-style: italic;
+}
+
+.footer-left .certificate-number {
+    margin: 0;
+    font-size: 12px;
+    color: #6b7280;
+    font-family: monospace;
+}
+
+.footer-right {
+    text-align: center;
+}
+
+.footer-right .signature-title {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.footer-right .signature-space {
+    width: 200px;
+    height: 80px;
+    border-bottom: 2px solid #1f2937;
+    margin: 0 auto 10px;
+}
+
+.footer-right .director-name {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.stamp-zone {
+    position: absolute;
+    bottom: 80px;
+    left: 100px;
+}
+
+.stamp {
+    width: 120px;
+    height: 120px;
+    border: 3px dashed #667eea;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+    transform: rotate(-15deg);
+}
+
+.stamp p {
+    margin: 0;
+    font-size: 12px;
+    color: #667eea;
+    font-weight: 700;
+    text-align: center;
+}
+
+@media (max-width: 900px) {
+    .certificate {
+        padding: 30px;
+    }
+
+    .certificate-header {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+</style>
+
+<script>
+// Auto-print si paramètre dans URL
+if (new URLSearchParams(window.location.search).get('print') === '1') {
+    window.onload = function() {
+        window.print();
+    };
+}
+</script>
+{% endblock %}

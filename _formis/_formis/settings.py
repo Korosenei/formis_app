@@ -155,6 +155,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Modèle utilisateur personnalisé
 AUTH_USER_MODEL = 'accounts.Utilisateur'
 
+# URL du site
+SITE_URL = 'http://localhost:8000'  # En développement
 
 # Configuration Django REST Framework
 REST_FRAMEWORK = {
@@ -207,7 +209,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_HOST_USER = 'leandrebenilde07@gmail.com'
-EMAIL_HOST_PASSWORD = 'xdel gkaw zlrq wdfy'
+EMAIL_HOST_PASSWORD = 'jcjt xdhp quio iliq'
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 
@@ -221,16 +223,10 @@ EMAIL_TIMEOUT = 30
 # Configuration LigdiCash
 LIGDICASH_API_KEY = "XAUN7RGRQFIBCKM2J"
 LIGDICASH_AUTH_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZF9hcHAiOiIyNjUwNiIsImlkX2Fib25uZSI6ODQ0MTU3LCJkYXRlY3JlYXRpb25fYXBwIjoiMjAyNS0wNy0zMCAwOTowMTozMSJ9.FRT51-fVdpxUd-mDn_wcldcRKHfWtEyM4u4se3bGwFc"
+LIGDICASH_STORE_NAME = 'FORMIS'
+LIGDICASH_BASE_URL = 'https://client.ligdicash.com/pay/v01/redirect/checkout-invoice/create'
 LIGDICASH_PLATFORM = "test"
 LIGDICASH_MONTANT_MINIMUM = 100
-
-
-# Informations du site
-SITE_NAME = 'FORMIS'
-# SITE_URL = 'http://localhost:8000'
-
-SITE_URL = 'https://expectingly-yellowish-winter.ngrok-free.dev'
-CSRF_TRUSTED_ORIGINS = ['https://expectingly-yellowish-winter.ngrok-free.dev']
 
 
 # Créer le dossier logs s'il n'existe pas
@@ -245,8 +241,9 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
+            'format': '[{levelname}] {asctime} {name} {message}',
             'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
         },
         'simple': {
             'format': '{levelname} {message}',
@@ -255,41 +252,23 @@ LOGGING = {
     },
     'handlers': {
         'console': {
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose'
+            'formatter': 'simple',
         },
         'file': {
+            'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': os.path.join(LOGS_DIR, 'email.log'),
-            'formatter': 'verbose'
+	    'filename': os.path.join(LOGS_DIR, 'candidatures.log'),
+
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
         },
-        'mail_admins': {
-            'level': 'ERROR',
-            'class': 'django.utils.log.AdminEmailHandler',
-        }
     },
     'loggers': {
-        'django': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'apps.accounts': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
         'apps.enrollment': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
-        },
-        'apps.payments': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-        },
-        'django.core.mail': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
             'propagate': False,
         },
     },

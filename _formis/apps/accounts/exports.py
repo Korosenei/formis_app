@@ -25,7 +25,6 @@ from apps.academic.models import Departement, Classe
 # ============================================================================
 # UTILITAIRES GÉNÉRAUX
 # ============================================================================
-
 def get_csv_response(filename):
     """Crée une réponse HTTP pour CSV avec encodage UTF-8 BOM"""
     response = HttpResponse(content_type='text/csv; charset=utf-8')
@@ -33,13 +32,11 @@ def get_csv_response(filename):
     response.write('\ufeff'.encode('utf8'))  # BOM pour Excel
     return response
 
-
 def get_pdf_response(filename):
     """Crée une réponse HTTP pour PDF"""
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
-
 
 def create_pdf_document(buffer, title, landscape_mode=False):
     """Crée un document PDF avec configuration de base"""
@@ -53,7 +50,6 @@ def create_pdf_document(buffer, title, landscape_mode=False):
         bottomMargin=2 * cm
     )
     return doc
-
 
 def get_pdf_styles():
     """Retourne les styles pour le PDF"""
@@ -89,7 +85,6 @@ def get_pdf_styles():
 
     return styles
 
-
 def create_table_style():
     """Crée le style de base pour les tableaux PDF"""
     return TableStyle([
@@ -121,7 +116,6 @@ def create_table_style():
         ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#2563eb')),
     ])
 
-
 def add_pdf_header(elements, title, etablissement, styles):
     """Ajoute l'en-tête du PDF"""
     # Titre principal
@@ -139,7 +133,6 @@ def add_pdf_header(elements, title, etablissement, styles):
 # ============================================================================
 # EXPORT UTILISATEURS
 # ============================================================================
-
 @login_required
 def users_export_csv(request):
     """Exporte les utilisateurs en CSV"""
@@ -181,7 +174,6 @@ def users_export_csv(request):
 
     messages.success(request, f"{users.count()} utilisateur(s) exporté(s) avec succès")
     return response
-
 
 @login_required
 def users_export_pdf(request):
@@ -255,7 +247,6 @@ def users_export_pdf(request):
     messages.success(request, f"Export PDF généré avec succès ({users.count()} utilisateurs)")
     return response
 
-
 def apply_user_filters(request, queryset):
     """Applique les filtres de recherche utilisateurs"""
     role = request.GET.get('role')
@@ -281,7 +272,6 @@ def apply_user_filters(request, queryset):
 # ============================================================================
 # EXPORT COMPTABLES
 # ============================================================================
-
 @login_required
 def comptables_export_csv(request):
     """Exporte les comptables en CSV"""
@@ -317,7 +307,6 @@ def comptables_export_csv(request):
 
     messages.success(request, f"{comptables.count()} comptable(s) exporté(s) avec succès")
     return response
-
 
 @login_required
 def comptables_export_pdf(request):
@@ -372,7 +361,6 @@ def comptables_export_pdf(request):
 # ============================================================================
 # EXPORT CHEFS DE DÉPARTEMENT
 # ============================================================================
-
 @login_required
 def department_heads_export_csv(request):
     """Exporte les chefs de département en CSV"""
@@ -424,7 +412,6 @@ def department_heads_export_csv(request):
 
     messages.success(request, f"{departements.count()} département(s) exporté(s) avec succès")
     return response
-
 
 @login_required
 def department_heads_export_pdf(request):
@@ -503,7 +490,6 @@ def department_heads_export_pdf(request):
 # ============================================================================
 # EXPORT ENSEIGNANTS
 # ============================================================================
-
 @login_required
 def teachers_export_csv(request):
     """Exporte les enseignants en CSV"""
@@ -548,7 +534,6 @@ def teachers_export_csv(request):
 
     messages.success(request, f"{teachers.count()} enseignant(s) exporté(s) avec succès")
     return response
-
 
 @login_required
 def teachers_export_pdf(request):
@@ -619,7 +604,6 @@ def teachers_export_pdf(request):
 # ============================================================================
 # EXPORT ÉTUDIANTS
 # ============================================================================
-
 @login_required
 def students_export_csv(request):
     """Exporte les étudiants en CSV"""
@@ -664,7 +648,6 @@ def students_export_csv(request):
 
     messages.success(request, f"{students.count()} étudiant(s) exporté(s) avec succès")
     return response
-
 
 @login_required
 def students_export_pdf(request):

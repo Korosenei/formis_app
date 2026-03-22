@@ -1886,7 +1886,6 @@ L'équipe {user.etablissement.nom}
             'email_sent': False
         })
 
-
 def generate_password():
     """Génère un mot de passe aléatoire sécurisé"""
     import random

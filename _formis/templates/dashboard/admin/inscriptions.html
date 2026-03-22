@@ -26,9 +26,6 @@
             <button class="btn-icon" onclick="exportInscriptions()" title="Exporter">
                 <i class="fas fa-download"></i>
             </button>
-            <button class="btn btn-primary btn-sm" onclick="addInscription()">
-                <i class="fas fa-plus"></i> Nouvelle
-            </button>
         </div>
     </div>
 
@@ -240,7 +237,9 @@
         </div>
 
         <!-- Pagination -->
-        {% include 'components/pagination.html' with page_obj=inscriptions %}
+        {% if inscriptions %}
+            {% include 'components/pagination.html' with page_obj=page_obj %}
+        {% endif %}
     </div>
 </div>
 

@@ -1,0 +1,400 @@
+<!-- templates/dashboard/admin/student_card.html -->
+{% extends 'base/dashboard_base.html' %}
+{% load static %}
+
+{% block page_title %}Carte d'étudiant - {{ apprenant.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="print-document student-card-page">
+    <div class="no-print">
+        <div class="action-bar">
+            <a href="{% url 'dashboard:inscription_detail' inscription.id %}" class="btn btn-outline">
+                <i class="fas fa-arrow-left"></i> Retour
+            </a>
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="fas fa-print"></i> Imprimer
+            </button>
+        </div>
+    </div>
+
+    <div class="card-container">
+        <!-- Recto -->
+        <div class="student-card recto">
+            <div class="card-header">
+                {% if etablissement.logo %}
+                    <img src="{{ etablissement.logo.url }}" alt="Logo" class="logo">
+                {% endif %}
+                <div class="etablissement-info">
+                    <h2>{{ etablissement.nom }}</h2>
+                    <p>{{ etablissement.adresse }}</p>
+                </div>
+            </div>
+
+            <div class="card-photo">
+                {% if apprenant.photo_profil %}
+                    <img src="{{ apprenant.photo_profil.url }}" alt="Photo">
+                {% else %}
+                    <div class="photo-placeholder">
+                        <i class="fas fa-user"></i>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="card-body">
+                <h3>CARTE D'ÉTUDIANT</h3>
+                <div class="info-row">
+                    <span class="label">Nom complet:</span>
+                    <span class="value">{{ apprenant.get_full_name }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Matricule:</span>
+                    <span class="value">{{ apprenant.matricule }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Filière:</span>
+                    <span class="value">{{ inscription.candidature.filiere.nom }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Niveau:</span>
+                    <span class="value">{{ inscription.candidature.niveau.nom }}</span>
+                </div>
+                {% if inscription.classe_assignee %}
+                <div class="info-row">
+                    <span class="label">Classe:</span>
+                    <span class="value">{{ inscription.classe_assignee.nom }}</span>
+                </div>
+                {% endif %}
+                <div class="info-row">
+                    <span class="label">Année académique:</span>
+                    <span class="value">{{ inscription.candidature.annee_academique.nom }}</span>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <div class="signature-zone">
+                    <p>Le Directeur</p>
+                    <div class="signature-line"></div>
+                </div>
+                <div class="date-emission">
+                    <p>Émise le: {{ inscription.date_inscription|date:"d/m/Y" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Verso -->
+        <div class="student-card verso">
+            <div class="verso-content">
+                <h4>INFORMATIONS IMPORTANTES</h4>
+
+                <div class="emergency-contact">
+                    <h5>Contact d'urgence</h5>
+                    <p>En cas d'urgence, veuillez contacter:</p>
+                    <p><strong>{{ etablissement.telephone }}</strong></p>
+                    <p>{{ etablissement.email }}</p>
+                </div>
+
+                <div class="rules">
+                    <h5>Règlement</h5>
+                    <ul>
+                        <li>Cette carte est strictement personnelle</li>
+                        <li>Elle doit être présentée à chaque demande</li>
+                        <li>En cas de perte, prévenir immédiatement l'administration</li>
+                        <li>Toute utilisation frauduleuse sera sanctionnée</li>
+                    </ul>
+                </div>
+
+                <div class="barcode">
+                    <p>N° {{ inscription.numero_inscription }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    .card-container {
+        page-break-inside: avoid;
+    }
+}
+
+.student-card-page {
+    padding: 20px;
+    min-height: 100vh;
+    background: #f3f4f6;
+}
+
+.action-bar {
+    background: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #d1d5db;
+    color: #6b7280;
+}
+
+.card-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.student-card {
+    width: 540px;
+    height: 340px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.student-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 10px;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.recto .card-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding-top: 10px;
+}
+
+.recto .logo {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+}
+
+.recto .etablissement-info h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.recto .etablissement-info p {
+    margin: 5px 0 0 0;
+    font-size: 10px;
+    color: #6b7280;
+}
+
+.recto .card-photo {
+    position: absolute;
+    top: 100px;
+    right: 30px;
+    width: 120px;
+    height: 140px;
+    border: 3px solid #667eea;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.recto .card-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.recto .photo-placeholder {
+    width: 100%;
+    height: 100%;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    color: #9ca3af;
+}
+
+.recto .card-body {
+    margin-top: 20px;
+}
+
+.recto .card-body h3 {
+    margin: 0 0 15px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #667eea;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.recto .info-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    margin-bottom: 8px;
+    font-size: 11px;
+}
+
+.recto .info-row .label {
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.recto .info-row .value {
+    color: #1f2937;
+    font-weight: 700;
+}
+
+.recto .card-footer {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.signature-zone p {
+    margin: 0 0 5px 0;
+    font-size: 10px;
+    color: #6b7280;
+}
+
+.signature-line {
+    width: 120px;
+    height: 30px;
+    border-bottom: 2px solid #1f2937;
+}
+
+.date-emission p {
+    margin: 0;
+    font-size: 10px;
+    color: #6b7280;
+}
+
+/* Verso */
+.verso {
+    background: #f9fafb;
+}
+
+.verso-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding-top: 20px;
+}
+
+.verso-content h4 {
+    margin: 0 0 20px 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #667eea;
+    text-align: center;
+}
+
+.verso-content h5 {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.emergency-contact {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.emergency-contact p {
+    margin: 5px 0;
+    font-size: 11px;
+}
+
+.rules {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.rules ul {
+    margin: 10px 0 0 0;
+    padding-left: 20px;
+}
+
+.rules li {
+    font-size: 10px;
+    margin-bottom: 5px;
+    color: #4b5563;
+}
+
+.barcode {
+    text-align: center;
+    margin-top: auto;
+    padding-top: 15px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.barcode p {
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+@media (max-width: 1200px) {
+    .card-container {
+        grid-template-columns: 1fr;
+    }
+
+    .student-card {
+        margin: 0 auto;
+    }
+}
+</style>
+
+<script>
+// Auto-print si paramètre dans URL
+if (new URLSearchParams(window.location.search).get('print') === '1') {
+    window.onload = function() {
+        window.print();
+    };
+}
+</script>
+{% endblock %}

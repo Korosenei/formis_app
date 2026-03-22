@@ -2,7 +2,6 @@
 {% load static %}
 
 {% block page_title %}Tableau de bord - Apprenant{% endblock %}
-{% block breadcrumb %}Dashboard > Apprenant{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="/static/css/dashboard/student.css">
@@ -10,6 +9,9 @@
 
 {% block content %}
 <div class="student-dashboard">
+    {% if peut_acceder %}
+    <!-- ==================== CONTENU PRINCIPAL DU DASHBOARD ==================== -->
+
     <!-- Statistiques générales -->
     <div class="stats-grid">
         <div class="stat-card primary">
@@ -287,16 +289,97 @@
         </div>
     </div>
     {% endif %}
+
+    {% else %}
+    <!-- ==================== MESSAGE SI PAS D'ACCÈS ==================== -->
+    <div class="access-denied-container">
+        <div class="access-denied-card">
+            <div class="denied-icon">
+                <i class="fas fa-lock"></i>
+            </div>
+            <h3>Inscription obligatoire</h3>
+            <p>Vous devez finaliser votre inscription pour accéder au tableau de bord.</p>
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Chargement des informations...</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
+<!-- ==================== MODAL D'INSCRIPTION ==================== -->
+{% if afficher_modal %}
+{% include 'enrollment/inscription/inscription_modal.html' %}
+{% endif %}
 
 <style>
+/* ==================== STYLES DU DASHBOARD ==================== */
 .student-dashboard {
     padding: 15px;
     max-width: 100%;
     overflow-x: hidden;
 }
 
+/* Message d'accès refusé */
+.access-denied-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    padding: 20px;
+}
+
+.access-denied-card {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+}
+
+.denied-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    color: white;
+    font-size: 32px;
+}
+
+.access-denied-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+.access-denied-card p {
+    margin: 0 0 20px 0;
+    color: #718096;
+    font-size: 14px;
+}
+
+.loading-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #667eea;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.loading-spinner i {
+    font-size: 20px;
+}
+
+/* Statistiques */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -392,6 +475,7 @@
     color: #58151c;
 }
 
+/* Prochain cours */
 .next-course-card {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -448,6 +532,7 @@
     gap: 6px;
 }
 
+/* Sections */
 .content-sections {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -603,6 +688,7 @@
     display: block;
 }
 
+/* Paiement */
 .payment-summary {
     padding: 15px;
     background: #f8f9fa;
@@ -668,6 +754,7 @@
     font-size: 12px;
 }
 
+/* Notifications */
 .notifications-card {
     background: white;
     border-radius: 8px;
@@ -760,32 +847,37 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Vérifier l'accès
+    console.log('🎯 Dashboard étudiant - Initialisation');
+
+    // Vérifier si le modal doit être affiché
+    const afficherModal = {{ afficher_modal|yesno:"true,false" }};
     const peutAcceder = {{ peut_acceder|yesno:"true,false" }};
 
-    if (!peutAcceder) {
-        const statutModal = "{{ statut_modal|default:'inscription_requise' }}";
-        const message = "{{ message_modal|default:'Inscription requise' }}";
+    console.log('📊 État:', { afficherModal, peutAcceder });
 
-        updateModalContent(statutModal, {
-            message: message,
-            candidatures_approuvees: {{ candidatures_approuvees|default:0 }},
-            paiements_en_cours: {{ paiements_en_cours|default:0 }}
-        });
+    if (afficherModal && !peutAcceder) {
+        console.log('🔓 Affichage du modal d\'inscription obligatoire');
 
-        const modal = new bootstrap.Modal(document.getElementById('inscriptionModal'));
-        modal.show();
+        // Attendre que le DOM soit complètement chargé
+        setTimeout(() => {
+            if (typeof initInscriptionModal === 'function') {
+                initInscriptionModal();
+            } else {
+                console.error('❌ Fonction initInscriptionModal introuvable');
+            }
+        }, 300);
+    } else {
+        console.log('✅ Accès autorisé - Dashboard accessible');
     }
 
-    // Actualiser si paiements en cours
+    // Si des paiements sont en cours, actualiser périodiquement
     {% if paiements_en_cours > 0 %}
-    setTimeout(() => window.location.reload(), 30000);
+    console.log('💳 Paiements en cours détectés - Actualisation automatique dans 30s');
+    setTimeout(() => {
+        console.log('🔄 Rechargement de la page...');
+        window.location.reload();
+    }, 30000);
     {% endif %}
 });
-
-function updateModalContent(statut, data) {
-    // Fonction de mise à jour du modal (à implémenter selon vos besoins)
-    console.log('Modal update:', statut, data);
-}
 </script>
 {% endblock %}

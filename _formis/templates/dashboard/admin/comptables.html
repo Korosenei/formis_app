@@ -15,14 +15,14 @@
                 <i class="fas fa-chevron-right"></i>
                 <span class="current">Comptables</span>
             </div>
-            <h1><i class="fas fa-calculator"></i> Gestion des Comptables</h1>
+            <h1>Gestion des Comptables</h1>
         </div>
         <div class="header-actions">
             <button onclick="exportComptables()" class="btn-icon" title="Exporter">
                 <i class="fas fa-download"></i>
             </button>
             <a href="{% url 'accounts:comptable_add' %}" class="btn btn-primary btn-sm">
-                <i class="fas fa-plus"></i> Ajouter
+                <i class="fas fa-plus"></i>
             </a>
         </div>
     </div>
@@ -43,31 +43,6 @@
             {% endfor %}
         </div>
     {% endif %}
-
-    <!-- Stats compactes -->
-    <div class="stats-row">
-        <div class="stat-card stat-blue">
-            <i class="fas fa-users"></i>
-            <div class="stat-info">
-                <div class="stat-value">{{ total_comptables }}</div>
-                <div class="stat-label">Total comptables</div>
-            </div>
-        </div>
-        <div class="stat-card stat-green">
-            <i class="fas fa-user-check"></i>
-            <div class="stat-info">
-                <div class="stat-value">{{ comptables_actifs }}</div>
-                <div class="stat-label">Actifs</div>
-            </div>
-        </div>
-        <div class="stat-card stat-orange">
-            <i class="fas fa-user-times"></i>
-            <div class="stat-info">
-                <div class="stat-value">{{ comptables_inactifs }}</div>
-                <div class="stat-label">Inactifs</div>
-            </div>
-        </div>
-    </div>
 
     <!-- Filtres compacts -->
     <div class="filters-section">
@@ -163,7 +138,7 @@
                             <div class="contact-info">
                                 <div class="email-text" title="{{ comptable.email }}">
                                     <i class="fas fa-envelope"></i>
-                                    {{ comptable.email|truncatechars:20 }}
+                                    {{ comptable.email }}
                                 </div>
                                 {% if comptable.telephone %}
                                     <div class="phone-text">
@@ -391,65 +366,6 @@
 
 .close-alert:hover {
     opacity: 1;
-}
-
-.stats-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
-    margin-bottom: 15px;
-}
-
-.stat-card {
-    background: white;
-    padding: 15px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    transition: transform 0.3s;
-}
-
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.stat-card > i {
-    width: 45px;
-    height: 45px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    font-size: 20px;
-    color: white;
-}
-
-.stat-blue > i {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-}
-
-.stat-green > i {
-    background: linear-gradient(135deg, #10b981, #059669);
-}
-
-.stat-orange > i {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-}
-
-.stat-value {
-    font-size: 24px;
-    font-weight: 700;
-    color: #1f2937;
-    line-height: 1;
-}
-
-.stat-label {
-    font-size: 11px;
-    color: #6b7280;
-    margin-top: 2px;
 }
 
 .filters-section {
@@ -938,10 +854,6 @@
     .filters-form {
         grid-template-columns: 1fr;
         gap: 8px;
-    }
-
-    .stats-row {
-        grid-template-columns: 1fr;
     }
 
     .comptables-table {

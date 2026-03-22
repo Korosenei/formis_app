@@ -22,7 +22,7 @@
                 <i class="fas fa-download"></i>
             </button>
             <a href="{% url 'accounts:teacher_add' %}" class="btn btn-primary btn-sm">
-                <i class="fas fa-plus"></i> Ajouter
+                <i class="fas fa-plus"></i>
             </a>
         </div>
     </div>
@@ -72,7 +72,7 @@
                 <button type="submit" class="btn btn-sm btn-primary">
                     <i class="fas fa-search"></i>
                 </button>
-                <a href="{% url 'accounts:teacher_list' %}" class="btn btn-sm btn-outline">
+                <a href="{% url 'dashboard:admin_teachers' %}" class="btn btn-sm btn-outline">
                     <i class="fas fa-undo"></i>
                 </a>
             </div>
@@ -144,7 +144,7 @@
                             <div class="contact-info">
                                 <div class="email-text" title="{{ teacher.email }}">
                                     <i class="fas fa-envelope"></i>
-                                    {{ teacher.email|truncatechars:18 }}
+                                    {{ teacher.email }}
                                 </div>
                                 {% if teacher.telephone %}
                                     <div class="phone-text">

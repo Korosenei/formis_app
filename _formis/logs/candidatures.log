@@ -1,0 +1,129 @@
+[INFO] 2025-12-28 01:00:04 apps.enrollment.views Début traitement candidature AJAX
+[INFO] 2025-12-28 01:00:08 apps.enrollment.managers [OK] Email de confirmation envoye a testuser.testeur@gmail.com (Candidature: CAND2025 UOST0001)
+[INFO] 2025-12-28 01:00:08 apps.enrollment.views Email de confirmation envoyé à testuser.testeur@gmail.com
+[INFO] 2025-12-28 01:00:08 apps.enrollment.views Candidature créée et soumise: CAND2025 UOST0001
+[INFO] 2025-12-28 01:19:15 apps.enrollment.views Examen démarré pour candidature CAND2025 UOST0001 par Frankenstein
+[INFO] 2025-12-28 09:45:18 apps.enrollment.managers [OK] Email evaluation envoye a testuser.testeur@gmail.com
+[INFO] 2025-12-30 00:39:49 apps.enrollment.views Examen démarré pour candidature CAND2025 UOST0001 par Frankenstein
+[INFO] 2025-12-30 00:40:14 apps.enrollment.views [OK] Candidature APPROUVEE: CAND2025 UOST0001 par Frankenstein
+[INFO] 2025-12-30 00:40:17 apps.enrollment.managers [OK] Email evaluation envoye a testuser.testeur@gmail.com
+[INFO] 2025-12-30 00:40:17 apps.enrollment.views [OK] Email evaluation envoye a testuser.testeur@gmail.com
+[ERROR] 2025-12-30 00:40:17 apps.enrollment.views [ERROR] Erreur creation compte pour candidature CAND2025 UOST0001: ERREUR:  la valeur d'une clé dupliquée rompt la contrainte unique « comptes_utilisateur_matricule_key »
+DETAIL:  La clé « (matricule)=(AP20250001) » existe déjà.
+Traceback (most recent call last):
+  File "E:\formis_app\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+psycopg2.errors.UniqueViolation: ERREUR:  la valeur d'une clé dupliquée rompt la contrainte unique « comptes_utilisateur_matricule_key »
+DETAIL:  La clé « (matricule)=(AP20250001) » existe déjà.
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\formis_app\_formis\apps\enrollment\views.py", line 699, in creer_compte_apprenant_depuis_candidature
+    user = User.objects.create_user(
+        email=candidature.email,
+    ...<11 lines>...
+        est_actif=True
+    )
+  File "E:\formis_app\venv\Lib\site-packages\django\contrib\auth\models.py", line 175, in create_user
+    return self._create_user(username, email, password, **extra_fields)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\venv\Lib\site-packages\django\contrib\auth\models.py", line 163, in _create_user
+    user.save(using=self._db)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "E:\formis_app\_formis\apps\accounts\models.py", line 85, in save
+    super().save(*args, **kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\venv\Lib\site-packages\django\contrib\auth\base_user.py", line 65, in save
+    super().save(*args, **kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\venv\Lib\site-packages\django\db\models\base.py", line 902, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=update_fields,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "E:\formis_app\venv\Lib\site-packages\django\db\models\base.py", line 1008, in save_base
+    updated = self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "E:\formis_app\venv\Lib\site-packages\django\db\models\base.py", line 1169, in _save_table
+    results = self._do_insert(
+        cls._base_manager, using, fields, returning_fields, raw
+    )
+  File "E:\formis_app\venv\Lib\site-packages\django\db\models\base.py", line 1210, in _do_insert
+    return manager._insert(
+           ~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "E:\formis_app\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\venv\Lib\site-packages\django\db\models\query.py", line 1868, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1882, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "E:\formis_app\venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "E:\formis_app\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "E:\formis_app\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "E:\formis_app\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "E:\formis_app\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+django.db.utils.IntegrityError: ERREUR:  la valeur d'une clé dupliquée rompt la contrainte unique « comptes_utilisateur_matricule_key »
+DETAIL:  La clé « (matricule)=(AP20250001) » existe déjà.
+
+[WARNING] 2025-12-30 00:40:17 apps.enrollment.views [WARN] Candidature approuvee mais echec creation compte pour testuser.testeur@gmail.com
+[INFO] 2025-12-30 00:56:17 apps.enrollment.views Examen démarré pour candidature CAND2025 UOST0001 par Frankenstein
+[INFO] 2025-12-30 00:56:38 apps.enrollment.views [OK] Candidature APPROUVEE: CAND2025 UOST0001 par Frankenstein
+[INFO] 2025-12-30 00:56:40 apps.enrollment.managers [OK] Email evaluation envoye a testuser.testeur@gmail.com
+[INFO] 2025-12-30 00:56:41 apps.enrollment.views [OK] Email evaluation envoye a testuser.testeur@gmail.com
+[INFO] 2025-12-30 00:56:43 apps.enrollment.views [OK] Utilisateur cree: testuser.testeur@gmail.com - Matricule: AP20250002
+[INFO] 2025-12-30 00:56:43 apps.enrollment.views [OK] Profils crees pour testuser.testeur@gmail.com - ProfilUtilisateur: 7, ProfilApprenant: 9
+[ERROR] 2025-12-30 00:56:43 apps.enrollment.managers [ERROR] Erreur envoi email identifiants: 'Settings' object has no attribute 'SITE_URL'
+Traceback (most recent call last):
+  File "E:\formis_app\_formis\apps\enrollment\managers.py", line 217, in send_account_created
+    Lien de connexion : {settings.SITE_URL}/accounts/login/
+                         ^^^^^^^^^^^^^^^^^
+  File "E:\formis_app\venv\Lib\site-packages\django\conf\__init__.py", line 83, in __getattr__
+    val = getattr(_wrapped, name)
+AttributeError: 'Settings' object has no attribute 'SITE_URL'
+[ERROR] 2025-12-30 00:56:43 apps.enrollment.views [ERROR] Echec envoi email identifiants a testuser.testeur@gmail.com
+[INFO] 2025-12-30 00:56:43 apps.enrollment.views [OK] Compte apprenant cree avec succes: testuser.testeur@gmail.com (Matricule: AP20250002)
+[INFO] 2025-12-30 01:14:49 apps.enrollment.views Examen démarré pour candidature CAND2025 UOST0001 par Frankenstein
+[INFO] 2025-12-30 01:14:56 apps.enrollment.views [OK] Candidature APPROUVEE: CAND2025 UOST0001 par Frankenstein
+[INFO] 2025-12-30 01:14:59 apps.enrollment.managers [OK] Email evaluation envoye a testuser.testeur@gmail.com
+[INFO] 2025-12-30 01:14:59 apps.enrollment.views [OK] Email evaluation envoye a testuser.testeur@gmail.com
+[INFO] 2025-12-30 01:15:01 apps.enrollment.views [OK] Utilisateur cree: testuser.testeur@gmail.com - Matricule: AP20250002
+[INFO] 2025-12-30 01:15:01 apps.enrollment.views [OK] Profils crees pour testuser.testeur@gmail.com - ProfilUtilisateur: 8, ProfilApprenant: 10
+[INFO] 2025-12-30 01:15:04 apps.enrollment.managers [OK] Email identifiants envoye a testuser.testeur@gmail.com
+[INFO] 2025-12-30 01:15:04 apps.enrollment.views [OK] Email identifiants envoye a testuser.testeur@gmail.com
+[INFO] 2025-12-30 01:15:04 apps.enrollment.views [OK] Compte apprenant cree avec succes: testuser.testeur@gmail.com (Matricule: AP20250002)

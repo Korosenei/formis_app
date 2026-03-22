@@ -18,13 +18,12 @@
             <h1>Gestion des Chefs de Département</h1>
         </div>
         <div class="header-actions">
-            <!-- MODIFIÉ: Nouveau bouton d'export avec modal -->
             <button onclick="openExportModal('department_heads')" class="btn-icon" title="Exporter">
                 <i class="fas fa-download"></i>
             </button>
             {% if can_nominate %}
             <a href="{% url 'accounts:nominate_department_head' %}" class="btn btn-primary btn-sm">
-                <i class="fas fa-plus"></i> Nommer
+                <i class="fas fa-plus"></i>
             </a>
             {% else %}
             <button class="btn btn-secondary btn-sm" disabled title="Tous les départements ont un chef">

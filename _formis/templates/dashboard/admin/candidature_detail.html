@@ -1024,7 +1024,7 @@ function validateDocument(docId) {
 }
 
 function createInscription() {
-    window.location.href = `{% url 'enrollment:admin_create_inscription' candidature.id %}`;
+    window.location.href = `/enrollment/inscriptions/create/?candidature={{ candidature.id }}`;
 }
 
 function sendEmail() {

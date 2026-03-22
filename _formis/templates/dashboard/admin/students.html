@@ -16,10 +16,6 @@
                 <span class="current">Étudiants</span>
             </div>
             <h1>Gestion des Étudiants</h1>
-            <div class="header-stats">
-                <span class="stat-badge">{{ page_obj.paginator.count }} total</span>
-                <span class="stat-badge actifs">{{ students|length }} sur cette page</span>
-            </div>
         </div>
         <div class="header-actions">
             <button class="btn-icon" onclick="exportStudents()" title="Exporter">
@@ -244,7 +240,10 @@
                                         <a href="#" onclick="event.preventDefault(); viewStudentGrades('{{ student.id }}')">
                                             <i class="fas fa-chart-bar"></i> Notes
                                         </a>
-                                        <a href="#" onclick="event.preventDefault(); viewPayments('{{ student.id }}')">
+                                        <!--<a href="#" onclick="event.preventDefault(); viewPayments('{{ student.id }}')">
+                                            <i class="fas fa-credit-card"></i> Paiements
+                                        </a>-->
+                                        <a href="{% url 'payments:admin_student_payments' student.id %}">
                                             <i class="fas fa-credit-card"></i> Paiements
                                         </a>
                                         <a href="#" onclick="event.preventDefault(); sendMessage('{{ student.id }}')">

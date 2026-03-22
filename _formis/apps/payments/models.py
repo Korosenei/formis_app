@@ -334,7 +334,7 @@ class Paiement(BaseModel):
         verbose_name="Numéro de transaction"
     )
     reference_externe = models.CharField(
-        max_length=100,
+        max_length=500,
         null=True,
         blank=True,
         verbose_name="Référence externe (LigdiCash)"

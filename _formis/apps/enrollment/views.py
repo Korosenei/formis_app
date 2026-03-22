@@ -29,20 +29,17 @@ from django.core.exceptions import ValidationError
 from .forms import (
     PeriodeCandidatureForm, DocumentRequisForm, CandidatureForm,
     DocumentCandidatureForm, CandidatureFilterForm, InscriptionForm,
-    TransfertForm, AbandonForm, CandidatureEvaluationForm
+    CandidatureEvaluationForm
 )
 from .models import (
     PeriodeCandidature, DocumentRequis, Candidature, DocumentCandidature,
-    Inscription, HistoriqueInscription, Transfert, Abandon
+    Inscription, HistoriqueInscription
 )
 
 from .managers import EmailCandidatureManager
 
-from .signals import *
-
 from apps.academic.models import Filiere, Niveau, Classe
 from apps.accounts.models import ProfilUtilisateur, ProfilApprenant
-from apps.enrollment.models import DocumentCandidature
 from apps.payments.models import PlanPaiement, InscriptionPaiement, Paiement
 
 from apps.payments.services.ligdicash import ligdicash_service
@@ -310,7 +307,6 @@ class CandidatureSoumettreView(DetailView):
             }, status=500)
 
 class CandidatureEvaluerView(LoginRequiredMixin, DetailView):
-    """View pour évaluer une candidature"""
     model = Candidature
 
     def dispatch(self, request, *args, **kwargs):
@@ -322,92 +318,8 @@ class CandidatureEvaluerView(LoginRequiredMixin, DetailView):
         return super().dispatch(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        candidature = self.get_object()
-        decision = request.POST.get('decision')
-        motif_rejet = request.POST.get('motif_rejet', '')
-        notes_approbation = request.POST.get('notes_approbation', '')
-
-        if decision not in ['APPROUVEE', 'REJETEE']:
-            return JsonResponse({
-                'success': False,
-                'message': 'Décision invalide'
-            }, status=400)
-
-        try:
-            with transaction.atomic():
-                if candidature.statut not in ['SOUMISE', 'EN_COURS_EXAMEN']:
-                    return JsonResponse({
-                        'success': False,
-                        'message': 'Cette candidature ne peut pas être évaluée'
-                    }, status=400)
-
-                candidature.statut = decision
-                candidature.date_decision = timezone.now()
-                candidature.examine_par = request.user
-
-                if decision == 'REJETEE':
-                    candidature.motif_rejet = motif_rejet
-                else:
-                    candidature.notes_approbation = notes_approbation
-
-                candidature.save()
-
-                # Envoyer email de notification
-                EmailCandidatureManager.send_candidature_evaluated(candidature)
-
-                # Si approuvée, créer un compte utilisateur
-                # if decision == 'APPROUVEE':
-                #     self.create_user_account(candidature)
-
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Candidature {decision.lower()} avec succès',
-                    'decision': decision,
-                    'date_decision': candidature.date_decision.strftime('%d/%m/%Y à %H:%M')
-                })
-
-        except Exception as e:
-            logger.error(f"Erreur évaluation candidature: {str(e)}", exc_info=True)
-            return JsonResponse({
-                'success': False,
-                'message': f'Une erreur est survenue: {str(e)}'
-            }, status=500)
-
-    # def create_user_account(self, candidature):
-    #     """Créer un compte utilisateur depuis une candidature approuvée"""
-    #     try:
-    #         if User.objects.filter(email=candidature.email).exists():
-    #             logger.info(f"Compte existe déjà pour {candidature.email}")
-    #             return
-    #
-    #         password = get_random_string(12)
-    #
-    #         user = User.objects.create_user(
-    #             email=candidature.email,
-    #             username=candidature.email,
-    #             prenom=candidature.prenom,
-    #             nom=candidature.nom,
-    #             role='APPRENANT',
-    #             etablissement=candidature.etablissement,
-    #             departement=candidature.filiere.departement if hasattr(candidature.filiere, 'departement') else None,
-    #             date_naissance=candidature.date_naissance,
-    #             lieu_naissance=candidature.lieu_naissance,
-    #             genre=candidature.genre,
-    #             telephone=candidature.telephone,
-    #             adresse=candidature.adresse,
-    #             est_actif=True
-    #         )
-    #
-    #         user.set_password(password)
-    #         user.save()
-    #
-    #         # Envoyer les informations de connexion
-    #         EmailCandidatureManager.send_account_created(user, password, candidature.etablissement)
-    #
-    #         logger.info(f"Compte créé pour {user.email}")
-    #
-    #     except Exception as e:
-    #         logger.error(f"Erreur création compte: {str(e)}", exc_info=True)
+        # Rediriger vers la fonction
+        return candidature_evaluer(request, self.kwargs['pk'])
 
 class CandidatureSuccessView(DetailView):
     """View pour afficher la page de succès"""
@@ -450,6 +362,158 @@ class CandidatureUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_success_url(self):
         return reverse_lazy('enrollment:candidature_detail', kwargs={'pk': self.object.pk})
+
+class CandidatureDetailView(LoginRequiredMixin, DetailView):
+    """Vue détaillée d'une candidature avec actions"""
+    model = Candidature
+    template_name = 'enrollment/candidature/detail.html'
+    context_object_name = 'candidature'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.role == 'ADMIN':
+            return qs.filter(etablissement=self.request.user.etablissement)
+        else:  # CHEF_DEPARTEMENT
+            return qs.filter(
+                filiere__departement=self.request.user.departement,
+                etablissement=self.request.user.etablissement
+            )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        candidature = self.object
+
+        # Documents
+        context['documents'] = candidature.documents.all()
+        context['documents_manquants'] = self.get_documents_manquants(candidature)
+
+        # Plan de paiement disponible
+        try:
+            context['plan_paiement'] = PlanPaiement.objects.get(
+                filiere=candidature.filiere,
+                niveau=candidature.niveau,
+                annee_academique=candidature.annee_academique,
+                est_actif=True
+            )
+        except PlanPaiement.DoesNotExist:
+            context['plan_paiement'] = None
+
+        # Historique si inscription existe
+        if hasattr(candidature, 'inscription'):
+            context['inscription'] = candidature.inscription
+            context['paiements'] = Paiement.objects.filter(
+                inscription_paiement__inscription=candidature.inscription
+            ).order_by('-date_paiement')
+
+        return context
+
+    def get_documents_manquants(self, candidature):
+        """Liste des documents requis non fournis"""
+        from apps.enrollment.models import DocumentRequis, DocumentCandidature
+
+        docs_requis = DocumentRequis.objects.filter(
+            Q(filiere=candidature.filiere) &
+            (Q(niveau=candidature.niveau) | Q(niveau__isnull=True)),
+            est_obligatoire=True
+        )
+
+        docs_fournis_types = candidature.documents.values_list('type_document', flat=True)
+
+        return docs_requis.exclude(type_document__in=docs_fournis_types)
+
+@login_required
+def candidature_details_modal(request, candidature_id):
+    """Détails de candidature en AJAX pour modal"""
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        return JsonResponse({'error': 'Non autorisé'}, status=403)
+
+    candidature = get_object_or_404(
+        Candidature.objects.select_related(
+            'filiere', 'niveau', 'annee_academique', 'examine_par'
+        ).prefetch_related('documents'),
+        id=candidature_id
+    )
+
+    # Vérifier les permissions
+    if request.user.role == 'ADMIN':
+        if candidature.etablissement != request.user.etablissement:
+            return JsonResponse({'error': 'Non autorisé'}, status=403)
+    else:  # CHEF_DEPARTEMENT
+        if candidature.filiere.departement != request.user.departement:
+            return JsonResponse({'error': 'Non autorisé'}, status=403)
+
+    # Préparer les données
+    data = {
+        'id': str(candidature.id),
+        'numero': candidature.numero_candidature,
+        'candidat': {
+            'nom_complet': candidature.nom_complet(),
+            'email': candidature.email,
+            'telephone': candidature.telephone,
+            'date_naissance': candidature.date_naissance.strftime('%d/%m/%Y') if candidature.date_naissance else '',
+            'lieu_naissance': candidature.lieu_naissance or '',
+            'genre': candidature.get_genre_display(),
+            'adresse': candidature.adresse or '',
+        },
+        'formation': {
+            'etablissement': candidature.etablissement.nom,
+            'departement': candidature.filiere.departement.nom if candidature.filiere.departement else '',
+            'filiere': candidature.filiere.nom,
+            'niveau': candidature.niveau.nom,
+            'annee_academique': candidature.annee_academique.nom,
+        },
+        'academique': {
+            'ecole_precedente': candidature.ecole_precedente or '',
+            'dernier_diplome': candidature.dernier_diplome or '',
+            'annee_obtention': candidature.annee_obtention or '',
+        },
+        'parents': {
+            'nom_pere': candidature.nom_pere or '',
+            'telephone_pere': candidature.telephone_pere or '',
+            'nom_mere': candidature.nom_mere or '',
+            'telephone_mere': candidature.telephone_mere or '',
+            'nom_tuteur': candidature.nom_tuteur or '',
+            'telephone_tuteur': candidature.telephone_tuteur or '',
+        },
+        'statut': {
+            'code': candidature.statut,
+            'label': candidature.get_statut_display(),
+            'date_soumission': candidature.date_soumission.strftime('%d/%m/%Y %H:%M') if candidature.date_soumission else '',
+            'examine_par': candidature.examine_par.get_full_name() if candidature.examine_par else '',
+            'date_decision': candidature.date_decision.strftime('%d/%m/%Y %H:%M') if candidature.date_decision else '',
+            'notes': candidature.notes_approbation or candidature.motif_rejet or '',
+        },
+        'documents': [
+            {
+                'id': str(doc.id),
+                'type': doc.get_type_document_display(),
+                'nom': doc.nom,
+                'url': doc.fichier.url if doc.fichier else '',
+                'taille': doc.get_taille_fichier_display() if hasattr(doc, 'get_taille_fichier_display') else '',
+                'valide': doc.est_valide,
+            }
+            for doc in candidature.documents.all()
+        ],
+        'frais_dossier': {
+            'requis': candidature.frais_dossier_requis,
+            'montant': float(candidature.montant_frais_dossier) if candidature.montant_frais_dossier else 0,
+            'paye': candidature.frais_dossier_payes,
+        },
+        'actions_possibles': {
+            'peut_examiner': candidature.statut == 'SOUMISE',
+            'peut_approuver': candidature.statut == 'EN_COURS_EXAMEN',
+            'peut_rejeter': candidature.statut == 'EN_COURS_EXAMEN',
+            'peut_creer_inscription': candidature.statut == 'APPROUVEE' and not hasattr(candidature, 'inscription'),
+        }
+    }
+
+    return JsonResponse({'success': True, 'candidature': data})
 
 @login_required
 @require_http_methods(["GET"])
@@ -600,211 +664,128 @@ def candidature_start_exam(request, pk):
             'message': 'Erreur lors du démarrage de l\'examen'
         }, status=500)
 
-# def create_user_from_candidature(candidature):
-#     """
-#     Créer un compte utilisateur APPRENANT depuis une candidature approuvée.
-#     L'inscription et le paiement seront effectués lors de la première connexion.
-#     """
-#     try:
-#         # Vérifier si l'utilisateur existe déjà
-#         if User.objects.filter(email=candidature.email).exists():
-#             logger.info(f"Compte existe déjà pour {candidature.email}")
-#             return None
-#
-#         # Générer un mot de passe aléatoire sécurisé
-#         password = get_random_string(12)
-#
-#         with transaction.atomic():
-#             # Récupérer la photo d'identité depuis les documents de candidature
-#             photo_profil = None
-#             try:
-#                 doc_photo = DocumentCandidature.objects.filter(
-#                     candidature=candidature,
-#                     type_document='PHOTO_IDENTITE'
-#                 ).first()
-#
-#                 if doc_photo and doc_photo.fichier:
-#                     photo_profil = doc_photo.fichier
-#                     logger.info(f"Photo d'identité trouvée pour {candidature.email}")
-#             except Exception as e:
-#                 logger.error(f"Erreur récupération photo d'identité: {str(e)}")
-#
-#             # 1. Créer l'utilisateur de base avec rôle APPRENANT
-#             user = User.objects.create_user(
-#                 email=candidature.email,
-#                 username=candidature.email,  # Sera remplacé par le matricule automatiquement
-#                 prenom=candidature.prenom,
-#                 nom=candidature.nom,
-#                 role='APPRENANT',
-#                 etablissement=candidature.etablissement,
-#                 departement=candidature.filiere.departement,
-#                 date_naissance=candidature.date_naissance,
-#                 lieu_naissance=candidature.lieu_naissance,
-#                 genre=candidature.genre,
-#                 telephone=candidature.telephone,
-#                 adresse=candidature.adresse,
-#                 photo_profil=photo_profil,
-#                 est_actif=True
-#             )
-#
-#             user.set_password(password)
-#             user.save()
-#
-#             logger.info(f"✅ Utilisateur créé: {user.email} - Matricule: {user.matricule}")
-#
-#             # 2. Créer le ProfilUtilisateur
-#             profil_utilisateur, created = ProfilUtilisateur.objects.get_or_create(
-#                 utilisateur=user,
-#                 defaults={
-#                     'recevoir_notifications': True,
-#                     'recevoir_notifications_email': True,
-#                     'langue': 'fr',
-#                     'fuseau_horaire': 'Africa/Ouagadougou',
-#                 }
-#             )
-#
-#             logger.info(f"✅ ProfilUtilisateur créé pour {user.email}")
-#
-#             # 3. Créer le ProfilApprenant avec les informations de base
-#             # IMPORTANT: Pas de classe assignée ni d'inscription à ce stade
-#             profil_apprenant = ProfilApprenant.objects.create(
-#                 utilisateur=user,
-#                 # Informations académiques de base
-#                 niveau_actuel=candidature.niveau,
-#                 annee_academique=candidature.annee_academique,
-#                 classe_actuelle=None,  # Sera assigné lors de l'inscription
-#                 statut_paiement='EN_ATTENTE',
-#
-#                 # Informations parentales depuis la candidature
-#                 nom_pere=candidature.nom_pere or '',
-#                 telephone_pere=candidature.telephone_pere or '',
-#                 nom_mere=candidature.nom_mere or '',
-#                 telephone_mere=candidature.telephone_mere or '',
-#                 nom_tuteur=candidature.nom_tuteur or '',
-#                 telephone_tuteur=candidature.telephone_tuteur or '',
-#             )
-#
-#             logger.info(f"✅ ProfilApprenant créé pour {user.email}")
-#
-#             # 4. Envoyer les informations de connexion par email
-#             try:
-#                 EmailCandidatureManager.send_account_created(
-#                     user,
-#                     password,
-#                     candidature.etablissement
-#                 )
-#                 logger.info(f"✅ Email de création de compte envoyé à {user.email}")
-#             except Exception as e:
-#                 logger.error(f"❌ Erreur envoi email: {str(e)}")
-#
-#             logger.info(
-#                 f"✅ Compte APPRENANT créé avec succès:\n"
-#                 f"   - Email: {user.email}\n"
-#                 f"   - Matricule: {user.matricule}\n"
-#                 f"   - Rôle: {user.role}\n"
-#                 f"   - Niveau: {candidature.niveau.nom}\n"
-#                 f"   - Filière: {candidature.filiere.nom}\n"
-#                 f"   ⚠️ L'apprenant devra s'inscrire et payer lors de sa première connexion"
-#             )
-#
-#             return user
-#
-#     except Exception as e:
-#         logger.error(f"❌ Erreur création compte depuis candidature: {str(e)}", exc_info=True)
-#         return None
+def generer_mot_de_passe_aleatoire(longueur=12):
+    """Génère un mot de passe aléatoire sécurisé"""
+    alphabet = string.ascii_letters + string.digits + "!@#$%&"
+    password = ''.join(secrets.choice(alphabet) for _ in range(longueur))
 
-@login_required
-@require_http_methods(["POST"])
-def candidature_approve(request, pk):
+    # S'assurer qu'il contient au moins une majuscule, une minuscule, un chiffre et un symbole
+    if (any(c.islower() for c in password) and
+            any(c.isupper() for c in password) and
+            any(c.isdigit() for c in password) and
+            any(c in "!@#$%&" for c in password)):
+        return password
+    else:
+        return generer_mot_de_passe_aleatoire(longueur)
+
+def creer_compte_apprenant_depuis_candidature(candidature):
     """
-    Approuver une candidature
-    Envoie UNIQUEMENT le lien d'inscription avec paiement
-    PAS de création de compte à ce stade
+    Crée un compte apprenant à partir d'une candidature approuvée
+
+    Returns:
+        tuple: (user, password) si succès, (None, None) si échec
     """
     try:
-        candidature = get_object_or_404(Candidature, pk=pk)
+        # Vérifier si un compte n'existe pas déjà
+        if User.objects.filter(email=candidature.email).exists():
+            logger.warning(f"[WARN] Compte existe deja pour {candidature.email}")
+            return None, None
 
-        # Vérifier les permissions
-        if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
-            return JsonResponse({
-                'success': False,
-                'message': 'Accès non autorisé'
-            }, status=403)
+        # Générer un mot de passe aléatoire
+        password = generer_mot_de_passe_aleatoire()
 
-        if request.user.role == 'CHEF_DEPARTEMENT':
-            if candidature.filiere.departement != request.user.departement:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Accès non autorisé'
-                }, status=403)
-
-        # Vérifier le statut
-        if candidature.statut not in ['SOUMISE', 'EN_COURS_EXAMEN']:
-            return JsonResponse({
-                'success': False,
-                'message': 'Cette candidature ne peut pas être approuvée'
-            }, status=400)
-
-        # Récupérer les notes
-        import json
-        data = json.loads(request.body)
-        notes = data.get('notes', '')
-
-        # Approuver dans une transaction atomique
         with transaction.atomic():
-            candidature.statut = 'APPROUVEE'
-            candidature.date_decision = timezone.now()
-            candidature.examine_par = request.user
-            candidature.notes_approbation = notes
-            candidature.save()
-
-            logger.info(f"[OK] Candidature approuvée: {candidature.numero_candidature}")
-
-            # ========================================
-            # IMPORTANT: Envoyer UNIQUEMENT l'email avec lien
-            # PAS de création de compte
-            # ========================================
             try:
-                email_sent = EmailCandidatureManager.send_candidature_evaluated(candidature)
+                # Créer l'utilisateur
+                user = User.objects.create_user(
+                    email=candidature.email,
+                    username=candidature.email,
+                    prenom=candidature.prenom,
+                    nom=candidature.nom,
+                    role='APPRENANT',
+                    etablissement=candidature.etablissement,
+                    departement=candidature.filiere.departement if hasattr(candidature.filiere,
+                                                                           'departement') else None,
+                    date_naissance=candidature.date_naissance,
+                    lieu_naissance=candidature.lieu_naissance,
+                    genre=candidature.genre,
+                    telephone=candidature.telephone,
+                    adresse=candidature.adresse,
+                    est_actif=True
+                )
+
+                user.set_password(password)
+                user.save()
+
+            except ValueError as ve:
+                # Erreur de génération de matricule
+                logger.error(f"[ERROR] Erreur generation matricule: {str(ve)}")
+                raise
+
+            # Le matricule est généré automatiquement dans le save() du modèle
+            logger.info(f"[OK] Utilisateur cree: {user.email} - Matricule: {user.matricule}")
+
+            # Créer le profil utilisateur
+            profil_user, created = ProfilUtilisateur.objects.get_or_create(
+                utilisateur=user,
+                defaults={
+                    'langue': 'fr',
+                    'fuseau_horaire': 'UTC',
+                    'recevoir_notifications': True,
+                    'recevoir_notifications_email': True,
+                }
+            )
+
+            # Créer le profil apprenant
+            profil_apprenant = ProfilApprenant.objects.create(
+                utilisateur=user,
+                niveau_actuel=candidature.niveau,
+                annee_academique=candidature.annee_academique,
+                statut_paiement='EN_ATTENTE',
+                # Informations parentales depuis la candidature
+                nom_pere=candidature.nom_pere,
+                telephone_pere=candidature.telephone_pere,
+                nom_mere=candidature.nom_mere,
+                telephone_mere=candidature.telephone_mere,
+                nom_tuteur=candidature.nom_tuteur,
+                telephone_tuteur=candidature.telephone_tuteur,
+            )
+
+            logger.info(
+                f"[OK] Profils crees pour {user.email} - "
+                f"ProfilUtilisateur: {profil_user.id}, ProfilApprenant: {profil_apprenant.id}"
+            )
+
+            # Envoyer l'email avec les identifiants
+            try:
+                email_sent = EmailCandidatureManager.send_account_created(
+                    user, password, candidature.etablissement
+                )
 
                 if email_sent:
-                    logger.info(
-                        f"[OK] Email lien inscription envoyé à {candidature.email}\n"
-                        f"     Token: {candidature.token_inscription}\n"
-                        f"     Expire: {candidature.token_inscription_expire}\n"
-                        f"     Le compte sera créé APRÈS le paiement"
-                    )
+                    logger.info(f"[OK] Email identifiants envoye a {user.email}")
                 else:
-                    logger.error(f"[ERROR] Échec envoi email à {candidature.email}")
-
+                    logger.error(f"[ERROR] Echec envoi email identifiants a {user.email}")
             except Exception as e:
-                logger.error(f"[ERROR] Envoi email: {str(e)}", exc_info=True)
+                logger.error(f"[ERROR] Erreur envoi email identifiants: {str(e)}", exc_info=True)
+                # Ne pas bloquer la création du compte si l'email échoue
 
-        return JsonResponse({
-            'success': True,
-            'message': (
-                'Candidature approuvée avec succès. '
-                'Un email avec le lien d\'inscription a été envoyé au candidat. '
-                'Le compte utilisateur sera créé automatiquement APRÈS le paiement.'
-            ),
-            'decision': 'APPROUVEE',
-            'date_decision': candidature.date_decision.strftime('%d/%m/%Y à %H:%M'),
-            'email_sent': email_sent,
-            'token_inscription': candidature.token_inscription,
-            'url_inscription': f"{settings.SITE_URL}/enrollment/inscription/nouvelle/{candidature.token_inscription}/"
-        })
+            return user, password
 
     except Exception as e:
-        logger.error(f"[ERROR] Approbation candidature: {str(e)}", exc_info=True)
-        return JsonResponse({
-            'success': False,
-            'message': f'Une erreur est survenue: {str(e)}'
-        }, status=500)
+        logger.error(
+            f"[ERROR] Erreur creation compte pour candidature {candidature.numero_candidature}: {str(e)}",
+            exc_info=True
+        )
+        return None, None
 
 @login_required
 @require_http_methods(["POST"])
-def candidature_reject(request, pk):
-    """Rejeter une candidature"""
+def candidature_evaluer(request, pk):
+    """
+    Évaluer une candidature (approuver ou rejeter)
+    Si approuvée : crée automatiquement le compte apprenant
+    """
     try:
         candidature = get_object_or_404(Candidature, pk=pk)
 
@@ -826,78 +807,126 @@ def candidature_reject(request, pk):
         if candidature.statut not in ['SOUMISE', 'EN_COURS_EXAMEN']:
             return JsonResponse({
                 'success': False,
-                'message': 'Cette candidature ne peut pas être rejetée'
+                'message': 'Cette candidature ne peut pas être évaluée'
             }, status=400)
 
-        # Récupérer le motif
-        import json
-        data = json.loads(request.body)
-        motif = data.get('motif', '')
+        # Récupérer les données du formulaire
+        decision = request.POST.get('decision')
+        motif_rejet = request.POST.get('motif_rejet', '').strip()
+        notes_approbation = request.POST.get('notes_approbation', '').strip()
 
-        if not motif:
+        # Validation de la décision
+        if decision not in ['APPROUVEE', 'REJETEE']:
+            return JsonResponse({
+                'success': False,
+                'message': 'Décision invalide'
+            }, status=400)
+
+        # Validation du motif de rejet
+        if decision == 'REJETEE' and not motif_rejet:
             return JsonResponse({
                 'success': False,
                 'message': 'Le motif de rejet est obligatoire'
             }, status=400)
 
-        # Rejeter
+        # Traiter dans une transaction atomique
         with transaction.atomic():
-            candidature.statut = 'REJETEE'
+            # =======================================
+            # ÉTAPE 1: METTRE À JOUR LA CANDIDATURE
+            # =======================================
+            candidature.statut = decision
             candidature.date_decision = timezone.now()
             candidature.examine_par = request.user
-            candidature.motif_rejet = motif
+
+            if decision == 'REJETEE':
+                candidature.motif_rejet = motif_rejet
+                candidature.notes_approbation = ''
+            else:  # APPROUVEE
+                candidature.notes_approbation = notes_approbation
+                candidature.motif_rejet = ''
+
             candidature.save()
 
-            # Envoyer email de notification
-            EmailCandidatureManager.send_candidature_evaluated(candidature)
+            logger.info(
+                f"[OK] Candidature {decision}: {candidature.numero_candidature} "
+                f"par {request.user.username}"
+            )
 
-            logger.info(f"Candidature {candidature.numero_candidature} rejetée par {request.user.username}")
+            # =======================================
+            # ÉTAPE 2: ENVOYER EMAIL D'ÉVALUATION
+            # =======================================
+            try:
+                email_evaluation_sent = EmailCandidatureManager.send_candidature_evaluated(candidature)
 
-        return JsonResponse({
-            'success': True,
-            'message': 'Candidature rejetée avec succès'
-        })
+                if email_evaluation_sent:
+                    logger.info(f"[OK] Email evaluation envoye a {candidature.email}")
+                else:
+                    logger.error(f"[ERROR] Echec envoi email evaluation a {candidature.email}")
+            except Exception as e:
+                logger.error(f"[ERROR] Erreur envoi email evaluation: {str(e)}", exc_info=True)
+
+            # =======================================
+            # ÉTAPE 3: SI APPROUVÉE, CRÉER LE COMPTE
+            # =======================================
+            if decision == 'APPROUVEE':
+                user, password = creer_compte_apprenant_depuis_candidature(candidature)
+
+                if user:
+                    logger.info(
+                        f"[OK] Compte apprenant cree avec succes: {user.email} "
+                        f"(Matricule: {user.matricule})"
+                    )
+
+                    return JsonResponse({
+                        'success': True,
+                        'message': (
+                            'Candidature approuvée avec succès. '
+                            'Un compte apprenant a été créé et les identifiants ont été envoyés par email.'
+                        ),
+                        'decision': 'APPROUVEE',
+                        'date_decision': candidature.date_decision.strftime('%d/%m/%Y à %H:%M'),
+                        'compte_cree': True,
+                        'matricule': user.matricule,
+                        'email': user.email
+                    })
+                else:
+                    logger.warning(
+                        f"[WARN] Candidature approuvee mais echec creation compte pour {candidature.email}"
+                    )
+
+                    return JsonResponse({
+                        'success': True,
+                        'message': (
+                            'Candidature approuvée avec succès. '
+                            'Cependant, la création du compte a échoué '
+                            '(l\'email existe peut-être déjà). '
+                            'Veuillez créer le compte manuellement.'
+                        ),
+                        'decision': 'APPROUVEE',
+                        'date_decision': candidature.date_decision.strftime('%d/%m/%Y à %H:%M'),
+                        'compte_cree': False,
+                        'warning': 'Échec création automatique du compte'
+                    })
+
+            # =======================================
+            # SI REJETÉE
+            # =======================================
+            else:  # REJETEE
+                logger.info(f"[OK] Candidature rejetee: {candidature.numero_candidature}")
+
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Candidature rejetée avec succès. Un email a été envoyé au candidat.',
+                    'decision': 'REJETEE',
+                    'date_decision': candidature.date_decision.strftime('%d/%m/%Y à %H:%M')
+                })
 
     except Exception as e:
-        logger.error(f"Erreur rejet candidature: {str(e)}", exc_info=True)
+        logger.error(f"[ERROR] Erreur evaluation candidature: {str(e)}", exc_info=True)
         return JsonResponse({
             'success': False,
-            'message': 'Erreur lors du rejet'
+            'message': f'Une erreur est survenue: {str(e)}'
         }, status=500)
-
-@login_required
-def candidature_evaluate(request, pk):
-    """Évaluer une candidature (approuver/rejeter)"""
-    candidature = get_object_or_404(Candidature, pk=pk, statut='SOUMISE')
-
-    if request.method == 'POST':
-        form = CandidatureEvaluationForm(request.POST)
-        if form.is_valid():
-            decision = form.cleaned_data['decision']
-            notes = form.cleaned_data['notes']
-
-            candidature.statut = decision
-            candidature.examine_par = request.user
-            candidature.date_decision = timezone.now()
-
-            if decision == 'APPROUVEE':
-                candidature.notes_approbation = notes
-            else:
-                candidature.motif_rejet = notes
-
-            candidature.save()
-
-            message = "Candidature approuvée" if decision == 'APPROUVEE' else "Candidature rejetée"
-            messages.success(request, f"{message} avec succès.")
-
-            return redirect('enrollment:candidature_detail', pk=pk)
-    else:
-        form = CandidatureEvaluationForm()
-
-    return render(request, 'enrollment/candidature/evaluate.html', {
-        'candidature': candidature,
-        'form': form
-    })
 
 @login_required
 def candidature_submit(request, pk):
@@ -1264,91 +1293,74 @@ class InscriptionCreateView(LoginRequiredMixin, CreateView):
     def get_success_url(self):
         return reverse_lazy('enrollment:inscription_detail', kwargs={'pk': self.object.pk})
 
-# Transferts
-class TransfertListView(LoginRequiredMixin, ListView):
-    model = Transfert
-    template_name = 'enrollment/transfert/list.html'
-    context_object_name = 'transferts'
-    paginate_by = 20
-
-    def get_queryset(self):
-        return Transfert.objects.select_related(
-            'inscription__apprenant', 'classe_origine', 'classe_destination',
-            'demande_par', 'approuve_par'
-        ).order_by('-date_transfert')
-
-class TransfertCreateView(LoginRequiredMixin, CreateView):
-    model = Transfert
-    form_class = TransfertForm
-    template_name = 'enrollment/transfert/create.html'
-    success_url = reverse_lazy('enrollment:transfert_list')
-
-    def form_valid(self, form):
-        form.instance.demande_par = self.request.user
-        messages.success(self.request, 'Demande de transfert créée avec succès.')
-        return super().form_valid(form)
-
 @login_required
-def transfert_approve(request, pk):
-    """Approuver un transfert"""
-    transfert = get_object_or_404(Transfert, pk=pk, statut='PENDING')
+def inscription_details_modal(request, inscription_id):
+    """Détails d'inscription en AJAX"""
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        return JsonResponse({'error': 'Non autorisé'}, status=403)
 
-    if request.method == 'POST':
-        notes = request.POST.get('notes', '')
+    inscription = get_object_or_404(
+        Inscription.objects.select_related(
+            'apprenant',
+            'candidature__filiere',
+            'candidature__niveau',
+            'classe_assignee',
+            'plan_paiement_inscription__plan'
+        ),
+        id=inscription_id
+    )
 
-        # Approuver le transfert
-        transfert.statut = 'APPROVED'
-        transfert.approuve_par = request.user
-        transfert.date_approbation = timezone.now()
-        transfert.notes_approbation = notes
-        transfert.save()
+    # Récupérer les paiements
+    paiements = Paiement.objects.filter(
+        inscription_paiement__inscription=inscription
+    ).select_related('tranche').order_by('-date_paiement')
 
-        # Mettre à jour la classe de l'inscription
-        transfert.inscription.classe_assignee = transfert.classe_destination
-        transfert.inscription.save()
+    data = {
+        'id': str(inscription.id),
+        'numero': inscription.numero_inscription,
+        'apprenant': {
+            'id': str(inscription.apprenant.id),
+            'nom_complet': inscription.apprenant.get_full_name(),
+            'matricule': inscription.apprenant.matricule,
+            'email': inscription.apprenant.email,
+            'telephone': inscription.apprenant.telephone,
+        },
+        'formation': {
+            'filiere': inscription.candidature.filiere.nom,
+            'niveau': inscription.candidature.niveau.nom,
+            'classe': inscription.classe_assignee.nom if inscription.classe_assignee else 'Non assignée',
+        },
+        'statut': {
+            'inscription': inscription.get_statut_display(),
+            'paiement': inscription.get_statut_paiement_display(),
+        },
+        'financier': {
+            'frais_scolarite': float(inscription.frais_scolarite),
+            'total_paye': float(inscription.total_paye),
+            'solde': float(inscription.solde),
+            'pourcentage': round((inscription.total_paye / inscription.frais_scolarite * 100), 2) if inscription.frais_scolarite > 0 else 0,
+        },
+        'paiements': [
+            {
+                'id': str(p.id),
+                'numero': p.numero_transaction,
+                'montant': float(p.montant),
+                'date': p.date_paiement.strftime('%d/%m/%Y %H:%M'),
+                'statut': p.get_statut_display(),
+                'methode': p.get_methode_paiement_display(),
+                'tranche': p.tranche.nom if p.tranche else 'Paiement unique',
+            }
+            for p in paiements[:10]  # Limiter à 10
+        ],
+        'dates': {
+            'inscription': inscription.date_inscription.strftime('%d/%m/%Y'),
+            'debut': inscription.date_debut.strftime('%d/%m/%Y'),
+            'fin_prevue': inscription.date_fin_prevue.strftime('%d/%m/%Y'),
+        }
+    }
 
-        # Créer une entrée dans l'historique
-        HistoriqueInscription.objects.create(
-            inscription=transfert.inscription,
-            type_action='TRANSFERT',
-            ancienne_valeur=transfert.classe_origine.nom,
-            nouvelle_valeur=transfert.classe_destination.nom,
-            motif=transfert.motif,
-            effectue_par=request.user
-        )
+    return JsonResponse({'success': True, 'inscription': data})
 
-        messages.success(request, 'Transfert approuvé avec succès.')
-        return redirect('enrollment:transfert_list')
-
-    return render(request, 'enrollment/transfert/approve.html', {'transfert': transfert})
-
-# Abandons
-class AbandonCreateView(LoginRequiredMixin, CreateView):
-    model = Abandon
-    form_class = AbandonForm
-    template_name = 'enrollment/abandon/create.html'
-    success_url = reverse_lazy('enrollment:inscription_list')
-
-    def form_valid(self, form):
-        form.instance.traite_par = self.request.user
-
-        # Mettre à jour le statut de l'inscription
-        inscription = form.instance.inscription
-        inscription.statut = 'WITHDRAWN'
-        inscription.date_fin_reelle = form.instance.date_effet
-        inscription.save()
-
-        # Créer une entrée dans l'historique
-        HistoriqueInscription.objects.create(
-            inscription=inscription,
-            type_action='ABANDON',
-            nouvelle_valeur='WITHDRAWN',
-            motif=form.instance.motif,
-            effectue_par=self.request.user
-        )
-
-        messages.success(self.request, 'Abandon enregistré avec succès.')
-        return super().form_valid(form)
 
 
 # ========== API PUBLIQUE ==========

@@ -10,22 +10,6 @@
 
 {% block content %}
 <div class="department-dashboard">
-    <!-- En-tête du département -->
-    <div class="department-header">
-        <div class="dept-info">
-            <h1>{{ user.departement.nom }}</h1>
-            <p>{{ user.departement.description|default:"Gestion du département" }}</p>
-            <div class="dept-meta">
-                <span><i class="fas fa-building"></i> {{ user.etablissement.nom }}</span>
-                <span><i class="fas fa-calendar"></i> Année {{ current_academic_year|default:"2024-2025" }}</span>
-            </div>
-        </div>
-        <div class="dept-actions">
-            <button class="btn btn-outline" onclick="window.print()">
-                <i class="fas fa-chart-line"></i> Rapport
-            </button>
-        </div>
-    </div>
 
     <!-- Statistiques -->
     <div class="stats-grid">

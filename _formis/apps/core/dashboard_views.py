@@ -1,5 +1,5 @@
 # apps/core/dashboard_views.py
-from django.db import models
+from django.db import models, transaction
 from django.http import HttpResponse, JsonResponse, Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -11,7 +11,7 @@ from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.core.paginator import Paginator
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from django.http import JsonResponse, HttpResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 import json
@@ -25,6 +25,7 @@ from django.contrib.auth import update_session_auth_hash
 from datetime import date, datetime
 from django.db.models import Avg, Sum, F, IntegerField, Count, Q
 from django.utils.timesince import timesince
+from django.db.models import Prefetch
 
 from apps.core.mixins import RoleRequiredMixin, EstablishmentFilterMixin
 from apps.accounts.models import Utilisateur, ProfilApprenant, ProfilEnseignant
@@ -536,6 +537,33 @@ class AdminStudentsView(LoginRequiredMixin, ListView):
                 'search': self.request.GET.get('search', ''),
             },
         })
+
+        def get_context_data_students_extended(self, **kwargs):
+            """Extension du contexte AdminStudentsView"""
+            context = super().get_context_data(**kwargs)
+
+            # Statistiques paiements
+            etudiants_ids = context['students'].values_list('id', flat=True)
+
+            inscriptions = Inscription.objects.filter(
+                apprenant_id__in=etudiants_ids,
+                statut='ACTIVE'
+            ).select_related('plan_paiement_inscription')
+
+            context['stats_paiements'] = {
+                'total_a_percevoir': sum(
+                    i.plan_paiement_inscription.montant_total_du
+                    for i in inscriptions
+                    if hasattr(i, 'plan_paiement_inscription')
+                ),
+                'total_percu': sum(
+                    i.plan_paiement_inscription.montant_total_paye
+                    for i in inscriptions
+                    if hasattr(i, 'plan_paiement_inscription')
+                ),
+            }
+
+            return context
 
         return context
 
@@ -1092,28 +1120,199 @@ class AdminMatieresView(LoginRequiredMixin, ListView):
 
         return context
 
+# class AdminCandidaturesView(LoginRequiredMixin, ListView):
+#     """Gestion des candidatures par l'admin"""
+#     template_name = 'dashboard/admin/candidatures.html'
+#     context_object_name = 'candidatures'
+#     paginate_by = 20
+#
+#     def dispatch(self, request, *args, **kwargs):
+#         if request.user.role != 'ADMIN':
+#             messages.error(request, "Accès non autorisé")
+#             return redirect('dashboard:redirect')
+#         return super().dispatch(request, *args, **kwargs)
+#
+#     def get_queryset(self):
+#         etablissement = self.request.user.etablissement
+#
+#         queryset = Candidature.objects.filter(
+#             etablissement=etablissement
+#         ).select_related(
+#             'filiere__departement',
+#             'niveau',
+#             'annee_academique',
+#             'examine_par'
+#         ).annotate(
+#             nombre_documents=Count('documents')
+#         )
+#
+#         # Filtres
+#         statut = self.request.GET.get('statut')
+#         if statut:
+#             queryset = queryset.filter(statut=statut)
+#
+#         filiere = self.request.GET.get('filiere')
+#         if filiere:
+#             queryset = queryset.filter(filiere_id=filiere)
+#
+#         niveau = self.request.GET.get('niveau')
+#         if niveau:
+#             queryset = queryset.filter(niveau_id=niveau)
+#
+#         annee = self.request.GET.get('annee_academique')
+#         if annee:
+#             queryset = queryset.filter(annee_academique_id=annee)
+#
+#         search = self.request.GET.get('search')
+#         if search:
+#             queryset = queryset.filter(
+#                 Q(numero_candidature__icontains=search) |
+#                 Q(nom__icontains=search) |
+#                 Q(prenom__icontains=search) |
+#                 Q(email__icontains=search)
+#             )
+#
+#         return queryset.order_by('-created_at')
+#
+#     def get_context_data(self, **kwargs):
+#         context = super().get_context_data(**kwargs)
+#         etablissement = self.request.user.etablissement
+#
+#         context.update({
+#             'filieres': Filiere.objects.filter(etablissement=etablissement, est_active=True),
+#             'niveaux': Niveau.objects.filter(filiere__etablissement=etablissement, est_actif=True),
+#             'annees_academiques': AnneeAcademique.objects.filter(etablissement=etablissement),
+#             'statuts': Candidature.STATUTS_CANDIDATURE,
+#             'current_filters': {
+#                 'statut': self.request.GET.get('statut', ''),
+#                 'filiere': self.request.GET.get('filiere', ''),
+#                 'niveau': self.request.GET.get('niveau', ''),
+#                 'annee_academique': self.request.GET.get('annee_academique', ''),
+#                 'search': self.request.GET.get('search', ''),
+#             },
+#             'stats': {
+#                 'total': self.get_queryset().count(),
+#                 'soumises': self.get_queryset().filter(statut='SOUMISE').count(),
+#                 'en_cours': self.get_queryset().filter(statut='EN_COURS_EXAMEN').count(),
+#                 'approuvees': self.get_queryset().filter(statut='APPROUVEE').count(),
+#             }
+#         })
+#         return context
+
+
+# class AdminInscriptionsView(LoginRequiredMixin, ListView):
+#     """Gestion des inscriptions par l'admin"""
+#     template_name = 'dashboard/admin/inscriptions.html'
+#     context_object_name = 'inscriptions'
+#     paginate_by = 20
+#
+#     def dispatch(self, request, *args, **kwargs):
+#         if request.user.role != 'ADMIN':
+#             messages.error(request, "Accès non autorisé")
+#             return redirect('dashboard:redirect')
+#         return super().dispatch(request, *args, **kwargs)
+#
+#     def get_queryset(self):
+#         etablissement = self.request.user.etablissement
+#
+#         queryset = Inscription.objects.filter(
+#             candidature__etablissement=etablissement
+#         ).select_related(
+#             'apprenant',
+#             'candidature__filiere',
+#             'candidature__niveau',
+#             'classe_assignee',
+#             'cree_par'
+#         )
+#
+#         # Filtres
+#         statut = self.request.GET.get('statut')
+#         if statut:
+#             queryset = queryset.filter(statut=statut)
+#
+#         statut_paiement = self.request.GET.get('statut_paiement')
+#         if statut_paiement:
+#             queryset = queryset.filter(statut_paiement=statut_paiement)
+#
+#         classe = self.request.GET.get('classe')
+#         if classe:
+#             queryset = queryset.filter(classe_assignee_id=classe)
+#
+#         annee = self.request.GET.get('annee_academique')
+#         if annee:
+#             queryset = queryset.filter(candidature__annee_academique_id=annee)
+#
+#         search = self.request.GET.get('search')
+#         if search:
+#             queryset = queryset.filter(
+#                 Q(numero_inscription__icontains=search) |
+#                 Q(apprenant__nom__icontains=search) |
+#                 Q(apprenant__prenom__icontains=search) |
+#                 Q(candidature__numero_candidature__icontains=search)
+#             )
+#
+#         return queryset.order_by('-date_inscription')
+#
+#     def get_context_data(self, **kwargs):
+#         context = super().get_context_data(**kwargs)
+#         etablissement = self.request.user.etablissement
+#
+#         context.update({
+#             'classes': Classe.objects.filter(
+#                 niveau__filiere__etablissement=etablissement,
+#                 est_active=True
+#             ),
+#             'annees_academiques': AnneeAcademique.objects.filter(etablissement=etablissement),
+#             'statuts': Inscription.STATUTS_INSCRIPTION,
+#             'statuts_paiement': Inscription.STATUTS_PAIEMENT,
+#             'current_filters': {
+#                 'statut': self.request.GET.get('statut', ''),
+#                 'statut_paiement': self.request.GET.get('statut_paiement', ''),
+#                 'classe': self.request.GET.get('classe', ''),
+#                 'annee_academique': self.request.GET.get('annee_academique', ''),
+#                 'search': self.request.GET.get('search', ''),
+#             },
+#             'stats': {
+#                 'total': self.get_queryset().count(),
+#                 'actives': self.get_queryset().filter(statut='ACTIVE').count(),
+#                 'paiement_complet': self.get_queryset().filter(statut_paiement='COMPLETE').count(),
+#                 'paiement_partiel': self.get_queryset().filter(statut_paiement='PARTIAL').count(),
+#             }
+#         })
+#         return context
+
 class AdminCandidaturesView(LoginRequiredMixin, ListView):
-    """Gestion des candidatures par l'admin"""
+    """Gestion des candidatures - AMÉLIORÉ"""
     template_name = 'dashboard/admin/candidatures.html'
     context_object_name = 'candidatures'
     paginate_by = 20
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.role != 'ADMIN':
+        if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
             messages.error(request, "Accès non autorisé")
             return redirect('dashboard:redirect')
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        etablissement = self.request.user.etablissement
+        user = self.request.user
 
-        queryset = Candidature.objects.filter(
-            etablissement=etablissement
-        ).select_related(
+        # Base queryset
+        if user.role == 'ADMIN':
+            queryset = Candidature.objects.filter(
+                etablissement=user.etablissement
+            )
+        else:  # CHEF_DEPARTEMENT
+            queryset = Candidature.objects.filter(
+                filiere__departement=user.departement
+            )
+
+        queryset = queryset.select_related(
             'filiere__departement',
             'niveau',
             'annee_academique',
             'examine_par'
+        ).prefetch_related(
+            'documents'
         ).annotate(
             nombre_documents=Count('documents')
         )
@@ -1131,35 +1330,45 @@ class AdminCandidaturesView(LoginRequiredMixin, ListView):
         if niveau:
             queryset = queryset.filter(niveau_id=niveau)
 
-        annee = self.request.GET.get('annee_academique')
-        if annee:
-            queryset = queryset.filter(annee_academique_id=annee)
-
         search = self.request.GET.get('search')
         if search:
             queryset = queryset.filter(
                 Q(numero_candidature__icontains=search) |
                 Q(nom__icontains=search) |
                 Q(prenom__icontains=search) |
-                Q(email__icontains=search)
+                Q(email__icontains=search) |
+                Q(telephone__icontains=search)
             )
 
         return queryset.order_by('-created_at')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        etablissement = self.request.user.etablissement
+        user = self.request.user
+
+        # Filières accessibles
+        if user.role == 'ADMIN':
+            filieres = Filiere.objects.filter(
+                etablissement=user.etablissement,
+                est_active=True
+            )
+        else:
+            filieres = Filiere.objects.filter(
+                departement=user.departement,
+                est_active=True
+            )
 
         context.update({
-            'filieres': Filiere.objects.filter(etablissement=etablissement, est_active=True),
-            'niveaux': Niveau.objects.filter(filiere__etablissement=etablissement, est_actif=True),
-            'annees_academiques': AnneeAcademique.objects.filter(etablissement=etablissement),
+            'filieres': filieres,
+            'niveaux': Niveau.objects.filter(
+                filiere__in=filieres,
+                est_actif=True
+            ),
             'statuts': Candidature.STATUTS_CANDIDATURE,
             'current_filters': {
                 'statut': self.request.GET.get('statut', ''),
                 'filiere': self.request.GET.get('filiere', ''),
                 'niveau': self.request.GET.get('niveau', ''),
-                'annee_academique': self.request.GET.get('annee_academique', ''),
                 'search': self.request.GET.get('search', ''),
             },
             'stats': {
@@ -1172,28 +1381,41 @@ class AdminCandidaturesView(LoginRequiredMixin, ListView):
         return context
 
 class AdminInscriptionsView(LoginRequiredMixin, ListView):
-    """Gestion des inscriptions par l'admin"""
+    """Gestion des inscriptions - AMÉLIORÉ"""
     template_name = 'dashboard/admin/inscriptions.html'
     context_object_name = 'inscriptions'
     paginate_by = 20
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.role != 'ADMIN':
+        if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
             messages.error(request, "Accès non autorisé")
             return redirect('dashboard:redirect')
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        etablissement = self.request.user.etablissement
+        user = self.request.user
 
-        queryset = Inscription.objects.filter(
-            candidature__etablissement=etablissement
-        ).select_related(
+        # Base queryset
+        if user.role == 'ADMIN':
+            queryset = Inscription.objects.filter(
+                candidature__etablissement=user.etablissement
+            )
+        else:
+            queryset = Inscription.objects.filter(
+                candidature__filiere__departement=user.departement
+            )
+
+        queryset = queryset.select_related(
             'apprenant',
             'candidature__filiere',
             'candidature__niveau',
             'classe_assignee',
             'cree_par'
+        ).prefetch_related(
+            Prefetch(
+                'plan_paiement_inscription',
+                queryset=InscriptionPaiement.objects.select_related('plan')
+            )
         )
 
         # Filtres
@@ -1209,16 +1431,13 @@ class AdminInscriptionsView(LoginRequiredMixin, ListView):
         if classe:
             queryset = queryset.filter(classe_assignee_id=classe)
 
-        annee = self.request.GET.get('annee_academique')
-        if annee:
-            queryset = queryset.filter(candidature__annee_academique_id=annee)
-
         search = self.request.GET.get('search')
         if search:
             queryset = queryset.filter(
                 Q(numero_inscription__icontains=search) |
                 Q(apprenant__nom__icontains=search) |
                 Q(apprenant__prenom__icontains=search) |
+                Q(apprenant__matricule__icontains=search) |
                 Q(candidature__numero_candidature__icontains=search)
             )
 
@@ -1226,21 +1445,28 @@ class AdminInscriptionsView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        etablissement = self.request.user.etablissement
+        user = self.request.user
+
+        # Classes accessibles
+        if user.role == 'ADMIN':
+            classes = Classe.objects.filter(
+                etablissement=user.etablissement,
+                est_active=True
+            )
+        else:
+            classes = Classe.objects.filter(
+                niveau__filiere__departement=user.departement,
+                est_active=True
+            )
 
         context.update({
-            'classes': Classe.objects.filter(
-                niveau__filiere__etablissement=etablissement,
-                est_active=True
-            ),
-            'annees_academiques': AnneeAcademique.objects.filter(etablissement=etablissement),
+            'classes': classes,
             'statuts': Inscription.STATUTS_INSCRIPTION,
             'statuts_paiement': Inscription.STATUTS_PAIEMENT,
             'current_filters': {
                 'statut': self.request.GET.get('statut', ''),
                 'statut_paiement': self.request.GET.get('statut_paiement', ''),
                 'classe': self.request.GET.get('classe', ''),
-                'annee_academique': self.request.GET.get('annee_academique', ''),
                 'search': self.request.GET.get('search', ''),
             },
             'stats': {
@@ -1251,6 +1477,1162 @@ class AdminInscriptionsView(LoginRequiredMixin, ListView):
             }
         })
         return context
+
+@login_required
+def inscription_detail_view(request, inscription_id):
+    """
+    Vue détaillée d'une inscription
+    Accessible par ADMIN et CHEF_DEPARTEMENT
+    """
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        messages.error(request, "Accès non autorisé")
+        return redirect('dashboard:redirect')
+
+    inscription = get_object_or_404(
+        Inscription.objects.select_related(
+            'apprenant',
+            'candidature__filiere__departement',
+            'candidature__niveau',
+            'candidature__annee_academique',
+            'classe_assignee',
+            'plan_paiement_inscription__plan'
+        ),
+        id=inscription_id
+    )
+
+    # Vérifier permissions
+    if request.user.role == 'ADMIN':
+        if inscription.candidature.etablissement != request.user.etablissement:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:admin_inscriptions')
+    else:  # CHEF_DEPARTEMENT
+        if inscription.candidature.filiere.departement != request.user.departement:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:department_head_inscriptions')
+
+    # Récupérer les paiements
+    paiements = Paiement.objects.filter(
+        inscription_paiement__inscription=inscription
+    ).select_related('tranche', 'traite_par').order_by('-date_paiement')
+
+    context = {
+        'inscription': inscription,
+        'apprenant': inscription.apprenant,
+        'inscription_paiement': inscription.plan_paiement_inscription if hasattr(inscription, 'plan_paiement_inscription') else None,
+        'paiements': paiements,
+    }
+
+    return render(request, 'dashboard/admin/inscription_detail.html', context)
+
+@login_required
+def inscription_payments_view(request, inscription_id):
+    """
+    Vue des paiements d'une inscription
+    """
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        messages.error(request, "Accès non autorisé")
+        return redirect('dashboard:redirect')
+
+    inscription = get_object_or_404(
+        Inscription.objects.select_related(
+            'apprenant',
+            'candidature__filiere',
+            'plan_paiement_inscription__plan'
+        ),
+        id=inscription_id
+    )
+
+    # Vérifier permissions
+    if request.user.role == 'ADMIN':
+        if inscription.candidature.etablissement != request.user.etablissement:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:admin_inscriptions')
+    else:
+        if inscription.candidature.filiere.departement != request.user.departement:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:department_head_inscriptions')
+
+    inscription_paiement = inscription.plan_paiement_inscription
+    paiements = Paiement.objects.filter(
+        inscription_paiement=inscription_paiement
+    ).select_related('tranche').order_by('-date_paiement')
+
+    # Prochaine tranche
+    prochaine_tranche = inscription_paiement.get_prochaine_tranche_due() if inscription_paiement else None
+
+    context = {
+        'inscription': inscription,
+        'inscription_paiement': inscription_paiement,
+        'paiements': paiements,
+        'prochaine_tranche': prochaine_tranche,
+    }
+
+    return render(request, 'dashboard/admin/inscription_payments.html', context)
+
+
+@login_required
+def edit_inscription(request, inscription_id):
+    """
+    Modifier une inscription (classe, etc.)
+    """
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        messages.error(request, "Accès non autorisé")
+        return redirect('dashboard:redirect')
+
+    inscription = get_object_or_404(
+        Inscription.objects.select_related('candidature__filiere__departement'),
+        id=inscription_id
+    )
+
+    # Vérifier permissions
+    if request.user.role == 'ADMIN':
+        if inscription.candidature.etablissement != request.user.etablissement:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:admin_inscriptions')
+    else:
+        if inscription.candidature.filiere.departement != request.user.departement:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:department_head_inscriptions')
+
+    if request.method == 'POST':
+        classe_id = request.POST.get('classe')
+        notes = request.POST.get('notes', '')
+
+        if classe_id:
+            classe = get_object_or_404(Classe, id=classe_id)
+
+            # Vérifier que la classe correspond au niveau
+            if classe.niveau != inscription.candidature.niveau:
+                messages.error(request, "Cette classe ne correspond pas au niveau de l'étudiant")
+                return redirect('dashboard:edit_inscription', inscription_id=inscription_id)
+
+            inscription.classe_assignee = classe
+            inscription.notes = notes
+            inscription.save()
+
+            messages.success(request, "Inscription mise à jour avec succès")
+            return redirect('dashboard:inscription_detail', inscription_id=inscription_id)
+
+    # GET - Afficher formulaire
+    classes_disponibles = Classe.objects.filter(
+        niveau=inscription.candidature.niveau,
+        est_active=True
+    )
+
+    context = {
+        'inscription': inscription,
+        'classes_disponibles': classes_disponibles,
+    }
+
+    return render(request, 'dashboard/admin/edit_inscription.html', context)
+
+@login_required
+def assign_class_to_inscription(request, inscription_id):
+    """
+    Assigner une classe à une inscription
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        return JsonResponse({'error': 'Non autorisé'}, status=403)
+
+    inscription = get_object_or_404(Inscription, id=inscription_id)
+
+    # Vérifier permissions
+    if request.user.role == 'ADMIN':
+        if inscription.candidature.etablissement != request.user.etablissement:
+            return JsonResponse({'error': 'Non autorisé'}, status=403)
+    else:
+        if inscription.candidature.filiere.departement != request.user.departement:
+            return JsonResponse({'error': 'Non autorisé'}, status=403)
+
+    import json
+    data = json.loads(request.body)
+    classe_id = data.get('classe_id')
+
+    if not classe_id:
+        return JsonResponse({'success': False, 'message': 'Classe requise'})
+
+    classe = get_object_or_404(Classe, id=classe_id)
+
+    # Vérifier que la classe correspond au niveau
+    if classe.niveau != inscription.candidature.niveau:
+        return JsonResponse({
+            'success': False,
+            'message': 'Cette classe ne correspond pas au niveau de l\'étudiant'
+        })
+
+    # Assigner la classe
+    inscription.classe_assignee = classe
+    inscription.save()
+
+    # Mettre à jour le profil apprenant
+    if hasattr(inscription.apprenant, 'profil_apprenant'):
+        inscription.apprenant.profil_apprenant.classe_actuelle = classe
+        inscription.apprenant.profil_apprenant.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Classe assignée avec succès'
+    })
+
+@login_required
+def suspend_inscription(request, inscription_id):
+    """
+    Suspendre une inscription
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        return JsonResponse({'error': 'Non autorisé'}, status=403)
+
+    inscription = get_object_or_404(Inscription, id=inscription_id)
+
+    # Vérifier permissions
+    if request.user.role == 'ADMIN':
+        if inscription.candidature.etablissement != request.user.etablissement:
+            return JsonResponse({'error': 'Non autorisé'}, status=403)
+    else:
+        if inscription.candidature.filiere.departement != request.user.departement:
+            return JsonResponse({'error': 'Non autorisé'}, status=403)
+
+    if inscription.statut != 'ACTIVE':
+        return JsonResponse({
+            'success': False,
+            'message': 'Cette inscription ne peut pas être suspendue'
+        })
+
+    import json
+    data = json.loads(request.body) if request.body else {}
+    motif = data.get('motif', '')
+
+    with transaction.atomic():
+        inscription.statut = 'SUSPENDED'
+        inscription.notes = f"Suspendue par {request.user.get_full_name()}. Motif: {motif}"
+        inscription.save()
+
+        # Désactiver l'utilisateur
+        inscription.apprenant.est_actif = False
+        inscription.apprenant.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Inscription suspendue avec succès'
+    })
+
+@login_required
+def activate_inscription(request, inscription_id):
+    """
+    Réactiver une inscription
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
+
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        return JsonResponse({'error': 'Non autorisé'}, status=403)
+
+    inscription = get_object_or_404(Inscription, id=inscription_id)
+
+    # Vérifier permissions
+    if request.user.role == 'ADMIN':
+        if inscription.candidature.etablissement != request.user.etablissement:
+            return JsonResponse({'error': 'Non autorisé'}, status=403)
+    else:
+        if inscription.candidature.filiere.departement != request.user.departement:
+            return JsonResponse({'error': 'Non autorisé'}, status=403)
+
+    if inscription.statut != 'SUSPENDED':
+        return JsonResponse({
+            'success': False,
+            'message': 'Cette inscription n\'est pas suspendue'
+        })
+
+    with transaction.atomic():
+        inscription.statut = 'ACTIVE'
+        inscription.save()
+
+        # Réactiver l'utilisateur
+        inscription.apprenant.est_actif = True
+        inscription.apprenant.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Inscription réactivée avec succès'
+    })
+
+@login_required
+def generate_student_card(request, inscription_id):
+    """
+    Générer la carte d'étudiant (PDF)
+    """
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        messages.error(request, "Accès non autorisé")
+        return redirect('dashboard:redirect')
+
+    inscription = get_object_or_404(
+        Inscription.objects.select_related(
+            'apprenant',
+            'candidature__filiere',
+            'candidature__niveau',
+            'candidature__etablissement',
+            'classe_assignee'
+        ),
+        id=inscription_id
+    )
+
+    # Vérifier permissions
+    if request.user.role == 'ADMIN':
+        if inscription.candidature.etablissement != request.user.etablissement:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:admin_inscriptions')
+    else:
+        if inscription.candidature.filiere.departement != request.user.departement:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:department_head_inscriptions')
+
+    # TODO: Implémenter génération PDF
+    # Pour l'instant, afficher une page HTML imprimable
+    context = {
+        'inscription': inscription,
+        'apprenant': inscription.apprenant,
+        'etablissement': inscription.candidature.etablissement,
+    }
+
+    return render(request, 'dashboard/admin/student_card.html', context)
+
+@login_required
+def generate_certificate(request, inscription_id):
+    """
+    Générer certificat de scolarité (PDF)
+    """
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        messages.error(request, "Accès non autorisé")
+        return redirect('dashboard:redirect')
+
+    inscription = get_object_or_404(
+        Inscription.objects.select_related(
+            'apprenant',
+            'candidature__filiere',
+            'candidature__niveau',
+            'candidature__etablissement',
+            'classe_assignee'
+        ),
+        id=inscription_id
+    )
+
+    # Vérifier permissions
+    if request.user.role == 'ADMIN':
+        if inscription.candidature.etablissement != request.user.etablissement:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:admin_inscriptions')
+    else:
+        if inscription.candidature.filiere.departement != request.user.departement:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:department_head_inscriptions')
+
+    # TODO: Implémenter génération PDF
+    # Pour l'instant, afficher une page HTML imprimable
+    context = {
+        'inscription': inscription,
+        'apprenant': inscription.apprenant,
+        'etablissement': inscription.candidature.etablissement,
+    }
+
+    return render(request, 'dashboard/admin/certificate.html', context)
+
+@login_required
+def export_inscriptions(request):
+    """
+    Exporter les inscriptions en CSV
+    """
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        messages.error(request, "Accès non autorisé")
+        return redirect('dashboard:redirect')
+
+    import csv
+    from django.http import HttpResponse
+    from datetime import datetime
+
+    # Récupérer les inscriptions selon le rôle
+    if request.user.role == 'ADMIN':
+        inscriptions = Inscription.objects.filter(
+            candidature__etablissement=request.user.etablissement
+        )
+    else:
+        inscriptions = Inscription.objects.filter(
+            candidature__filiere__departement=request.user.departement
+        )
+
+    inscriptions = inscriptions.select_related(
+        'apprenant',
+        'candidature__filiere',
+        'candidature__niveau',
+        'classe_assignee'
+    ).order_by('-date_inscription')
+
+    # Créer le fichier CSV
+    response = HttpResponse(content_type='text/csv')
+    response[
+        'Content-Disposition'] = f'attachment; filename="inscriptions_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'N° Inscription',
+        'Nom complet',
+        'Matricule',
+        'Email',
+        'Filière',
+        'Niveau',
+        'Classe',
+        'Frais',
+        'Payé',
+        'Solde',
+        'Statut',
+        'Statut Paiement',
+        'Date Inscription',
+    ])
+
+    for inscription in inscriptions:
+        writer.writerow([
+            inscription.numero_inscription,
+            inscription.apprenant.get_full_name(),
+            inscription.apprenant.matricule,
+            inscription.apprenant.email,
+            inscription.candidature.filiere.nom,
+            inscription.candidature.niveau.nom,
+            inscription.classe_assignee.nom if inscription.classe_assignee else 'Non assignée',
+            inscription.frais_scolarite,
+            inscription.total_paye,
+            inscription.solde,
+            inscription.get_statut_display(),
+            inscription.get_statut_paiement_display(),
+            inscription.date_inscription.strftime('%d/%m/%Y'),
+        ])
+
+    return response
+
+
+################################
+
+class AdminCandidatureDetailView(LoginRequiredMixin, DetailView):
+    """Vue détaillée d'une candidature avec actions"""
+    model = Candidature
+    template_name = 'dashboard/admin/candidature_detail.html'
+    context_object_name = 'candidature'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.user.role == 'ADMIN':
+            return qs.filter(etablissement=self.request.user.etablissement)
+        else:  # CHEF_DEPARTEMENT
+            return qs.filter(
+                filiere__departement=self.request.user.departement,
+                etablissement=self.request.user.etablissement
+            )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        candidature = self.object
+
+        # Documents
+        context['documents'] = candidature.documents.all()
+        context['documents_manquants'] = self.get_documents_manquants(candidature)
+
+        # Plan de paiement disponible
+        try:
+            context['plan_paiement'] = PlanPaiement.objects.get(
+                filiere=candidature.filiere,
+                niveau=candidature.niveau,
+                annee_academique=candidature.annee_academique,
+                est_actif=True
+            )
+        except PlanPaiement.DoesNotExist:
+            context['plan_paiement'] = None
+
+        # Historique si inscription existe
+        if hasattr(candidature, 'inscription'):
+            context['inscription'] = candidature.inscription
+            context['paiements'] = Paiement.objects.filter(
+                inscription_paiement__inscription=candidature.inscription
+            ).order_by('-date_paiement')
+
+        return context
+
+    def get_documents_manquants(self, candidature):
+        """Liste des documents requis non fournis"""
+        from apps.enrollment.models import DocumentRequis, DocumentCandidature
+
+        docs_requis = DocumentRequis.objects.filter(
+            Q(filiere=candidature.filiere) &
+            (Q(niveau=candidature.niveau) | Q(niveau__isnull=True)),
+            est_obligatoire=True
+        )
+
+        docs_fournis_types = candidature.documents.values_list('type_document', flat=True)
+
+        return docs_requis.exclude(type_document__in=docs_fournis_types)
+
+class AdminStudentPaymentsView(LoginRequiredMixin, DetailView):
+    """Gestion des paiements d'un étudiant par l'admin"""
+    model = Utilisateur
+    template_name = 'dashboard/admin/student_payments.html'
+    context_object_name = 'student'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:redirect')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        qs = Utilisateur.objects.filter(role='APPRENANT')
+        if self.request.user.role == 'ADMIN':
+            return qs.filter(etablissement=self.request.user.etablissement)
+        else:
+            return qs.filter(departement=self.request.user.departement)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        student = self.object
+
+        # Inscription active
+        inscription = Inscription.objects.filter(
+            apprenant=student,
+            statut='ACTIVE'
+        ).select_related(
+            'candidature__filiere',
+            'candidature__niveau'
+        ).first()
+
+        context['inscription'] = inscription
+
+        if inscription:
+            try:
+                # InscriptionPaiement
+                inscription_paiement = InscriptionPaiement.objects.get(
+                    inscription=inscription
+                )
+                context['inscription_paiement'] = inscription_paiement
+                context['plan_paiement'] = inscription_paiement.plan
+
+                # Paiements
+                paiements = Paiement.objects.filter(
+                    inscription_paiement=inscription_paiement
+                ).order_by('-date_paiement')
+                context['paiements'] = paiements
+
+                # 🔹 Créer un dictionnaire {tranche_id: paiement}
+                paiements_par_tranche = {p.tranche_id: p for p in paiements}
+                context['paiements_par_tranche'] = paiements_par_tranche
+
+                # Statistiques
+                context['stats'] = {
+                    'total_du': inscription_paiement.montant_total_du,
+                    'total_paye': inscription_paiement.montant_total_paye,
+                    'solde': inscription_paiement.solde_restant,
+                    'pourcentage': inscription_paiement.pourcentage_paye,
+                }
+
+                # Prochaine tranche
+                context['prochaine_tranche'] = inscription_paiement.get_prochaine_tranche_due()
+
+            except InscriptionPaiement.DoesNotExist:
+                context['inscription_paiement'] = None
+                context['paiements'] = []
+                context['paiements_par_tranche'] = {}
+                context['stats'] = {}
+                context['prochaine_tranche'] = None
+
+        return context
+
+
+# ========================================
+# ACTIONS AJAX
+# ========================================
+@require_http_methods(["POST"])
+@login_required
+def admin_initier_paiement_pour_etudiant(request, student_id):
+    """Admin/Chef initie un paiement pour un étudiant"""
+
+    # Vérifier les permissions
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        return JsonResponse({
+            'success': False,
+            'error': 'Non autorisé'
+        }, status=403)
+
+    try:
+        student = get_object_or_404(
+            Utilisateur,
+            id=student_id,
+            role='APPRENANT',
+            etablissement=request.user.etablissement
+        )
+
+        # Récupérer l'inscription
+        inscription = Inscription.objects.filter(
+            apprenant=student,
+            statut='ACTIVE'
+        ).first()
+
+        if not inscription:
+            return JsonResponse({
+                'success': False,
+                'error': 'Aucune inscription active'
+            })
+
+        inscription_paiement = InscriptionPaiement.objects.get(
+            inscription=inscription
+        )
+
+        # Vérifier le solde
+        if inscription_paiement.solde_restant <= 0:
+            return JsonResponse({
+                'success': False,
+                'error': 'Paiement déjà complet'
+            })
+
+        # Prochaine tranche
+        prochaine_tranche = inscription_paiement.get_prochaine_tranche_due()
+
+        if not prochaine_tranche:
+            return JsonResponse({
+                'success': False,
+                'error': 'Aucune tranche à payer'
+            })
+
+        # Créer le paiement
+        montant = prochaine_tranche.get_montant_avec_penalite()
+
+        paiement = Paiement.objects.create(
+            inscription_paiement=inscription_paiement,
+            tranche=prochaine_tranche,
+            montant=montant,
+            methode_paiement='LIGDICASH',
+            statut='EN_ATTENTE',
+            description=f"Paiement tranche {prochaine_tranche.numero} - {student.get_full_name()}",
+            date_echeance=prochaine_tranche.date_limite
+        )
+
+        # Générer l'URL de paiement
+        from apps.payments.services.ligdicash import creer_urls_retour
+
+        urls = creer_urls_retour(request, str(paiement.id))
+
+        return JsonResponse({
+            'success': True,
+            'paiement_id': str(paiement.id),
+            'montant': float(montant),
+            'redirect_url': f'/payments/ligdicash/payer/{paiement.id}/',
+            'student_name': student.get_full_name(),
+            'tranche': prochaine_tranche.nom
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+@require_http_methods(["POST"])
+@login_required
+def admin_valider_paiement_especes(request, student_id):
+    """Admin valide un paiement en espèces"""
+
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        return JsonResponse({
+            'success': False,
+            'error': 'Non autorisé'
+        }, status=403)
+
+    import json
+    data = json.loads(request.body)
+
+    try:
+        student = get_object_or_404(
+            Utilisateur,
+            id=student_id,
+            role='APPRENANT',
+            etablissement=request.user.etablissement
+        )
+
+        inscription = Inscription.objects.get(
+            apprenant=student,
+            statut='ACTIVE'
+        )
+
+        inscription_paiement = InscriptionPaiement.objects.get(
+            inscription=inscription
+        )
+
+        montant = Decimal(str(data.get('montant')))
+        tranche_id = data.get('tranche_id')
+
+        if not montant or montant <= 0:
+            return JsonResponse({
+                'success': False,
+                'error': 'Montant invalide'
+            })
+
+        # Créer et confirmer le paiement directement
+        paiement = Paiement.objects.create(
+            inscription_paiement=inscription_paiement,
+            tranche_id=tranche_id if tranche_id else None,
+            montant=montant,
+            methode_paiement='ESPECES',
+            statut='CONFIRME',
+            description=data.get('description', 'Paiement en espèces'),
+            traite_par=request.user,
+            date_confirmation=timezone.now()
+        )
+
+        # Mettre à jour l'inscription
+        inscription_paiement.mettre_a_jour_statut()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Paiement enregistré avec succès',
+            'paiement_id': str(paiement.id),
+            'nouveau_solde': float(inscription_paiement.solde_restant)
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+# ========================================
+# ACTIONS PAIEMENT CHEQUE
+# ========================================
+@require_http_methods(["POST"])
+@login_required
+def admin_valider_paiement_cheque(request, student_id):
+    """Admin valide un paiement par chèque"""
+
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        return JsonResponse({
+            'success': False,
+            'error': 'Non autorisé'
+        }, status=403)
+
+    import json
+    from django.utils import timezone
+
+    data = json.loads(request.body)
+
+    try:
+        student = get_object_or_404(
+            Utilisateur,
+            id=student_id,
+            role='APPRENANT',
+            etablissement=request.user.etablissement
+        )
+
+        inscription = Inscription.objects.get(
+            apprenant=student,
+            statut='ACTIVE'
+        )
+
+        inscription_paiement = InscriptionPaiement.objects.get(
+            inscription=inscription
+        )
+
+        montant = Decimal(str(data.get('montant')))
+        tranche_id = data.get('tranche_id')
+        numero_cheque = data.get('numero_cheque')
+        banque = data.get('banque', '')
+
+        if not montant or montant <= 0:
+            return JsonResponse({
+                'success': False,
+                'error': 'Montant invalide'
+            })
+
+        if not numero_cheque:
+            return JsonResponse({
+                'success': False,
+                'error': 'Numéro de chèque requis'
+            })
+
+        # Description complète
+        description = data.get('description', '')
+        if not description:
+            description = f"Paiement par chèque n° {numero_cheque}"
+            if banque:
+                description += f" - {banque}"
+
+        # Créer et confirmer le paiement
+        paiement = Paiement.objects.create(
+            inscription_paiement=inscription_paiement,
+            tranche_id=tranche_id if tranche_id else None,
+            montant=montant,
+            methode_paiement='CHEQUE',
+            statut='CONFIRME',
+            description=description,
+            traite_par=request.user,
+            date_confirmation=timezone.now(),
+            donnees_transaction={
+                'numero_cheque': numero_cheque,
+                'banque': banque
+            }
+        )
+
+        # Mettre à jour l'inscription
+        inscription_paiement.mettre_a_jour_statut()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Paiement enregistré avec succès',
+            'paiement_id': str(paiement.id),
+            'nouveau_solde': float(inscription_paiement.solde_restant)
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# ========================================
+# CONFIRMATION/ANNULATION PAIEMENTS
+# ========================================
+@require_http_methods(["POST"])
+@login_required
+def admin_confirm_payment(request, pk):
+    """Confirmer un paiement en attente"""
+
+    if request.user.role not in ['ADMIN']:
+        return JsonResponse({
+            'success': False,
+            'error': 'Non autorisé'
+        }, status=403)
+
+    try:
+        paiement = get_object_or_404(Paiement, id=pk)
+
+        if paiement.statut != 'EN_ATTENTE':
+            return JsonResponse({
+                'success': False,
+                'error': 'Ce paiement ne peut pas être confirmé'
+            })
+
+        # Confirmer
+        paiement.confirmer()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Paiement confirmé avec succès'
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+@require_http_methods(["POST"])
+@login_required
+def admin_cancel_payment(request, pk):
+    """Annuler un paiement"""
+
+    if request.user.role not in ['ADMIN']:
+        return JsonResponse({
+            'success': False,
+            'error': 'Non autorisé'
+        }, status=403)
+
+    import json
+    data = json.loads(request.body)
+
+    try:
+        paiement = get_object_or_404(Paiement, id=pk)
+
+        if paiement.statut == 'CONFIRME':
+            return JsonResponse({
+                'success': False,
+                'error': 'Impossible d\'annuler un paiement confirmé'
+            })
+
+        motif = data.get('motif', 'Annulé par administrateur')
+
+        # Annuler
+        paiement.annuler(motif)
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Paiement annulé'
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+# ========================================
+# GÉNÉRATION REÇU GLOBAL
+# ========================================
+
+@login_required
+def admin_generate_global_receipt(request, student_id):
+    """Générer un reçu global pour tous les paiements d'un étudiant"""
+    from django.http import HttpResponse
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+    from io import BytesIO
+
+    try:
+        student = get_object_or_404(
+            Utilisateur,
+            id=student_id,
+            role='APPRENANT',
+            etablissement=request.user.etablissement
+        )
+
+        inscription = Inscription.objects.filter(
+            apprenant=student,
+            statut='ACTIVE'
+        ).first()
+
+        if not inscription:
+            messages.error(request, "Aucune inscription active")
+            return redirect('dashboard:admin_students')
+
+        inscription_paiement = InscriptionPaiement.objects.get(
+            inscription=inscription
+        )
+
+        paiements = Paiement.objects.filter(
+            inscription_paiement=inscription_paiement,
+            statut='CONFIRME'
+        ).order_by('date_paiement')
+
+        # Créer le PDF
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        elements = []
+        styles = getSampleStyleSheet()
+
+        # En-tête
+        elements.append(Paragraph(
+            f"<b>{inscription.candidature.etablissement.nom}</b>",
+            styles['Title']
+        ))
+        elements.append(Spacer(1, 0.5 * cm))
+
+        elements.append(Paragraph(
+            f"<b>REÇU GLOBAL DE PAIEMENT</b>",
+            styles['Heading1']
+        ))
+        elements.append(Spacer(1, 0.5 * cm))
+
+        # Informations étudiant
+        info_data = [
+            ['Étudiant:', student.get_full_name()],
+            ['Matricule:', student.matricule],
+            ['Formation:', f"{inscription.candidature.filiere.nom} - {inscription.candidature.niveau.nom}"],
+            ['Inscription N°:', inscription.numero_inscription],
+        ]
+
+        info_table = Table(info_data, colWidths=[4 * cm, 12 * cm])
+        info_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        elements.append(info_table)
+        elements.append(Spacer(1, 1 * cm))
+
+        # Tableau des paiements
+        payment_data = [['Date', 'N° Transaction', 'Méthode', 'Montant']]
+
+        for p in paiements:
+            payment_data.append([
+                p.date_paiement.strftime('%d/%m/%Y'),
+                p.numero_transaction,
+                p.get_methode_paiement_display(),
+                f"{p.montant:,.0f} FCFA"
+            ])
+
+        # Ligne total
+        payment_data.append(['', '', 'TOTAL PAYÉ:', f"{inscription_paiement.montant_total_paye:,.0f} FCFA"])
+
+        payment_table = Table(payment_data, colWidths=[3 * cm, 5 * cm, 4 * cm, 4 * cm])
+        payment_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -2), 0.5, colors.grey),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('ALIGN', (3, 0), (3, -1), 'RIGHT'),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('LINEABOVE', (0, -1), (-1, -1), 1, colors.black),
+        ]))
+        elements.append(payment_table)
+        elements.append(Spacer(1, 1 * cm))
+
+        # Résumé
+        summary_data = [
+            ['Montant total des frais:', f"{inscription_paiement.montant_total_du:,.0f} FCFA"],
+            ['Total payé:', f"{inscription_paiement.montant_total_paye:,.0f} FCFA"],
+            ['Solde restant:', f"{inscription_paiement.solde_restant:,.0f} FCFA"],
+        ]
+
+        summary_table = Table(summary_data, colWidths=[8 * cm, 8 * cm])
+        summary_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        elements.append(summary_table)
+
+        # Générer le PDF
+        doc.build(elements)
+        pdf = buffer.getvalue()
+        buffer.close()
+
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="recu_global_{student.matricule}.pdf"'
+        response.write(pdf)
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Erreur génération reçu: {str(e)}")
+        messages.error(request, "Erreur lors de la génération du reçu")
+        return redirect('dashboard:admin_students')
+
+
+################################
+@login_required
+def student_inscription_view(request, student_id):
+    """Afficher l'inscription d'un étudiant"""
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        messages.error(request, "Accès non autorisé")
+        return redirect('dashboard:redirect')
+
+    student = get_object_or_404(Utilisateur, id=student_id, role='APPRENANT')
+
+    # Vérifier permissions
+    if request.user.role == 'ADMIN':
+        if student.etablissement != request.user.etablissement:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:admin_students')
+    else:  # CHEF_DEPARTEMENT
+        if student.departement != request.user.departement:
+            messages.error(request, "Accès non autorisé")
+            return redirect('dashboard:department_head_students')
+
+    # Récupérer l'inscription active
+    inscription = Inscription.objects.filter(
+        apprenant=student,
+        statut='ACTIVE'
+    ).select_related(
+        'candidature__filiere',
+        'candidature__niveau',
+        'classe_assignee',
+        'plan_paiement_inscription__plan'
+    ).first()
+
+    if not inscription:
+        messages.warning(request, "Aucune inscription active pour cet étudiant")
+        return redirect('dashboard:admin_students')
+
+    # Récupérer les paiements
+    paiements = Paiement.objects.filter(
+        inscription_paiement__inscription=inscription
+    ).select_related('tranche').order_by('-date_paiement')
+
+    context = {
+        'student': student,
+        'inscription': inscription,
+        'inscription_paiement': inscription.plan_paiement_inscription,
+        'paiements': paiements,
+    }
+
+    return render(request, 'dashboard/admin/student_inscription_detail.html', context)
+
+@login_required
+def student_payments_modal(request, student_id):
+    """Modal des paiements d'un étudiant"""
+    if request.user.role not in ['ADMIN', 'CHEF_DEPARTEMENT']:
+        return JsonResponse({'error': 'Non autorisé'}, status=403)
+
+    student = get_object_or_404(Utilisateur, id=student_id, role='APPRENANT')
+
+    # Récupérer l'inscription active
+    inscription = Inscription.objects.filter(
+        apprenant=student,
+        statut='ACTIVE'
+    ).select_related(
+        'plan_paiement_inscription__plan'
+    ).first()
+
+    if not inscription:
+        return JsonResponse({
+            'success': False,
+            'message': 'Aucune inscription active trouvée'
+        })
+
+    inscription_paiement = inscription.plan_paiement_inscription
+
+    # Paiements existants
+    paiements = Paiement.objects.filter(
+        inscription_paiement=inscription_paiement
+    ).select_related('tranche').order_by('-date_paiement')
+
+    # Prochaine tranche due
+    prochaine_tranche = inscription_paiement.get_prochaine_tranche_due()
+
+    data = {
+        'etudiant': {
+            'id': str(student.id),
+            'nom_complet': student.get_full_name(),
+            'matricule': student.matricule,
+        },
+        'inscription': {
+            'numero': inscription.numero_inscription,
+            'frais_total': float(inscription.frais_scolarite),
+            'total_paye': float(inscription.total_paye),
+            'solde': float(inscription.solde),
+            'statut_paiement': inscription.get_statut_paiement_display(),
+            'type_paiement': inscription_paiement.get_type_paiement_display(),
+        },
+        'paiements': [
+            {
+                'id': str(p.id),
+                'numero': p.numero_transaction,
+                'montant': float(p.montant),
+                'date': p.date_paiement.strftime('%d/%m/%Y %H:%M'),
+                'statut': p.get_statut_display(),
+                'methode': p.get_methode_paiement_display(),
+                'tranche': p.tranche.nom if p.tranche else 'Unique',
+            }
+            for p in paiements
+        ],
+        'prochaine_tranche': {
+            'id': str(prochaine_tranche.id),
+            'nom': prochaine_tranche.nom,
+            'montant': float(prochaine_tranche.montant),
+            'date_limite': prochaine_tranche.date_limite.strftime('%d/%m/%Y') if prochaine_tranche.date_limite else '',
+        } if prochaine_tranche else None,
+        'peut_payer': inscription.solde > 0,
+    }
+
+    return JsonResponse({'success': True, 'data': data})
 
 class AdminPaiementsView(LoginRequiredMixin, ListView):
     """Gestion des paiements par l'admin"""
